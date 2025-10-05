@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 const NewRegistration = () => {
@@ -34,17 +34,21 @@ const NewRegistration = () => {
       const response = await fetch("https://n8n.agenciakadin.com.br/webhook-test/pamplona", {
         method: "POST",
         body: formData,
+        mode: "cors",
       });
 
-      if (response.ok) {
-        toast.success("Imagem enviada com sucesso!");
-        setTimeout(() => navigate("/"), 1500);
-      } else {
-        toast.error("Erro ao enviar imagem. Tente novamente.");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const result = await response.json();
+      console.log("Resposta do webhook:", result);
+      
+      toast.success("Imagem enviada com sucesso!");
+      setTimeout(() => navigate("/"), 1500);
     } catch (error) {
       console.error("Erro ao enviar imagem:", error);
-      toast.error("Erro ao enviar imagem. Verifique sua conexão.");
+      toast.error("Erro ao enviar imagem. Verifique sua conexão e tente novamente.");
     } finally {
       setIsUploading(false);
     }
@@ -172,6 +176,9 @@ const NewRegistration = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Confirmar Imagem</DialogTitle>
+            <DialogDescription>
+              Verifique se a imagem está correta antes de enviar
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-4">
             <div className="relative w-full aspect-[4/3] bg-muted rounded-lg overflow-hidden">
