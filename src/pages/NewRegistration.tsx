@@ -309,7 +309,7 @@ const NewRegistration = () => {
 
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <Label className="text-xs font-bold">DATA DA RESERVA</Label>
+                        <Label className="text-xs font-bold">DATA DA RETIRADA</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
                           {data.data_da_reserva || '-'}
                         </div>
