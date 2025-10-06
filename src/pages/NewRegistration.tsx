@@ -683,6 +683,95 @@ const NewRegistration = () => {
                 );
               };
 
+              const renderColete = (data: any) => {
+                if (!data) return null;
+                return (
+                  <div className="mb-8 pb-6 border-b-2 border-border">
+                    <h3 className="text-base font-bold mb-4 bg-accent/50 p-2 rounded-md uppercase">
+                      Colete
+                    </h3>
+                    
+                    <div className="mb-4">
+                      <Label className="text-xs font-bold">SOB MEDIDA</Label>
+                      <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                        {data.sob_medida || '-'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-xs font-bold">PEITO</Label>
+                        <div className="flex gap-2 items-center mt-2">
+                          <span className="text-xs">SOLTAR:</span>
+                          <div className="text-sm bg-muted/30 px-2 py-1 rounded">
+                            {data.peito_soltar || '-'}
+                          </div>
+                          <span className="text-xs">APERTAR:</span>
+                          <div className="text-sm bg-muted/30 px-2 py-1 rounded">
+                            {data.peito_apertar || '-'}
+                          </div>
+                          <span className="text-xs ml-4">☐ MARCA:</span>
+                          <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
+                            {data.peito_marca || '-'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-bold">CINTURA</Label>
+                        <div className="flex gap-2 items-center mt-2">
+                          <span className="text-xs">SOLTAR:</span>
+                          <div className="text-sm bg-muted/30 px-2 py-1 rounded">
+                            {data.cintura_soltar || '-'}
+                          </div>
+                          <span className="text-xs">APERTAR:</span>
+                          <div className="text-sm bg-muted/30 px-2 py-1 rounded">
+                            {data.cintura_apertar || '-'}
+                          </div>
+                          <span className="text-xs ml-4">☐ MARCA:</span>
+                          <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
+                            {data.cintura_marca || '-'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              };
+
+              const renderGravata = (data: any) => {
+                if (!data) return null;
+                return (
+                  <div className="mb-8 pb-6 border-b-2 border-border">
+                    <h3 className="text-base font-bold mb-4 bg-accent/50 p-2 rounded-md uppercase">
+                      Gravata
+                    </h3>
+                    
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs font-bold">MODELO</Label>
+                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                          {data.modelo || '-'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-bold">MEDIDA</Label>
+                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                          {data.medida || '-'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-bold">OUTROS</Label>
+                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                          {data.outros || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              };
               const renderSection = (title: string, data: any) => {
                 if (!data) return null;
                 
@@ -715,8 +804,8 @@ const NewRegistration = () => {
                   {renderPaleto(paleto)}
                   {renderCalca(calca)}
                   {renderCamisa(camisa)}
-                  {renderSection("Colete", colete)}
-                  {renderSection("Gravata", gravata)}
+                  {renderColete(colete)}
+                  {renderGravata(gravata)}
                   {renderSection("Rodapé", rodape)}
                 </div>
               );
