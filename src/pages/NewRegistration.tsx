@@ -239,17 +239,59 @@ const NewRegistration = () => {
       </Dialog>
 
       <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-4xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle>Resposta do Webhook</DialogTitle>
+            <DialogTitle>Ficha de Atendimento</DialogTitle>
             <DialogDescription>
-              Dados retornados pelo servidor
+              Dados extraídos da imagem
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[400px] w-full rounded-md border p-4">
-            <pre className="text-sm">
-              <code>{JSON.stringify(webhookResponse, null, 2)}</code>
-            </pre>
+          <ScrollArea className="h-[60vh] w-full">
+            {webhookResponse && (() => {
+              const parsedData = typeof webhookResponse.resposta === 'string' 
+                ? JSON.parse(webhookResponse.resposta) 
+                : webhookResponse.resposta || {};
+              
+              const { cabecalho, paleto, calca, camisa, colete, gravata, rodape } = parsedData;
+
+              const renderSection = (title: string, data: any) => {
+                if (!data) return null;
+                
+                return (
+                  <div className="mb-6 pb-6 border-b border-border last:border-0">
+                    <h3 className="text-lg font-semibold text-foreground mb-4 bg-accent/50 p-2 rounded-md">
+                      {title}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-2">
+                      {Object.entries(data).map(([key, value]) => (
+                        <div key={key} className="flex flex-col gap-1">
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                            {key.replace(/_/g, ' ')}
+                          </span>
+                          <span className="text-sm text-foreground bg-muted/30 px-3 py-2 rounded-md">
+                            {value !== null && value !== undefined && value !== '' 
+                              ? String(value) 
+                              : '-'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              };
+
+              return (
+                <div className="space-y-4 p-4">
+                  {renderSection("Cabeçalho", cabecalho)}
+                  {renderSection("Paletó", paleto)}
+                  {renderSection("Calça", calca)}
+                  {renderSection("Camisa", camisa)}
+                  {renderSection("Colete", colete)}
+                  {renderSection("Gravata", gravata)}
+                  {renderSection("Rodapé", rodape)}
+                </div>
+              );
+            })()}
           </ScrollArea>
           <DialogFooter>
             <Button
