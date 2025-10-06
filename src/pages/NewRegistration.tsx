@@ -48,7 +48,15 @@ const NewRegistration = () => {
       }
 
       const result = await response.json();
-      console.log("Resposta do webhook:", result);
+      console.log("=== WEBHOOK RESPONSE ===");
+      console.log("Full result:", result);
+      console.log("Result type:", typeof result);
+      console.log("Result keys:", Object.keys(result || {}));
+      
+      if (result && result.resposta) {
+        console.log("Resposta field:", result.resposta);
+        console.log("Resposta type:", typeof result.resposta);
+      }
       
       setWebhookResponse(result);
       setShowResponseDialog(true);
@@ -249,11 +257,19 @@ const NewRegistration = () => {
           </DialogHeader>
           <ScrollArea className="h-[60vh] w-full">
             {webhookResponse && (() => {
+              console.log("=== PARSING DATA ===");
+              console.log("webhookResponse:", webhookResponse);
+              
               const parsedData = typeof webhookResponse.resposta === 'string' 
                 ? JSON.parse(webhookResponse.resposta) 
                 : webhookResponse.resposta || {};
               
+              console.log("parsedData:", parsedData);
+              console.log("parsedData keys:", Object.keys(parsedData || {}));
+              
               const { cabecalho, paleto, calca, camisa, colete, gravata, rodape } = parsedData;
+              
+              console.log("Extracted sections:", { cabecalho, paleto, calca, camisa, colete, gravata, rodape });
 
               const renderCabecalho = (data: any) => {
                 if (!data) return null;
