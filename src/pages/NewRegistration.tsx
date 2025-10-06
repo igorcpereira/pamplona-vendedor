@@ -571,6 +571,118 @@ const NewRegistration = () => {
                 );
               };
 
+              const renderCamisa = (data: any) => {
+                if (!data) return null;
+                return (
+                  <div className="mb-8 pb-6 border-b-2 border-border">
+                    <h3 className="text-base font-bold mb-4 bg-accent/50 p-2 rounded-md uppercase">
+                      Camisa
+                    </h3>
+                    
+                    <div className="mb-3">
+                      <Label className="text-xs font-bold">CAMISA</Label>
+                      <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                        {data.camisa || '-'}
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <Label className="text-xs font-bold">SOB MEDIDA</Label>
+                      <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                        {data.sob_medida || '-'}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Coluna Esquerda */}
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-xs font-bold">COLARINHO</Label>
+                          <div className="mt-2 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs">☐ ORIGINAL:</span>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
+                                {data.colarinho_original || '-'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs">☐ PONTA:</span>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
+                                {data.colarinho_ponta || '-'}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs">☐ ALARGADOR:</span>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
+                                {data.colarinho_alargador || '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-bold">CINTURA</Label>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <div>
+                              <span className="text-xs">☐ PENCE:</span>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
+                                {data.cintura_pence || '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-xs">☐ LATERAL:</span>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
+                                {data.cintura_lateral || '-'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-2">
+                            <Label className="text-xs">MARCA</Label>
+                            <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
+                              {data.cintura_marca || '-'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Coluna Direita */}
+                      <div className="space-y-4">
+                        <div>
+                          <Label className="text-xs font-bold">MANGA</Label>
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            <div>
+                              <span className="text-xs">☐ -:</span>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
+                                {data.manga_menos || '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-xs">MEDIDA</Label>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
+                                {data.manga_medida || '-'}
+                              </div>
+                            </div>
+                            <div>
+                              <Label className="text-xs">APERTAR</Label>
+                              <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
+                                {data.manga_apertar || '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label className="text-xs font-bold">OUTROS</Label>
+                          <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                            {data.outros || '-'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              };
+
               const renderSection = (title: string, data: any) => {
                 if (!data) return null;
                 
@@ -602,7 +714,7 @@ const NewRegistration = () => {
                   {renderCabecalho(cabecalho)}
                   {renderPaleto(paleto)}
                   {renderCalca(calca)}
-                  {renderSection("Camisa", camisa)}
+                  {renderCamisa(camisa)}
                   {renderSection("Colete", colete)}
                   {renderSection("Gravata", gravata)}
                   {renderSection("Rodapé", rodape)}
