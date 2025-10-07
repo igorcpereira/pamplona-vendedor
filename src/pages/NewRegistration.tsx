@@ -5,6 +5,7 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ const NewRegistration = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showResponseDialog, setShowResponseDialog] = useState(false);
   const [showLoadingDialog, setShowLoadingDialog] = useState(false);
+  const [showTimeoutDialog, setShowTimeoutDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [webhookResponse, setWebhookResponse] = useState<any>(null);
@@ -70,7 +72,13 @@ const NewRegistration = () => {
       toast.success("Imagem enviada com sucesso!");
     } catch (error) {
       console.error("Erro ao enviar imagem:", error);
-      toast.error("Erro ao enviar imagem. Verifique sua conexão e tente novamente.");
+      
+      // Verifica se é erro de timeout
+      if (error instanceof Error && error.message.includes('Timeout')) {
+        setShowTimeoutDialog(true);
+      } else {
+        toast.error("Erro ao enviar imagem. Verifique sua conexão e tente novamente.");
+      }
     } finally {
       setIsUploading(false);
       setShowLoadingDialog(false);
@@ -253,6 +261,25 @@ const NewRegistration = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={showTimeoutDialog} onOpenChange={setShowTimeoutDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tempo Expirado</AlertDialogTitle>
+            <AlertDialogDescription>
+              O servidor não respondeu em tempo hábil. Por favor, tente novamente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => {
+              setShowTimeoutDialog(false);
+              window.location.reload();
+            }}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={showResponseDialog} onOpenChange={setShowResponseDialog}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh]">
