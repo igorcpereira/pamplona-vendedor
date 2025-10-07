@@ -309,6 +309,12 @@ const NewRegistration = () => {
                           {data.data_prova1 || '-'}
                         </div>
                       </div>
+                      <div className="col-span-1">
+                        <Label className="text-xs font-bold">HORA 1</Label>
+                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                          {data.hora_prova1 || '-'}
+                        </div>
+                      </div>
                       <div className="col-span-2">
                         <Label className="text-xs font-bold">PROVA 2</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
@@ -316,9 +322,9 @@ const NewRegistration = () => {
                         </div>
                       </div>
                       <div className="col-span-1">
-                        <Label className="text-xs font-bold">HORA</Label>
+                        <Label className="text-xs font-bold">HORA 2</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.hora_prova1 || '-'}
+                          {data.hora_prova2 || '-'}
                         </div>
                       </div>
                     </div>
