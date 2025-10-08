@@ -39,9 +39,9 @@ const NewRegistration = () => {
       formData.append("segundo", now.getSeconds().toString());
       formData.append("timestamp", now.toISOString());
       
-      // Timeout de 20 segundos
+      // Timeout de 60 segundos
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout: O webhook não respondeu em 20 segundos')), 20000)
+        setTimeout(() => reject(new Error('Timeout: O webhook não respondeu em 60 segundos')), 60000)
       );
 
       const fetchPromise = fetch("https://webhookn8n.agenciakadin.com.br/webhook/pamplona", {
