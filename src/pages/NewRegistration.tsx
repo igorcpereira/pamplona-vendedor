@@ -706,17 +706,25 @@ const NewRegistration = () => {
                       Camisa
                     </h3>
                     
-                    <div className="mb-3">
-                      <Label className="text-xs font-bold">CAMISA</Label>
-                      <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                        {data.camisa || '-'}
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label className="text-xs font-bold">COR</Label>
+                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                          {data.camisa_cor || '-'}
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-bold">TAMANHO</Label>
+                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                          {data.camisa_tamanho || '-'}
+                        </div>
                       </div>
                     </div>
 
                     <div className="mb-4">
                       <Label className="text-xs font-bold">SOB MEDIDA</Label>
                       <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                        {data.sob_medida || '-'}
+                        {data.camisa_sob_medida || '-'}
                       </div>
                     </div>
 
@@ -727,21 +735,21 @@ const NewRegistration = () => {
                           <Label className="text-xs font-bold">COLARINHO</Label>
                           <div className="mt-2 space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs">☐ ORIGINAL:</span>
+                              <span className="text-xs">{data.camisa_colarinho_original_checkbox ? '☑' : '☐'} ORIGINAL:</span>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
-                                {data.colarinho_original || '-'}
+                                {data.camisa_colarinho_original_medida || '-'}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs">☐ PONTA:</span>
+                              <span className="text-xs">{data.camisa_colarinho_ponta_checkbox ? '☑' : '☐'} PONTA:</span>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
-                                {data.colarinho_ponta || '-'}
+                                {data.camisa_colarinho_ponta_medida || '-'}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs">☐ ALARGADOR:</span>
+                              <span className="text-xs">{data.camisa_colarinho_alargador_checkbox ? '☑' : '☐'} ALARGADOR:</span>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
-                                {data.colarinho_alargador || '-'}
+                                {data.camisa_colarinho_alargador_medida || '-'}
                               </div>
                             </div>
                           </div>
@@ -751,22 +759,22 @@ const NewRegistration = () => {
                           <Label className="text-xs font-bold">CINTURA</Label>
                           <div className="grid grid-cols-2 gap-2 mt-2">
                             <div>
-                              <span className="text-xs">☐ PENCE:</span>
+                              <span className="text-xs">{data.camisa_cintura_pence_checkbox ? '☑' : '☐'} PENCE:</span>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
-                                {data.cintura_pence || '-'}
+                                {data.camisa_cintura_pence_medida || '-'}
                               </div>
                             </div>
                             <div>
-                              <span className="text-xs">☐ LATERAL:</span>
+                              <span className="text-xs">{data.camisa_cintura_lateral_checkbox ? '☑' : '☐'} LATERAL:</span>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
-                                {data.cintura_lateral || '-'}
+                                {data.camisa_cintura_lateral_medida || '-'}
                               </div>
                             </div>
                           </div>
                           <div className="mt-2">
-                            <Label className="text-xs">MARCA</Label>
+                            <Label className="text-xs">{data.camisa_cintura_marca_checkbox ? '☑' : '☐'} MARCA</Label>
                             <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
-                              {data.cintura_marca || '-'}
+                              {data.camisa_cintura_marca_medida || '-'}
                             </div>
                           </div>
                         </div>
@@ -778,21 +786,21 @@ const NewRegistration = () => {
                           <Label className="text-xs font-bold">MANGA</Label>
                           <div className="grid grid-cols-3 gap-2 mt-2">
                             <div>
-                              <span className="text-xs">☐ -:</span>
+                              <span className="text-xs">{data.camisa_manga_menos_checkbox ? '☑' : '☐'} -:</span>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
-                                {data.manga_menos || '-'}
+                                {data.camisa_manga_menos_medida || '-'}
                               </div>
                             </div>
                             <div>
                               <Label className="text-xs">MEDIDA</Label>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
-                                {data.manga_medida || '-'}
+                                {data.camisa_manga_medida || '-'}
                               </div>
                             </div>
                             <div>
                               <Label className="text-xs">APERTAR</Label>
                               <div className="text-sm bg-muted/30 px-2 py-1 rounded-md mt-1">
-                                {data.manga_apertar || '-'}
+                                {data.camisa_manga_apertar || '-'}
                               </div>
                             </div>
                           </div>
@@ -801,7 +809,7 @@ const NewRegistration = () => {
                         <div>
                           <Label className="text-xs font-bold">OUTROS</Label>
                           <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                            {data.outros || '-'}
+                            {data.camisa_outros_texto || '-'}
                           </div>
                         </div>
                       </div>
@@ -821,7 +829,7 @@ const NewRegistration = () => {
                     <div className="mb-4">
                       <Label className="text-xs font-bold">SOB MEDIDA</Label>
                       <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                        {data.sob_medida || '-'}
+                        {data.colete_sob_medida || '-'}
                       </div>
                     </div>
 
@@ -831,15 +839,15 @@ const NewRegistration = () => {
                         <div className="flex gap-2 items-center mt-2">
                           <span className="text-xs">SOLTAR:</span>
                           <div className="text-sm bg-muted/30 px-2 py-1 rounded">
-                            {data.peito_soltar || '-'}
+                            {data.colete_peito_soltar || '-'}
                           </div>
                           <span className="text-xs">APERTAR:</span>
                           <div className="text-sm bg-muted/30 px-2 py-1 rounded">
-                            {data.peito_apertar || '-'}
+                            {data.colete_peito_apertar || '-'}
                           </div>
-                          <span className="text-xs ml-4">☐ MARCA:</span>
+                          <span className="text-xs ml-4">{data.colete_peito_marca_checkbox ? '☑' : '☐'} MARCA:</span>
                           <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
-                            {data.peito_marca || '-'}
+                            {data.colete_peito_marca_medida || '-'}
                           </div>
                         </div>
                       </div>
@@ -849,15 +857,15 @@ const NewRegistration = () => {
                         <div className="flex gap-2 items-center mt-2">
                           <span className="text-xs">SOLTAR:</span>
                           <div className="text-sm bg-muted/30 px-2 py-1 rounded">
-                            {data.cintura_soltar || '-'}
+                            {data.colete_cintura_soltar || '-'}
                           </div>
                           <span className="text-xs">APERTAR:</span>
                           <div className="text-sm bg-muted/30 px-2 py-1 rounded">
-                            {data.cintura_apertar || '-'}
+                            {data.colete_cintura_apertar || '-'}
                           </div>
-                          <span className="text-xs ml-4">☐ MARCA:</span>
+                          <span className="text-xs ml-4">{data.colete_cintura_marca_checkbox ? '☑' : '☐'} MARCA:</span>
                           <div className="text-sm bg-muted/30 px-2 py-1 rounded flex-1">
-                            {data.cintura_marca || '-'}
+                            {data.colete_cintura_marca_medida || '-'}
                           </div>
                         </div>
                       </div>
@@ -878,21 +886,21 @@ const NewRegistration = () => {
                       <div>
                         <Label className="text-xs font-bold">MODELO</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.modelo || '-'}
+                          {data.gravata_modelo || '-'}
                         </div>
                       </div>
 
                       <div>
                         <Label className="text-xs font-bold">MEDIDA</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.medida || '-'}
+                          {data.gravata_medida || '-'}
                         </div>
                       </div>
 
                       <div>
                         <Label className="text-xs font-bold">OUTROS</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.outros || '-'}
+                          {data.gravata_outros_texto || '-'}
                         </div>
                       </div>
                     </div>
@@ -902,6 +910,13 @@ const NewRegistration = () => {
 
               const renderRodape = (data: any) => {
                 if (!data) return null;
+                
+                const formatarValor = (valor: any) => {
+                  if (!valor) return '-';
+                  const num = parseFloat(valor);
+                  return isNaN(num) ? '-' : `R$ ${num.toFixed(2).replace('.', ',')}`;
+                };
+                
                 return (
                   <div className="mb-8 pb-6">
                     <h3 className="text-base font-bold mb-4 bg-accent/50 p-2 rounded-md uppercase">
@@ -912,14 +927,16 @@ const NewRegistration = () => {
                       <div>
                         <Label className="text-xs font-bold">FAIXA</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.faixa || '-'}
+                          {data.faixa_texto || '-'}
                         </div>
                       </div>
 
                       <div>
                         <Label className="text-xs font-bold">SAPATO</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.sapato || '-'}
+                          {data.sapato_modelo && data.sapato_tamanho 
+                            ? `${data.sapato_modelo} - Tam. ${data.sapato_tamanho}`
+                            : data.sapato_modelo || data.sapato_tamanho || '-'}
                         </div>
                       </div>
 
@@ -933,21 +950,50 @@ const NewRegistration = () => {
                       <div>
                         <Label className="text-xs font-bold">OUTROS</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.outros || '-'}
+                          {data.sapato_outros_texto || '-'}
                         </div>
                       </div>
 
-                      <div>
-                        <Label className="text-xs font-bold">VALOR</Label>
-                        <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.valor || '-'}
+                      <div className="col-span-2">
+                        <Label className="text-xs font-bold">VALORES</Label>
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Bruto:</span>
+                            <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                              {formatarValor(data.valor_bruto_num)}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Desconto:</span>
+                            <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
+                              {formatarValor(data.valor_desconto_num)}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">Final:</span>
+                            <div className="text-sm bg-green-100 dark:bg-green-900/20 px-3 py-2 rounded-md mt-1 font-semibold">
+                              {formatarValor(data.valor_final_num)}
+                            </div>
+                          </div>
                         </div>
                       </div>
 
                       <div>
                         <Label className="text-xs font-bold">GARANTIA</Label>
                         <div className="text-sm bg-muted/30 px-3 py-2 rounded-md mt-1">
-                          {data.garantia || '-'}
+                          {data.garantia_texto || '-'}
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label className="text-xs font-bold">PAGAMENTO</Label>
+                        <div className="flex gap-2 items-center mt-1">
+                          <div className="text-sm bg-muted/30 px-3 py-2 rounded-md flex-1">
+                            {data.status_pagamento || '-'}
+                          </div>
+                          {data.carimbo_pago_checkbox && (
+                            <span className="text-green-600 dark:text-green-400 font-bold">✓ PAGO</span>
+                          )}
                         </div>
                       </div>
                     </div>
