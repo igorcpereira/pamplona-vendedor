@@ -44,7 +44,7 @@ const NewRegistration = () => {
         setTimeout(() => reject(new Error('Timeout: O webhook não respondeu em 60 segundos')), 60000)
       );
 
-      const fetchPromise = fetch("https://webhookn8n.agenciakadin.com.br/webhook/pamplona", {
+      const fetchPromise = fetch("https://n8n.agenciakadin.com.br/webhook-test/pamplona-google", {
         method: "POST",
         body: formData,
         mode: "cors",
