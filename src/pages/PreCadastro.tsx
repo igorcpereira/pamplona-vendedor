@@ -37,31 +37,36 @@ const PreCadastro = () => {
       
       setCards((prev) => [newCard, ...prev]);
       
-      // Se ainda está processando, simula polling
+      // Se ainda está processando, verifica periodicamente no sessionStorage
       if (!state.webhookData) {
-        simulateProcessing(state.timestamp);
+        const checkInterval = setInterval(() => {
+          const stored = sessionStorage.getItem(`webhook_result_${state.timestamp}`);
+          if (stored) {
+            const { data } = JSON.parse(stored);
+            setCards((prev) =>
+              prev.map((card) =>
+                card.id === state.timestamp
+                  ? {
+                      ...card,
+                      status: "completed",
+                      phone: data?.fields?.Cabecalho?.telefone || "N/A",
+                      data: data,
+                    }
+                  : card
+              )
+            );
+            sessionStorage.removeItem(`webhook_result_${state.timestamp}`);
+            clearInterval(checkInterval);
+          }
+        }, 500);
+        
+        // Limpa o intervalo após 2 minutos
+        setTimeout(() => clearInterval(checkInterval), 120000);
+        
+        return () => clearInterval(checkInterval);
       }
     }
   }, [location.state]);
-
-  const simulateProcessing = (id: string) => {
-    // Simula o processamento por 5-10 segundos
-    const randomTime = Math.random() * 5000 + 5000;
-    
-    setTimeout(() => {
-      setCards((prev) =>
-        prev.map((card) =>
-          card.id === id
-            ? {
-                ...card,
-                status: "completed",
-                phone: "44999679847", // Telefone de exemplo
-              }
-            : card
-        )
-      );
-    }, randomTime);
-  };
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);

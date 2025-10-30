@@ -26,8 +26,16 @@ const NewRegistration = () => {
 
   const sendImageToWebhook = async (file: File) => {
     setIsUploading(true);
-    setShowLoadingDialog(true);
     const startTime = Date.now();
+    const timestamp = new Date().toISOString();
+    
+    // Navega imediatamente para pré-cadastro
+    navigate("/pre-cadastro", {
+      state: {
+        timestamp,
+        webhookData: null, // Indica que ainda está processando
+      },
+    });
     
     try {
       const now = new Date();
@@ -74,15 +82,13 @@ const NewRegistration = () => {
         console.log("Resposta type:", typeof result.resposta);
       }
       
-      // Navega para a tela de pré-cadastro
-      navigate("/pre-cadastro", {
-        state: {
-          timestamp: now.toISOString(),
-          webhookData: result,
-        },
-      });
+      // Salva o resultado no sessionStorage para atualizar o card
+      sessionStorage.setItem(`webhook_result_${timestamp}`, JSON.stringify({
+        data: result,
+        processingTime: Number(processingTimeInSeconds)
+      }));
       
-      toast.success("Imagem enviada! Processando...");
+      toast.success("Imagem processada com sucesso!");
     } catch (error) {
       console.error("Erro ao enviar imagem:", error);
       
@@ -94,7 +100,6 @@ const NewRegistration = () => {
       }
     } finally {
       setIsUploading(false);
-      setShowLoadingDialog(false);
     }
   };
 
