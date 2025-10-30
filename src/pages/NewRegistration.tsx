@@ -3,7 +3,6 @@ import { Camera, Upload, Edit, X, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -29,6 +28,9 @@ const NewRegistration = () => {
     setIsUploading(true);
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
+    
+    // Importa supabase dinamicamente
+    const { supabase } = await import("@/integrations/supabase/client");
     
     // Insere o registro no banco com status 'processing'
     const { data: preCadastro, error: insertError } = await supabase

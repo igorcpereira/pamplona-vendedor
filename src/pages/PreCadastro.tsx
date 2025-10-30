@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Phone, Clock, CheckCircle } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -23,78 +22,110 @@ const PreCadastro = () => {
   const [selectedCard, setSelectedCard] = useState<ProcessingCard | null>(null);
 
   useEffect(() => {
+    let mounted = true;
+    
     // Busca todos os pré-cadastros do banco
     const fetchPreCadastros = async () => {
-      const { data, error } = await supabase
-        .from('pre_cadastros')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        // Importa supabase dinamicamente
+        const { supabase } = await import("@/integrations/supabase/client");
+        
+        const { data, error } = await supabase
+          .from('pre_cadastros')
+          .select('*')
+          .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro ao buscar pré-cadastros:', error);
-        return;
+        if (error) {
+          console.error('Erro ao buscar pré-cadastros:', error);
+          return;
+        }
+
+        if (!mounted) return;
+
+        const mappedCards: ProcessingCard[] = data.map((item) => ({
+          id: item.id,
+          timestamp: item.timestamp,
+          status: item.status as "processing" | "completed" | "error",
+          phone: item.phone || undefined,
+          data: item.webhook_data,
+        }));
+
+        setCards(mappedCards);
+      } catch (error) {
+        console.error('Erro ao inicializar:', error);
       }
+    };
 
-      const mappedCards: ProcessingCard[] = data.map((item) => ({
-        id: item.id,
-        timestamp: item.timestamp,
-        status: item.status as "processing" | "completed" | "error",
-        phone: item.phone || undefined,
-        data: item.webhook_data,
-      }));
+    const setupRealtime = async () => {
+      try {
+        // Importa supabase dinamicamente
+        const { supabase } = await import("@/integrations/supabase/client");
+        
+        // Configura realtime para receber updates
+        const channel = supabase
+          .channel('pre_cadastros_changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'pre_cadastros'
+            },
+            (payload) => {
+              if (!mounted) return;
+              
+              console.log('Realtime update:', payload);
+              
+              if (payload.eventType === 'INSERT') {
+                const newItem = payload.new as any;
+                const newCard: ProcessingCard = {
+                  id: newItem.id,
+                  timestamp: newItem.timestamp,
+                  status: newItem.status,
+                  phone: newItem.phone || undefined,
+                  data: newItem.webhook_data,
+                };
+                setCards((prev) => [newCard, ...prev]);
+              } else if (payload.eventType === 'UPDATE') {
+                const updatedItem = payload.new as any;
+                setCards((prev) =>
+                  prev.map((card) =>
+                    card.id === updatedItem.id
+                      ? {
+                          ...card,
+                          status: updatedItem.status,
+                          phone: updatedItem.phone || undefined,
+                          data: updatedItem.webhook_data,
+                        }
+                      : card
+                  )
+                );
+              } else if (payload.eventType === 'DELETE') {
+                const deletedItem = payload.old as any;
+                setCards((prev) => prev.filter((card) => card.id !== deletedItem.id));
+              }
+            }
+          )
+          .subscribe();
 
-      setCards(mappedCards);
+        return channel;
+      } catch (error) {
+        console.error('Erro ao configurar realtime:', error);
+        return null;
+      }
     };
 
     fetchPreCadastros();
-
-    // Configura realtime para receber updates
-    const channel = supabase
-      .channel('pre_cadastros_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'pre_cadastros'
-        },
-        (payload) => {
-          console.log('Realtime update:', payload);
-          
-          if (payload.eventType === 'INSERT') {
-            const newItem = payload.new as any;
-            const newCard: ProcessingCard = {
-              id: newItem.id,
-              timestamp: newItem.timestamp,
-              status: newItem.status,
-              phone: newItem.phone || undefined,
-              data: newItem.webhook_data,
-            };
-            setCards((prev) => [newCard, ...prev]);
-          } else if (payload.eventType === 'UPDATE') {
-            const updatedItem = payload.new as any;
-            setCards((prev) =>
-              prev.map((card) =>
-                card.id === updatedItem.id
-                  ? {
-                      ...card,
-                      status: updatedItem.status,
-                      phone: updatedItem.phone || undefined,
-                      data: updatedItem.webhook_data,
-                    }
-                  : card
-              )
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const deletedItem = payload.old as any;
-            setCards((prev) => prev.filter((card) => card.id !== deletedItem.id));
-          }
-        }
-      )
-      .subscribe();
+    let channelPromise = setupRealtime();
 
     return () => {
-      supabase.removeChannel(channel);
+      mounted = false;
+      channelPromise.then(async (channel) => {
+        if (channel) {
+          const { supabase } = await import("@/integrations/supabase/client");
+          supabase.removeChannel(channel);
+        }
+      });
     };
   }, []);
 
