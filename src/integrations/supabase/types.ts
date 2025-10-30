@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      __EFMigrationsHistory: {
+        Row: {
+          MigrationId: string
+          ProductVersion: string
+        }
+        Insert: {
+          MigrationId: string
+          ProductVersion: string
+        }
+        Update: {
+          MigrationId?: string
+          ProductVersion?: string
+        }
+        Relationships: []
+      }
+      analise_ficha_temp: {
+        Row: {
+          base64: string | null
+          cabecalho: Json | null
+          calca: Json | null
+          camisa: Json | null
+          colete: Json | null
+          created_at: string
+          gravata: Json | null
+          id: string
+          paleto: Json | null
+          rodape: Json | null
+        }
+        Insert: {
+          base64?: string | null
+          cabecalho?: Json | null
+          calca?: Json | null
+          camisa?: Json | null
+          colete?: Json | null
+          created_at?: string
+          gravata?: Json | null
+          id: string
+          paleto?: Json | null
+          rodape?: Json | null
+        }
+        Update: {
+          base64?: string | null
+          cabecalho?: Json | null
+          calca?: Json | null
+          camisa?: Json | null
+          colete?: Json | null
+          created_at?: string
+          gravata?: Json | null
+          id?: string
+          paleto?: Json | null
+          rodape?: Json | null
+        }
+        Relationships: []
+      }
+      Clientes: {
+        Row: {
+          Id: number
+          Nome: string
+          Telefone: string
+          UnidadeId: number
+          VendedorId: number
+        }
+        Insert: {
+          Id?: number
+          Nome: string
+          Telefone: string
+          UnidadeId?: number
+          VendedorId?: number
+        }
+        Update: {
+          Id?: number
+          Nome?: string
+          Telefone?: string
+          UnidadeId?: number
+          VendedorId?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK_Clientes_Unidades_UnidadeId"
+            columns: ["UnidadeId"]
+            isOneToOne: false
+            referencedRelation: "Unidades"
+            referencedColumns: ["Id"]
+          },
+        ]
+      }
       fichas: {
         Row: {
           calca_json: Json | null
@@ -112,6 +198,643 @@ export type Database = {
           valor_final_num?: number | null
         }
         Relationships: []
+      }
+      Grupos: {
+        Row: {
+          Cnpj: string | null
+          Id: number
+          Nome: string
+        }
+        Insert: {
+          Cnpj?: string | null
+          Id?: number
+          Nome: string
+        }
+        Update: {
+          Cnpj?: string | null
+          Id?: number
+          Nome?: string
+        }
+        Relationships: []
+      }
+      Pedidos: {
+        Row: {
+          CalcaId: number | null
+          CamisaId: number | null
+          ClienteId: number
+          ColeteId: number | null
+          DataDevolucao: string | null
+          DataEvento: string | null
+          DataMedida: string | null
+          DataProva1: string | null
+          DataProva2: string | null
+          DataRetirada: string | null
+          Garantia: string | null
+          Id: number
+          NumeroFicha: number | null
+          Observacoes: string | null
+          Pago: boolean
+          PaletoId: number | null
+          RodapeId: number | null
+          TipoOperacao: number
+          Valor: number | null
+        }
+        Insert: {
+          CalcaId?: number | null
+          CamisaId?: number | null
+          ClienteId: number
+          ColeteId?: number | null
+          DataDevolucao?: string | null
+          DataEvento?: string | null
+          DataMedida?: string | null
+          DataProva1?: string | null
+          DataProva2?: string | null
+          DataRetirada?: string | null
+          Garantia?: string | null
+          Id?: number
+          NumeroFicha?: number | null
+          Observacoes?: string | null
+          Pago?: boolean
+          PaletoId?: number | null
+          RodapeId?: number | null
+          TipoOperacao: number
+          Valor?: number | null
+        }
+        Update: {
+          CalcaId?: number | null
+          CamisaId?: number | null
+          ClienteId?: number
+          ColeteId?: number | null
+          DataDevolucao?: string | null
+          DataEvento?: string | null
+          DataMedida?: string | null
+          DataProva1?: string | null
+          DataProva2?: string | null
+          DataRetirada?: string | null
+          Garantia?: string | null
+          Id?: number
+          NumeroFicha?: number | null
+          Observacoes?: string | null
+          Pago?: boolean
+          PaletoId?: number | null
+          RodapeId?: number | null
+          TipoOperacao?: number
+          Valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK_Pedidos_PedidosCalcas_CalcaId"
+            columns: ["CalcaId"]
+            isOneToOne: false
+            referencedRelation: "PedidosCalcas"
+            referencedColumns: ["Id"]
+          },
+          {
+            foreignKeyName: "FK_Pedidos_PedidosCamisas_CamisaId"
+            columns: ["CamisaId"]
+            isOneToOne: false
+            referencedRelation: "PedidosCamisas"
+            referencedColumns: ["Id"]
+          },
+          {
+            foreignKeyName: "FK_Pedidos_PedidosColetes_ColeteId"
+            columns: ["ColeteId"]
+            isOneToOne: false
+            referencedRelation: "PedidosColetes"
+            referencedColumns: ["Id"]
+          },
+          {
+            foreignKeyName: "FK_Pedidos_PedidosPaletos_PaletoId"
+            columns: ["PaletoId"]
+            isOneToOne: false
+            referencedRelation: "PedidosPaletos"
+            referencedColumns: ["Id"]
+          },
+          {
+            foreignKeyName: "FK_Pedidos_PedidosRodapes_RodapeId"
+            columns: ["RodapeId"]
+            isOneToOne: false
+            referencedRelation: "PedidosRodapes"
+            referencedColumns: ["Id"]
+          },
+        ]
+      }
+      PedidosCalcas: {
+        Row: {
+          Barra: string | null
+          BarraApertar: string | null
+          BarraMedida: string | null
+          BarraSoltar: string | null
+          Cintura: string | null
+          CinturaApertar: string | null
+          CinturaMarca: boolean
+          CinturaMedida: string | null
+          CinturaSoltar: string | null
+          Cor: string | null
+          Coxa: string | null
+          CoxaApertar: string | null
+          CoxaMarca: boolean
+          CoxaSoltar: string | null
+          Id: number
+          Joelho: string | null
+          JoelhoApertar: string | null
+          JoelhoBoca: string | null
+          JoelhoMarca: boolean
+          JoelhoSoltar: string | null
+          Outros: string | null
+          PedidoId: number
+          SobMedida: string | null
+          Tamanho: string | null
+        }
+        Insert: {
+          Barra?: string | null
+          BarraApertar?: string | null
+          BarraMedida?: string | null
+          BarraSoltar?: string | null
+          Cintura?: string | null
+          CinturaApertar?: string | null
+          CinturaMarca: boolean
+          CinturaMedida?: string | null
+          CinturaSoltar?: string | null
+          Cor?: string | null
+          Coxa?: string | null
+          CoxaApertar?: string | null
+          CoxaMarca: boolean
+          CoxaSoltar?: string | null
+          Id?: number
+          Joelho?: string | null
+          JoelhoApertar?: string | null
+          JoelhoBoca?: string | null
+          JoelhoMarca: boolean
+          JoelhoSoltar?: string | null
+          Outros?: string | null
+          PedidoId: number
+          SobMedida?: string | null
+          Tamanho?: string | null
+        }
+        Update: {
+          Barra?: string | null
+          BarraApertar?: string | null
+          BarraMedida?: string | null
+          BarraSoltar?: string | null
+          Cintura?: string | null
+          CinturaApertar?: string | null
+          CinturaMarca?: boolean
+          CinturaMedida?: string | null
+          CinturaSoltar?: string | null
+          Cor?: string | null
+          Coxa?: string | null
+          CoxaApertar?: string | null
+          CoxaMarca?: boolean
+          CoxaSoltar?: string | null
+          Id?: number
+          Joelho?: string | null
+          JoelhoApertar?: string | null
+          JoelhoBoca?: string | null
+          JoelhoMarca?: boolean
+          JoelhoSoltar?: string | null
+          Outros?: string | null
+          PedidoId?: number
+          SobMedida?: string | null
+          Tamanho?: string | null
+        }
+        Relationships: []
+      }
+      PedidosCamisas: {
+        Row: {
+          Cintura: string | null
+          CinturaLateral: string | null
+          CinturaMarca: string | null
+          CinturaPence: string | null
+          Colarinho: string | null
+          ColarinhoAlargador: boolean
+          ColarinhoOriginal: boolean
+          ColarinhoPonta: boolean
+          Cor: string | null
+          Id: number
+          Manga: string | null
+          MangaApertar: boolean
+          MangaMedida: string | null
+          MangaMenos: string | null
+          Outros: string | null
+          PedidoId: number
+          SobMedida: string | null
+          Tamanho: string | null
+        }
+        Insert: {
+          Cintura?: string | null
+          CinturaLateral?: string | null
+          CinturaMarca?: string | null
+          CinturaPence?: string | null
+          Colarinho?: string | null
+          ColarinhoAlargador: boolean
+          ColarinhoOriginal: boolean
+          ColarinhoPonta: boolean
+          Cor?: string | null
+          Id?: number
+          Manga?: string | null
+          MangaApertar: boolean
+          MangaMedida?: string | null
+          MangaMenos?: string | null
+          Outros?: string | null
+          PedidoId: number
+          SobMedida?: string | null
+          Tamanho?: string | null
+        }
+        Update: {
+          Cintura?: string | null
+          CinturaLateral?: string | null
+          CinturaMarca?: string | null
+          CinturaPence?: string | null
+          Colarinho?: string | null
+          ColarinhoAlargador?: boolean
+          ColarinhoOriginal?: boolean
+          ColarinhoPonta?: boolean
+          Cor?: string | null
+          Id?: number
+          Manga?: string | null
+          MangaApertar?: boolean
+          MangaMedida?: string | null
+          MangaMenos?: string | null
+          Outros?: string | null
+          PedidoId?: number
+          SobMedida?: string | null
+          Tamanho?: string | null
+        }
+        Relationships: []
+      }
+      PedidosColetes: {
+        Row: {
+          Cintura: string | null
+          CinturaApertar: string | null
+          CinturaMarca: boolean
+          CinturaSoltar: string | null
+          Id: number
+          PedidoId: number
+          Peito: string | null
+          PeitoApertar: string | null
+          PeitoMarca: boolean
+          PeitoSoltar: string | null
+          SobMedida: string | null
+        }
+        Insert: {
+          Cintura?: string | null
+          CinturaApertar?: string | null
+          CinturaMarca: boolean
+          CinturaSoltar?: string | null
+          Id?: number
+          PedidoId: number
+          Peito?: string | null
+          PeitoApertar?: string | null
+          PeitoMarca: boolean
+          PeitoSoltar?: string | null
+          SobMedida?: string | null
+        }
+        Update: {
+          Cintura?: string | null
+          CinturaApertar?: string | null
+          CinturaMarca?: boolean
+          CinturaSoltar?: string | null
+          Id?: number
+          PedidoId?: number
+          Peito?: string | null
+          PeitoApertar?: string | null
+          PeitoMarca?: boolean
+          PeitoSoltar?: string | null
+          SobMedida?: string | null
+        }
+        Relationships: []
+      }
+      PedidosGravatas: {
+        Row: {
+          Id: number
+          Medida: string | null
+          Modelo: string | null
+          Outros: string | null
+          PedidoId: number
+        }
+        Insert: {
+          Id?: number
+          Medida?: string | null
+          Modelo?: string | null
+          Outros?: string | null
+          PedidoId: number
+        }
+        Update: {
+          Id?: number
+          Medida?: string | null
+          Modelo?: string | null
+          Outros?: string | null
+          PedidoId?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK_PedidosGravatas_Pedidos_PedidoId"
+            columns: ["PedidoId"]
+            isOneToOne: false
+            referencedRelation: "Pedidos"
+            referencedColumns: ["Id"]
+          },
+        ]
+      }
+      PedidosPaletos: {
+        Row: {
+          Cintura: string | null
+          CinturaApertar: string | null
+          CinturaMarca: boolean
+          CinturaMedida: string | null
+          CinturaSoltar: string | null
+          Comprimento: string | null
+          ComprimentoMais: string | null
+          ComprimentoMarca: boolean
+          ComprimentoMedida: string | null
+          ComprimentoMenos: string | null
+          Cor: string | null
+          Id: number
+          Manga: string | null
+          MangaMais: string | null
+          MangaMarca: boolean
+          MangaMedida: string | null
+          MangaMenos: string | null
+          Outros: string | null
+          PedidoId: number
+          SobMedida: string | null
+          Tamanho: string | null
+        }
+        Insert: {
+          Cintura?: string | null
+          CinturaApertar?: string | null
+          CinturaMarca: boolean
+          CinturaMedida?: string | null
+          CinturaSoltar?: string | null
+          Comprimento?: string | null
+          ComprimentoMais?: string | null
+          ComprimentoMarca: boolean
+          ComprimentoMedida?: string | null
+          ComprimentoMenos?: string | null
+          Cor?: string | null
+          Id?: number
+          Manga?: string | null
+          MangaMais?: string | null
+          MangaMarca: boolean
+          MangaMedida?: string | null
+          MangaMenos?: string | null
+          Outros?: string | null
+          PedidoId: number
+          SobMedida?: string | null
+          Tamanho?: string | null
+        }
+        Update: {
+          Cintura?: string | null
+          CinturaApertar?: string | null
+          CinturaMarca?: boolean
+          CinturaMedida?: string | null
+          CinturaSoltar?: string | null
+          Comprimento?: string | null
+          ComprimentoMais?: string | null
+          ComprimentoMarca?: boolean
+          ComprimentoMedida?: string | null
+          ComprimentoMenos?: string | null
+          Cor?: string | null
+          Id?: number
+          Manga?: string | null
+          MangaMais?: string | null
+          MangaMarca?: boolean
+          MangaMedida?: string | null
+          MangaMenos?: string | null
+          Outros?: string | null
+          PedidoId?: number
+          SobMedida?: string | null
+          Tamanho?: string | null
+        }
+        Relationships: []
+      }
+      PedidosRodapes: {
+        Row: {
+          Abotoadura: string | null
+          Faixa: string | null
+          Id: number
+          Outros: string | null
+          PedidoId: number
+          Sapato: string | null
+        }
+        Insert: {
+          Abotoadura?: string | null
+          Faixa?: string | null
+          Id?: number
+          Outros?: string | null
+          PedidoId: number
+          Sapato?: string | null
+        }
+        Update: {
+          Abotoadura?: string | null
+          Faixa?: string | null
+          Id?: number
+          Outros?: string | null
+          PedidoId?: number
+          Sapato?: string | null
+        }
+        Relationships: []
+      }
+      pre_cadastros: {
+        Row: {
+          created_at: string | null
+          id: string
+          phone: string | null
+          status: string
+          timestamp: string
+          webhook_data: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          phone?: string | null
+          status: string
+          timestamp: string
+          webhook_data?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          phone?: string | null
+          status?: string
+          timestamp?: string
+          webhook_data?: Json | null
+        }
+        Relationships: []
+      }
+      RefreshTokens: {
+        Row: {
+          DataCriacao: string
+          DataExpiracao: string
+          DataRevogacao: string | null
+          DeviceInfo: string
+          Id: number
+          MotivoRevogacao: string | null
+          Revogado: boolean
+          Token: string
+          UsuarioId: number
+        }
+        Insert: {
+          DataCriacao: string
+          DataExpiracao: string
+          DataRevogacao?: string | null
+          DeviceInfo: string
+          Id?: number
+          MotivoRevogacao?: string | null
+          Revogado: boolean
+          Token: string
+          UsuarioId: number
+        }
+        Update: {
+          DataCriacao?: string
+          DataExpiracao?: string
+          DataRevogacao?: string | null
+          DeviceInfo?: string
+          Id?: number
+          MotivoRevogacao?: string | null
+          Revogado?: boolean
+          Token?: string
+          UsuarioId?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK_RefreshTokens_Usuarios_UsuarioId"
+            columns: ["UsuarioId"]
+            isOneToOne: false
+            referencedRelation: "Usuarios"
+            referencedColumns: ["Id"]
+          },
+        ]
+      }
+      Unidades: {
+        Row: {
+          Cnpj: string | null
+          DddPadrao: number | null
+          GrupoId: number
+          Id: number
+          Nome: string
+          NomeFantasia: string | null
+        }
+        Insert: {
+          Cnpj?: string | null
+          DddPadrao?: number | null
+          GrupoId: number
+          Id?: number
+          Nome: string
+          NomeFantasia?: string | null
+        }
+        Update: {
+          Cnpj?: string | null
+          DddPadrao?: number | null
+          GrupoId?: number
+          Id?: number
+          Nome?: string
+          NomeFantasia?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK_Unidades_Grupos_GrupoId"
+            columns: ["GrupoId"]
+            isOneToOne: false
+            referencedRelation: "Grupos"
+            referencedColumns: ["Id"]
+          },
+        ]
+      }
+      Usuarios: {
+        Row: {
+          Email: string
+          Id: number
+          Nome: string
+          Senha: string | null
+          Status: number
+        }
+        Insert: {
+          Email: string
+          Id?: number
+          Nome: string
+          Senha?: string | null
+          Status: number
+        }
+        Update: {
+          Email?: string
+          Id?: number
+          Nome?: string
+          Senha?: string | null
+          Status?: number
+        }
+        Relationships: []
+      }
+      UsuariosAtivacoes: {
+        Row: {
+          DataExpiracao: string
+          Id: number
+          Token: string
+          UsuarioId: number
+          Utilizado: boolean
+        }
+        Insert: {
+          DataExpiracao: string
+          Id?: number
+          Token: string
+          UsuarioId: number
+          Utilizado: boolean
+        }
+        Update: {
+          DataExpiracao?: string
+          Id?: number
+          Token?: string
+          UsuarioId?: number
+          Utilizado?: boolean
+        }
+        Relationships: []
+      }
+      UsuariosRoles: {
+        Row: {
+          GrupoId: number | null
+          Id: number
+          Role: number
+          UnidadeId: number | null
+          UsuarioId: number
+        }
+        Insert: {
+          GrupoId?: number | null
+          Id?: number
+          Role: number
+          UnidadeId?: number | null
+          UsuarioId: number
+        }
+        Update: {
+          GrupoId?: number | null
+          Id?: number
+          Role?: number
+          UnidadeId?: number | null
+          UsuarioId?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "FK_UsuariosRoles_Grupos_GrupoId"
+            columns: ["GrupoId"]
+            isOneToOne: false
+            referencedRelation: "Grupos"
+            referencedColumns: ["Id"]
+          },
+          {
+            foreignKeyName: "FK_UsuariosRoles_Unidades_UnidadeId"
+            columns: ["UnidadeId"]
+            isOneToOne: false
+            referencedRelation: "Unidades"
+            referencedColumns: ["Id"]
+          },
+          {
+            foreignKeyName: "FK_UsuariosRoles_Usuarios_UsuarioId"
+            columns: ["UsuarioId"]
+            isOneToOne: false
+            referencedRelation: "Usuarios"
+            referencedColumns: ["Id"]
+          },
+        ]
       }
     }
     Views: {

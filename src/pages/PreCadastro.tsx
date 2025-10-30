@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Phone, Clock, CheckCircle } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,55 +19,84 @@ interface ProcessingCard {
 
 const PreCadastro = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<ProcessingCard | null>(null);
 
   useEffect(() => {
-    // Recebe os dados da navegação
-    const state = location.state as { timestamp: string; webhookData?: any } | null;
-    
-    if (state?.timestamp) {
-      const newCard: ProcessingCard = {
-        id: state.timestamp,
-        timestamp: state.timestamp,
-        status: state.webhookData ? "completed" : "processing",
-        phone: state.webhookData?.fields?.Cabecalho?.telefone,
-        data: state.webhookData,
-      };
-      
-      setCards((prev) => [newCard, ...prev]);
-      
-      // Se ainda está processando, verifica periodicamente no sessionStorage
-      if (!state.webhookData) {
-        const checkInterval = setInterval(() => {
-          const stored = sessionStorage.getItem(`webhook_result_${state.timestamp}`);
-          if (stored) {
-            const { data } = JSON.parse(stored);
+    // Busca todos os pré-cadastros do banco
+    const fetchPreCadastros = async () => {
+      const { data, error } = await supabase
+        .from('pre_cadastros')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar pré-cadastros:', error);
+        return;
+      }
+
+      const mappedCards: ProcessingCard[] = data.map((item) => ({
+        id: item.id,
+        timestamp: item.timestamp,
+        status: item.status as "processing" | "completed" | "error",
+        phone: item.phone || undefined,
+        data: item.webhook_data,
+      }));
+
+      setCards(mappedCards);
+    };
+
+    fetchPreCadastros();
+
+    // Configura realtime para receber updates
+    const channel = supabase
+      .channel('pre_cadastros_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'pre_cadastros'
+        },
+        (payload) => {
+          console.log('Realtime update:', payload);
+          
+          if (payload.eventType === 'INSERT') {
+            const newItem = payload.new as any;
+            const newCard: ProcessingCard = {
+              id: newItem.id,
+              timestamp: newItem.timestamp,
+              status: newItem.status,
+              phone: newItem.phone || undefined,
+              data: newItem.webhook_data,
+            };
+            setCards((prev) => [newCard, ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedItem = payload.new as any;
             setCards((prev) =>
               prev.map((card) =>
-                card.id === state.timestamp
+                card.id === updatedItem.id
                   ? {
                       ...card,
-                      status: "completed",
-                      phone: data?.fields?.Cabecalho?.telefone || "N/A",
-                      data: data,
+                      status: updatedItem.status,
+                      phone: updatedItem.phone || undefined,
+                      data: updatedItem.webhook_data,
                     }
                   : card
               )
             );
-            sessionStorage.removeItem(`webhook_result_${state.timestamp}`);
-            clearInterval(checkInterval);
+          } else if (payload.eventType === 'DELETE') {
+            const deletedItem = payload.old as any;
+            setCards((prev) => prev.filter((card) => card.id !== deletedItem.id));
           }
-        }, 500);
-        
-        // Limpa o intervalo após 2 minutos
-        setTimeout(() => clearInterval(checkInterval), 120000);
-        
-        return () => clearInterval(checkInterval);
-      }
-    }
-  }, [location.state]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);

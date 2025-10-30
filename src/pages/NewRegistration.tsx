@@ -3,6 +3,7 @@ import { Camera, Upload, Edit, X, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -29,13 +30,25 @@ const NewRegistration = () => {
     const startTime = Date.now();
     const timestamp = new Date().toISOString();
     
-    // Navega imediatamente para pré-cadastro
-    navigate("/pre-cadastro", {
-      state: {
+    // Insere o registro no banco com status 'processing'
+    const { data: preCadastro, error: insertError } = await supabase
+      .from('pre_cadastros')
+      .insert({
         timestamp,
-        webhookData: null, // Indica que ainda está processando
-      },
-    });
+        status: 'processing',
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Erro ao criar pré-cadastro:', insertError);
+      toast.error('Erro ao criar pré-cadastro');
+      setIsUploading(false);
+      return;
+    }
+    
+    // Navega imediatamente para pré-cadastro
+    navigate("/pre-cadastro");
     
     try {
       const now = new Date();
@@ -82,11 +95,22 @@ const NewRegistration = () => {
         console.log("Resposta type:", typeof result.resposta);
       }
       
-      // Salva o resultado no sessionStorage para atualizar o card
-      sessionStorage.setItem(`webhook_result_${timestamp}`, JSON.stringify({
-        data: result,
-        processingTime: Number(processingTimeInSeconds)
-      }));
+      // Atualiza o registro no banco com o resultado
+      const phone = result?.fields?.Cabecalho?.telefone || 
+                    result?.[0]?.fields?.Cabecalho?.telefone || null;
+      
+      const { error: updateError } = await supabase
+        .from('pre_cadastros')
+        .update({
+          status: 'completed',
+          phone,
+          webhook_data: result,
+        })
+        .eq('id', preCadastro.id);
+
+      if (updateError) {
+        console.error('Erro ao atualizar pré-cadastro:', updateError);
+      }
       
       toast.success("Imagem processada com sucesso!");
     } catch (error) {
