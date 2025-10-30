@@ -179,12 +179,21 @@ const PreCadastro = () => {
               >
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between text-lg">
-                    <span>Cadastro</span>
+                    <span className="truncate">
+                      {card.status === "completed" && card.data ? (
+                        card.data?.fields?.Cabecalho?.nome || 
+                        card.data?.fields?.Cabecalho?.cliente_nome || 
+                        card.data?.[0]?.fields?.Cabecalho?.nome ||
+                        "Cadastro"
+                      ) : (
+                        "Cadastro"
+                      )}
+                    </span>
                     {card.status === "processing" && (
-                      <Clock className="h-5 w-5 text-muted-foreground animate-pulse" />
+                      <Clock className="h-5 w-5 text-muted-foreground animate-pulse flex-shrink-0" />
                     )}
                     {card.status === "completed" && (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
                     )}
                   </CardTitle>
                 </CardHeader>
