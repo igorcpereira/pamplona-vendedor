@@ -14,827 +14,333 @@ export type Database = {
   }
   public: {
     Tables: {
-      __EFMigrationsHistory: {
+      clientes: {
         Row: {
-          MigrationId: string
-          ProductVersion: string
-        }
-        Insert: {
-          MigrationId: string
-          ProductVersion: string
-        }
-        Update: {
-          MigrationId?: string
-          ProductVersion?: string
-        }
-        Relationships: []
-      }
-      analise_ficha_temp: {
-        Row: {
-          base64: string | null
-          cabecalho: Json | null
-          calca: Json | null
-          camisa: Json | null
-          colete: Json | null
           created_at: string
-          gravata: Json | null
           id: string
-          paleto: Json | null
-          rodape: Json | null
+          nome: string
+          tags: Json | null
+          telefone: string | null
+          updated_at: string
         }
         Insert: {
-          base64?: string | null
-          cabecalho?: Json | null
-          calca?: Json | null
-          camisa?: Json | null
-          colete?: Json | null
           created_at?: string
-          gravata?: Json | null
-          id: string
-          paleto?: Json | null
-          rodape?: Json | null
+          id?: string
+          nome: string
+          tags?: Json | null
+          telefone?: string | null
+          updated_at?: string
         }
         Update: {
-          base64?: string | null
-          cabecalho?: Json | null
-          calca?: Json | null
-          camisa?: Json | null
-          colete?: Json | null
           created_at?: string
-          gravata?: Json | null
           id?: string
-          paleto?: Json | null
-          rodape?: Json | null
+          nome?: string
+          tags?: Json | null
+          telefone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
-      Clientes: {
+      descricao_cliente: {
         Row: {
-          Id: number
-          Nome: string
-          Telefone: string
-          UnidadeId: number
-          VendedorId: number
+          cliente_id: string | null
+          created_at: string
+          id: number
+          pedido_id: string | null
+          responsavel: string | null
         }
         Insert: {
-          Id?: number
-          Nome: string
-          Telefone: string
-          UnidadeId?: number
-          VendedorId?: number
+          cliente_id?: string | null
+          created_at?: string
+          id?: number
+          pedido_id?: string | null
+          responsavel?: string | null
         }
         Update: {
-          Id?: number
-          Nome?: string
-          Telefone?: string
-          UnidadeId?: number
-          VendedorId?: number
+          cliente_id?: string | null
+          created_at?: string
+          id?: number
+          pedido_id?: string | null
+          responsavel?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "FK_Clientes_Unidades_UnidadeId"
-            columns: ["UnidadeId"]
-            isOneToOne: false
-            referencedRelation: "Unidades"
-            referencedColumns: ["Id"]
-          },
-        ]
+        Relationships: []
       }
       fichas: {
         Row: {
-          calca_json: Json | null
-          camisa_json: Json | null
-          carimbo_pago: boolean | null
-          client_id: string | null
-          cliente_nome: string
-          cliente_telefone: string
-          colete_json: Json | null
+          abotoaduras: string | null
+          calca: string | null
+          camisa: string | null
+          cliente_id: string | null
+          codigo_ficha: string | null
+          colete: string | null
           created_at: string
-          created_by: string | null
           data_devolucao: string | null
-          data_evento: string | null
-          data_prova1: string | null
-          data_prova2: string | null
+          data_festa: string | null
+          data_prova_1: string | null
+          data_prova_2: string | null
           data_retirada: string | null
-          gravata_json: Json | null
-          hora_prova1: string | null
-          hora_prova2: string | null
+          descricao_cliente: string | null
+          faixa: string | null
+          garantia: number | null
+          gravata: string | null
           id: string
-          numero_ficha: string
-          ocr_raw_json: Json | null
-          paleto_json: Json | null
-          rodape_json: Json | null
-          status_pagamento:
-            | Database["public"]["Enums"]["status_pagamento"]
-            | null
-          tipo: Database["public"]["Enums"]["tipo_operacao"] | null
-          unidade_id: string | null
-          valor_bruto_num: number | null
-          valor_desconto_num: number | null
-          valor_final_num: number | null
+          nome_cliente: string | null
+          outros: string | null
+          pago: boolean
+          paleto: string | null
+          sapato: string | null
+          status: string | null
+          tags: Json | null
+          telefone_cliente: string | null
+          tipo: string | null
+          transcricao_audio: string | null
+          updated_at: string
+          url_bucket: string | null
+          valor: number | null
+          vendedor_responsavel: string | null
         }
         Insert: {
-          calca_json?: Json | null
-          camisa_json?: Json | null
-          carimbo_pago?: boolean | null
-          client_id?: string | null
-          cliente_nome: string
-          cliente_telefone: string
-          colete_json?: Json | null
+          abotoaduras?: string | null
+          calca?: string | null
+          camisa?: string | null
+          cliente_id?: string | null
+          codigo_ficha?: string | null
+          colete?: string | null
           created_at?: string
-          created_by?: string | null
           data_devolucao?: string | null
-          data_evento?: string | null
-          data_prova1?: string | null
-          data_prova2?: string | null
+          data_festa?: string | null
+          data_prova_1?: string | null
+          data_prova_2?: string | null
           data_retirada?: string | null
-          gravata_json?: Json | null
-          hora_prova1?: string | null
-          hora_prova2?: string | null
+          descricao_cliente?: string | null
+          faixa?: string | null
+          garantia?: number | null
+          gravata?: string | null
           id?: string
-          numero_ficha: string
-          ocr_raw_json?: Json | null
-          paleto_json?: Json | null
-          rodape_json?: Json | null
-          status_pagamento?:
-            | Database["public"]["Enums"]["status_pagamento"]
-            | null
-          tipo?: Database["public"]["Enums"]["tipo_operacao"] | null
-          unidade_id?: string | null
-          valor_bruto_num?: number | null
-          valor_desconto_num?: number | null
-          valor_final_num?: number | null
+          nome_cliente?: string | null
+          outros?: string | null
+          pago?: boolean
+          paleto?: string | null
+          sapato?: string | null
+          status?: string | null
+          tags?: Json | null
+          telefone_cliente?: string | null
+          tipo?: string | null
+          transcricao_audio?: string | null
+          updated_at?: string
+          url_bucket?: string | null
+          valor?: number | null
+          vendedor_responsavel?: string | null
         }
         Update: {
-          calca_json?: Json | null
-          camisa_json?: Json | null
-          carimbo_pago?: boolean | null
-          client_id?: string | null
-          cliente_nome?: string
-          cliente_telefone?: string
-          colete_json?: Json | null
+          abotoaduras?: string | null
+          calca?: string | null
+          camisa?: string | null
+          cliente_id?: string | null
+          codigo_ficha?: string | null
+          colete?: string | null
           created_at?: string
-          created_by?: string | null
           data_devolucao?: string | null
-          data_evento?: string | null
-          data_prova1?: string | null
-          data_prova2?: string | null
+          data_festa?: string | null
+          data_prova_1?: string | null
+          data_prova_2?: string | null
           data_retirada?: string | null
-          gravata_json?: Json | null
-          hora_prova1?: string | null
-          hora_prova2?: string | null
+          descricao_cliente?: string | null
+          faixa?: string | null
+          garantia?: number | null
+          gravata?: string | null
           id?: string
-          numero_ficha?: string
-          ocr_raw_json?: Json | null
-          paleto_json?: Json | null
-          rodape_json?: Json | null
-          status_pagamento?:
-            | Database["public"]["Enums"]["status_pagamento"]
-            | null
-          tipo?: Database["public"]["Enums"]["tipo_operacao"] | null
-          unidade_id?: string | null
-          valor_bruto_num?: number | null
-          valor_desconto_num?: number | null
-          valor_final_num?: number | null
-        }
-        Relationships: []
-      }
-      Grupos: {
-        Row: {
-          Cnpj: string | null
-          Id: number
-          Nome: string
-        }
-        Insert: {
-          Cnpj?: string | null
-          Id?: number
-          Nome: string
-        }
-        Update: {
-          Cnpj?: string | null
-          Id?: number
-          Nome?: string
-        }
-        Relationships: []
-      }
-      Pedidos: {
-        Row: {
-          CalcaId: number | null
-          CamisaId: number | null
-          ClienteId: number
-          ColeteId: number | null
-          DataDevolucao: string | null
-          DataEvento: string | null
-          DataMedida: string | null
-          DataProva1: string | null
-          DataProva2: string | null
-          DataRetirada: string | null
-          Garantia: string | null
-          Id: number
-          NumeroFicha: number | null
-          Observacoes: string | null
-          Pago: boolean
-          PaletoId: number | null
-          RodapeId: number | null
-          TipoOperacao: number
-          Valor: number | null
-        }
-        Insert: {
-          CalcaId?: number | null
-          CamisaId?: number | null
-          ClienteId: number
-          ColeteId?: number | null
-          DataDevolucao?: string | null
-          DataEvento?: string | null
-          DataMedida?: string | null
-          DataProva1?: string | null
-          DataProva2?: string | null
-          DataRetirada?: string | null
-          Garantia?: string | null
-          Id?: number
-          NumeroFicha?: number | null
-          Observacoes?: string | null
-          Pago?: boolean
-          PaletoId?: number | null
-          RodapeId?: number | null
-          TipoOperacao: number
-          Valor?: number | null
-        }
-        Update: {
-          CalcaId?: number | null
-          CamisaId?: number | null
-          ClienteId?: number
-          ColeteId?: number | null
-          DataDevolucao?: string | null
-          DataEvento?: string | null
-          DataMedida?: string | null
-          DataProva1?: string | null
-          DataProva2?: string | null
-          DataRetirada?: string | null
-          Garantia?: string | null
-          Id?: number
-          NumeroFicha?: number | null
-          Observacoes?: string | null
-          Pago?: boolean
-          PaletoId?: number | null
-          RodapeId?: number | null
-          TipoOperacao?: number
-          Valor?: number | null
+          nome_cliente?: string | null
+          outros?: string | null
+          pago?: boolean
+          paleto?: string | null
+          sapato?: string | null
+          status?: string | null
+          tags?: Json | null
+          telefone_cliente?: string | null
+          tipo?: string | null
+          transcricao_audio?: string | null
+          updated_at?: string
+          url_bucket?: string | null
+          valor?: number | null
+          vendedor_responsavel?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "FK_Pedidos_PedidosCalcas_CalcaId"
-            columns: ["CalcaId"]
+            foreignKeyName: "fichas_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "PedidosCalcas"
-            referencedColumns: ["Id"]
-          },
-          {
-            foreignKeyName: "FK_Pedidos_PedidosCamisas_CamisaId"
-            columns: ["CamisaId"]
-            isOneToOne: false
-            referencedRelation: "PedidosCamisas"
-            referencedColumns: ["Id"]
-          },
-          {
-            foreignKeyName: "FK_Pedidos_PedidosColetes_ColeteId"
-            columns: ["ColeteId"]
-            isOneToOne: false
-            referencedRelation: "PedidosColetes"
-            referencedColumns: ["Id"]
-          },
-          {
-            foreignKeyName: "FK_Pedidos_PedidosPaletos_PaletoId"
-            columns: ["PaletoId"]
-            isOneToOne: false
-            referencedRelation: "PedidosPaletos"
-            referencedColumns: ["Id"]
-          },
-          {
-            foreignKeyName: "FK_Pedidos_PedidosRodapes_RodapeId"
-            columns: ["RodapeId"]
-            isOneToOne: false
-            referencedRelation: "PedidosRodapes"
-            referencedColumns: ["Id"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
           },
         ]
       }
-      PedidosCalcas: {
+      fichas_temporarias: {
         Row: {
-          Barra: string | null
-          BarraApertar: string | null
-          BarraMedida: string | null
-          BarraSoltar: string | null
-          Cintura: string | null
-          CinturaApertar: string | null
-          CinturaMarca: boolean
-          CinturaMedida: string | null
-          CinturaSoltar: string | null
-          Cor: string | null
-          Coxa: string | null
-          CoxaApertar: string | null
-          CoxaMarca: boolean
-          CoxaSoltar: string | null
-          Id: number
-          Joelho: string | null
-          JoelhoApertar: string | null
-          JoelhoBoca: string | null
-          JoelhoMarca: boolean
-          JoelhoSoltar: string | null
-          Outros: string | null
-          PedidoId: number
-          SobMedida: string | null
-          Tamanho: string | null
-        }
-        Insert: {
-          Barra?: string | null
-          BarraApertar?: string | null
-          BarraMedida?: string | null
-          BarraSoltar?: string | null
-          Cintura?: string | null
-          CinturaApertar?: string | null
-          CinturaMarca: boolean
-          CinturaMedida?: string | null
-          CinturaSoltar?: string | null
-          Cor?: string | null
-          Coxa?: string | null
-          CoxaApertar?: string | null
-          CoxaMarca: boolean
-          CoxaSoltar?: string | null
-          Id?: number
-          Joelho?: string | null
-          JoelhoApertar?: string | null
-          JoelhoBoca?: string | null
-          JoelhoMarca: boolean
-          JoelhoSoltar?: string | null
-          Outros?: string | null
-          PedidoId: number
-          SobMedida?: string | null
-          Tamanho?: string | null
-        }
-        Update: {
-          Barra?: string | null
-          BarraApertar?: string | null
-          BarraMedida?: string | null
-          BarraSoltar?: string | null
-          Cintura?: string | null
-          CinturaApertar?: string | null
-          CinturaMarca?: boolean
-          CinturaMedida?: string | null
-          CinturaSoltar?: string | null
-          Cor?: string | null
-          Coxa?: string | null
-          CoxaApertar?: string | null
-          CoxaMarca?: boolean
-          CoxaSoltar?: string | null
-          Id?: number
-          Joelho?: string | null
-          JoelhoApertar?: string | null
-          JoelhoBoca?: string | null
-          JoelhoMarca?: boolean
-          JoelhoSoltar?: string | null
-          Outros?: string | null
-          PedidoId?: number
-          SobMedida?: string | null
-          Tamanho?: string | null
-        }
-        Relationships: []
-      }
-      PedidosCamisas: {
-        Row: {
-          Cintura: string | null
-          CinturaLateral: string | null
-          CinturaMarca: string | null
-          CinturaPence: string | null
-          Colarinho: string | null
-          ColarinhoAlargador: boolean
-          ColarinhoOriginal: boolean
-          ColarinhoPonta: boolean
-          Cor: string | null
-          Id: number
-          Manga: string | null
-          MangaApertar: boolean
-          MangaMedida: string | null
-          MangaMenos: string | null
-          Outros: string | null
-          PedidoId: number
-          SobMedida: string | null
-          Tamanho: string | null
-        }
-        Insert: {
-          Cintura?: string | null
-          CinturaLateral?: string | null
-          CinturaMarca?: string | null
-          CinturaPence?: string | null
-          Colarinho?: string | null
-          ColarinhoAlargador: boolean
-          ColarinhoOriginal: boolean
-          ColarinhoPonta: boolean
-          Cor?: string | null
-          Id?: number
-          Manga?: string | null
-          MangaApertar: boolean
-          MangaMedida?: string | null
-          MangaMenos?: string | null
-          Outros?: string | null
-          PedidoId: number
-          SobMedida?: string | null
-          Tamanho?: string | null
-        }
-        Update: {
-          Cintura?: string | null
-          CinturaLateral?: string | null
-          CinturaMarca?: string | null
-          CinturaPence?: string | null
-          Colarinho?: string | null
-          ColarinhoAlargador?: boolean
-          ColarinhoOriginal?: boolean
-          ColarinhoPonta?: boolean
-          Cor?: string | null
-          Id?: number
-          Manga?: string | null
-          MangaApertar?: boolean
-          MangaMedida?: string | null
-          MangaMenos?: string | null
-          Outros?: string | null
-          PedidoId?: number
-          SobMedida?: string | null
-          Tamanho?: string | null
-        }
-        Relationships: []
-      }
-      PedidosColetes: {
-        Row: {
-          Cintura: string | null
-          CinturaApertar: string | null
-          CinturaMarca: boolean
-          CinturaSoltar: string | null
-          Id: number
-          PedidoId: number
-          Peito: string | null
-          PeitoApertar: string | null
-          PeitoMarca: boolean
-          PeitoSoltar: string | null
-          SobMedida: string | null
-        }
-        Insert: {
-          Cintura?: string | null
-          CinturaApertar?: string | null
-          CinturaMarca: boolean
-          CinturaSoltar?: string | null
-          Id?: number
-          PedidoId: number
-          Peito?: string | null
-          PeitoApertar?: string | null
-          PeitoMarca: boolean
-          PeitoSoltar?: string | null
-          SobMedida?: string | null
-        }
-        Update: {
-          Cintura?: string | null
-          CinturaApertar?: string | null
-          CinturaMarca?: boolean
-          CinturaSoltar?: string | null
-          Id?: number
-          PedidoId?: number
-          Peito?: string | null
-          PeitoApertar?: string | null
-          PeitoMarca?: boolean
-          PeitoSoltar?: string | null
-          SobMedida?: string | null
-        }
-        Relationships: []
-      }
-      PedidosGravatas: {
-        Row: {
-          Id: number
-          Medida: string | null
-          Modelo: string | null
-          Outros: string | null
-          PedidoId: number
-        }
-        Insert: {
-          Id?: number
-          Medida?: string | null
-          Modelo?: string | null
-          Outros?: string | null
-          PedidoId: number
-        }
-        Update: {
-          Id?: number
-          Medida?: string | null
-          Modelo?: string | null
-          Outros?: string | null
-          PedidoId?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "FK_PedidosGravatas_Pedidos_PedidoId"
-            columns: ["PedidoId"]
-            isOneToOne: false
-            referencedRelation: "Pedidos"
-            referencedColumns: ["Id"]
-          },
-        ]
-      }
-      PedidosPaletos: {
-        Row: {
-          Cintura: string | null
-          CinturaApertar: string | null
-          CinturaMarca: boolean
-          CinturaMedida: string | null
-          CinturaSoltar: string | null
-          Comprimento: string | null
-          ComprimentoMais: string | null
-          ComprimentoMarca: boolean
-          ComprimentoMedida: string | null
-          ComprimentoMenos: string | null
-          Cor: string | null
-          Id: number
-          Manga: string | null
-          MangaMais: string | null
-          MangaMarca: boolean
-          MangaMedida: string | null
-          MangaMenos: string | null
-          Outros: string | null
-          PedidoId: number
-          SobMedida: string | null
-          Tamanho: string | null
-        }
-        Insert: {
-          Cintura?: string | null
-          CinturaApertar?: string | null
-          CinturaMarca: boolean
-          CinturaMedida?: string | null
-          CinturaSoltar?: string | null
-          Comprimento?: string | null
-          ComprimentoMais?: string | null
-          ComprimentoMarca: boolean
-          ComprimentoMedida?: string | null
-          ComprimentoMenos?: string | null
-          Cor?: string | null
-          Id?: number
-          Manga?: string | null
-          MangaMais?: string | null
-          MangaMarca: boolean
-          MangaMedida?: string | null
-          MangaMenos?: string | null
-          Outros?: string | null
-          PedidoId: number
-          SobMedida?: string | null
-          Tamanho?: string | null
-        }
-        Update: {
-          Cintura?: string | null
-          CinturaApertar?: string | null
-          CinturaMarca?: boolean
-          CinturaMedida?: string | null
-          CinturaSoltar?: string | null
-          Comprimento?: string | null
-          ComprimentoMais?: string | null
-          ComprimentoMarca?: boolean
-          ComprimentoMedida?: string | null
-          ComprimentoMenos?: string | null
-          Cor?: string | null
-          Id?: number
-          Manga?: string | null
-          MangaMais?: string | null
-          MangaMarca?: boolean
-          MangaMedida?: string | null
-          MangaMenos?: string | null
-          Outros?: string | null
-          PedidoId?: number
-          SobMedida?: string | null
-          Tamanho?: string | null
-        }
-        Relationships: []
-      }
-      PedidosRodapes: {
-        Row: {
-          Abotoadura: string | null
-          Faixa: string | null
-          Id: number
-          Outros: string | null
-          PedidoId: number
-          Sapato: string | null
-        }
-        Insert: {
-          Abotoadura?: string | null
-          Faixa?: string | null
-          Id?: number
-          Outros?: string | null
-          PedidoId: number
-          Sapato?: string | null
-        }
-        Update: {
-          Abotoadura?: string | null
-          Faixa?: string | null
-          Id?: number
-          Outros?: string | null
-          PedidoId?: number
-          Sapato?: string | null
-        }
-        Relationships: []
-      }
-      pre_cadastros: {
-        Row: {
-          created_at: string | null
+          calca: string | null
+          camisa: string | null
+          cliente_id: string | null
+          codigo_ficha: string | null
+          created_at: string
+          data_devolucao: string | null
+          data_festa: string | null
+          data_retirada: string | null
+          garantia: number | null
           id: string
-          phone: string | null
-          status: string
-          timestamp: string
-          webhook_data: Json | null
+          nome_cliente: string | null
+          pago: boolean
+          paleto: string | null
+          sapato: string | null
+          status: string | null
+          telefone_cliente: string | null
+          tipo: string | null
+          updated_at: string
+          url_bucket: string | null
+          valor: number | null
+          vendedor_responsavel: string | null
         }
         Insert: {
-          created_at?: string | null
+          calca?: string | null
+          camisa?: string | null
+          cliente_id?: string | null
+          codigo_ficha?: string | null
+          created_at?: string
+          data_devolucao?: string | null
+          data_festa?: string | null
+          data_retirada?: string | null
+          garantia?: number | null
           id?: string
-          phone?: string | null
-          status: string
-          timestamp: string
-          webhook_data?: Json | null
+          nome_cliente?: string | null
+          pago: boolean
+          paleto?: string | null
+          sapato?: string | null
+          status?: string | null
+          telefone_cliente?: string | null
+          tipo?: string | null
+          updated_at?: string
+          url_bucket?: string | null
+          valor?: number | null
+          vendedor_responsavel?: string | null
         }
         Update: {
-          created_at?: string | null
+          calca?: string | null
+          camisa?: string | null
+          cliente_id?: string | null
+          codigo_ficha?: string | null
+          created_at?: string
+          data_devolucao?: string | null
+          data_festa?: string | null
+          data_retirada?: string | null
+          garantia?: number | null
           id?: string
-          phone?: string | null
-          status?: string
-          timestamp?: string
-          webhook_data?: Json | null
-        }
-        Relationships: []
-      }
-      RefreshTokens: {
-        Row: {
-          DataCriacao: string
-          DataExpiracao: string
-          DataRevogacao: string | null
-          DeviceInfo: string
-          Id: number
-          MotivoRevogacao: string | null
-          Revogado: boolean
-          Token: string
-          UsuarioId: number
-        }
-        Insert: {
-          DataCriacao: string
-          DataExpiracao: string
-          DataRevogacao?: string | null
-          DeviceInfo: string
-          Id?: number
-          MotivoRevogacao?: string | null
-          Revogado: boolean
-          Token: string
-          UsuarioId: number
-        }
-        Update: {
-          DataCriacao?: string
-          DataExpiracao?: string
-          DataRevogacao?: string | null
-          DeviceInfo?: string
-          Id?: number
-          MotivoRevogacao?: string | null
-          Revogado?: boolean
-          Token?: string
-          UsuarioId?: number
+          nome_cliente?: string | null
+          pago?: boolean
+          paleto?: string | null
+          sapato?: string | null
+          status?: string | null
+          telefone_cliente?: string | null
+          tipo?: string | null
+          updated_at?: string
+          url_bucket?: string | null
+          valor?: number | null
+          vendedor_responsavel?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "FK_RefreshTokens_Usuarios_UsuarioId"
-            columns: ["UsuarioId"]
+            foreignKeyName: "fichas_temporarias_cliente_id_fkey"
+            columns: ["cliente_id"]
             isOneToOne: false
-            referencedRelation: "Usuarios"
-            referencedColumns: ["Id"]
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
           },
         ]
       }
-      Unidades: {
+      profiles: {
         Row: {
-          Cnpj: string | null
-          DddPadrao: number | null
-          GrupoId: number
-          Id: number
-          Nome: string
-          NomeFantasia: string | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
         }
         Insert: {
-          Cnpj?: string | null
-          DddPadrao?: number | null
-          GrupoId: number
-          Id?: number
-          Nome: string
-          NomeFantasia?: string | null
+          created_at?: string
+          id: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
         }
         Update: {
-          Cnpj?: string | null
-          DddPadrao?: number | null
-          GrupoId?: number
-          Id?: number
-          Nome?: string
-          NomeFantasia?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "FK_Unidades_Grupos_GrupoId"
-            columns: ["GrupoId"]
-            isOneToOne: false
-            referencedRelation: "Grupos"
-            referencedColumns: ["Id"]
-          },
-        ]
-      }
-      Usuarios: {
-        Row: {
-          Email: string
-          Id: number
-          Nome: string
-          Senha: string | null
-          Status: number
-        }
-        Insert: {
-          Email: string
-          Id?: number
-          Nome: string
-          Senha?: string | null
-          Status: number
-        }
-        Update: {
-          Email?: string
-          Id?: number
-          Nome?: string
-          Senha?: string | null
-          Status?: number
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
         }
         Relationships: []
       }
-      UsuariosAtivacoes: {
+      unidades: {
         Row: {
-          DataExpiracao: string
-          Id: number
-          Token: string
-          UsuarioId: number
-          Utilizado: boolean
+          created_at: string
+          id: number
+          nome: string | null
         }
         Insert: {
-          DataExpiracao: string
-          Id?: number
-          Token: string
-          UsuarioId: number
-          Utilizado: boolean
+          created_at?: string
+          id?: number
+          nome?: string | null
         }
         Update: {
-          DataExpiracao?: string
-          Id?: number
-          Token?: string
-          UsuarioId?: number
-          Utilizado?: boolean
+          created_at?: string
+          id?: number
+          nome?: string | null
         }
         Relationships: []
       }
-      UsuariosRoles: {
+      usuarios: {
         Row: {
-          GrupoId: number | null
-          Id: number
-          Role: number
-          UnidadeId: number | null
-          UsuarioId: number
+          created_at: string
+          funcao: string | null
+          id: number
+          nome: string | null
+          unidade: string | null
         }
         Insert: {
-          GrupoId?: number | null
-          Id?: number
-          Role: number
-          UnidadeId?: number | null
-          UsuarioId: number
+          created_at?: string
+          funcao?: string | null
+          id?: number
+          nome?: string | null
+          unidade?: string | null
         }
         Update: {
-          GrupoId?: number | null
-          Id?: number
-          Role?: number
-          UnidadeId?: number | null
-          UsuarioId?: number
+          created_at?: string
+          funcao?: string | null
+          id?: number
+          nome?: string | null
+          unidade?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "FK_UsuariosRoles_Grupos_GrupoId"
-            columns: ["GrupoId"]
-            isOneToOne: false
-            referencedRelation: "Grupos"
-            referencedColumns: ["Id"]
-          },
-          {
-            foreignKeyName: "FK_UsuariosRoles_Unidades_UnidadeId"
-            columns: ["UnidadeId"]
-            isOneToOne: false
-            referencedRelation: "Unidades"
-            referencedColumns: ["Id"]
-          },
-          {
-            foreignKeyName: "FK_UsuariosRoles_Usuarios_UsuarioId"
-            columns: ["UsuarioId"]
-            isOneToOne: false
-            referencedRelation: "Usuarios"
-            referencedColumns: ["Id"]
-          },
-        ]
+        Relationships: []
+      }
+      webhooks: {
+        Row: {
+          created_at: string
+          id: number
+          nome: string | null
+          plataforma: string | null
+          webhook: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          nome?: string | null
+          plataforma?: string | null
+          webhook?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          nome?: string | null
+          plataforma?: string | null
+          webhook?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
@@ -844,9 +350,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      status_pagamento: "pago" | "pendente" | "isento"
-      tipo_ficha: "aluguel" | "venda" | "ajuste"
-      tipo_operacao: "aluguel" | "venda" | "ajuste"
+      user_role: "Gestor" | "Franqueado" | "Vendedor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -974,9 +478,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      status_pagamento: ["pago", "pendente", "isento"],
-      tipo_ficha: ["aluguel", "venda", "ajuste"],
-      tipo_operacao: ["aluguel", "venda", "ajuste"],
+      user_role: ["Gestor", "Franqueado", "Vendedor"],
     },
   },
 } as const
