@@ -21,7 +21,7 @@ serve(async (req) => {
     const { data: webhookData, error: webhookError } = await supabaseClient
       .from('webhooks')
       .select('webhook')
-      .eq('nome', 're-ler-imagem')
+      .eq('nome', 'descricao_cliente')
       .single();
 
     if (webhookError || !webhookData) {
