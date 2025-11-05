@@ -129,7 +129,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
           {/* Cabeçalho */}
           <div className="space-y-4">
             <h3 className="text-base font-semibold">Cabeçalho</h3>
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Coluna 1 */}
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -261,7 +261,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
           {/* Peças */}
           <div className="space-y-4">
             <h3 className="text-base font-semibold">Peças</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="paleto">Paletó</Label>
                 <Input
