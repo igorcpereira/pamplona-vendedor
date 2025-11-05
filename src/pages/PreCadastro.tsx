@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Phone, Clock, CheckCircle, XCircle } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { CreateMockFichas } from "@/components/CreateMockFichas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -187,38 +186,41 @@ const PreCadastro = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Header title="Pré-Cadastros" />
+      <Header title="Fichas" />
       
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-4 pb-20">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-center gap-4 mb-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/novo")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold">Pré-Cadastros</h1>
-              <p className="text-muted-foreground">
-                Aguardando processamento das imagens
-              </p>
-            </div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Fichas</h1>
+            <p className="text-sm text-muted-foreground">
+              Aguardando processamento das imagens
+            </p>
           </div>
 
           <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="todos">
+            <TabsList className="grid w-full grid-cols-2 gap-2 h-auto p-2 bg-muted/50">
+              <TabsTrigger 
+                value="todos"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
+              >
                 Todos ({getStatusCount("todos")})
               </TabsTrigger>
-              <TabsTrigger value="pendente">
+              <TabsTrigger 
+                value="pendente"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
+              >
                 Pendente ({getStatusCount("pendente")})
               </TabsTrigger>
-              <TabsTrigger value="processado">
+              <TabsTrigger 
+                value="processado"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
+              >
                 Processado ({getStatusCount("processado")})
               </TabsTrigger>
-              <TabsTrigger value="erro">
+              <TabsTrigger 
+                value="erro"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
+              >
                 Erro ({getStatusCount("erro")})
               </TabsTrigger>
             </TabsList>
@@ -309,15 +311,6 @@ const PreCadastro = () => {
                     ? "Nenhuma ficha encontrada" 
                     : `Nenhuma ficha ${activeFilter === "todos" ? "" : activeFilter}`}
                 </p>
-                {cards.length === 0 && (
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => navigate("/novo")}
-                  >
-                    Enviar Nova Imagem
-                  </Button>
-                )}
               </CardContent>
             </Card>
           )}
@@ -340,7 +333,6 @@ const PreCadastro = () => {
         </DialogContent>
       </Dialog>
 
-      <CreateMockFichas />
       <BottomNav />
     </div>
   );
