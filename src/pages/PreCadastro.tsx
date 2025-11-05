@@ -15,6 +15,9 @@ interface ProcessingCard {
   status: "processing" | "completed" | "error";
   phone?: string;
   data?: any;
+  nome_cliente?: string;
+  codigo_ficha?: string;
+  tipo?: string;
 }
 
 const PreCadastro = () => {
@@ -75,6 +78,9 @@ const PreCadastro = () => {
             status: mappedStatus,
             phone: item.telefone_cliente || undefined,
             data: parsedData,
+            nome_cliente: item.nome_cliente || undefined,
+            codigo_ficha: item.codigo_ficha || undefined,
+            tipo: item.tipo || undefined,
           };
         });
 
@@ -136,6 +142,9 @@ const PreCadastro = () => {
                   status: mappedStatus,
                   phone: newItem.telefone_cliente || undefined,
                   data: parsedData,
+                  nome_cliente: newItem.nome_cliente || undefined,
+                  codigo_ficha: newItem.codigo_ficha || undefined,
+                  tipo: newItem.tipo || undefined,
                 };
                 setCards((prev) => [newCard, ...prev]);
               } else if (payload.eventType === 'UPDATE') {
@@ -172,6 +181,9 @@ const PreCadastro = () => {
                           status: mappedStatus,
                           phone: updatedItem.telefone_cliente || undefined,
                           data: parsedData,
+                          nome_cliente: updatedItem.nome_cliente || undefined,
+                          codigo_ficha: updatedItem.codigo_ficha || undefined,
+                          tipo: updatedItem.tipo || undefined,
                         }
                       : card
                   )
@@ -280,7 +292,7 @@ const PreCadastro = () => {
             </TabsList>
           </Tabs>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
             {filteredCards.map((card) => (
               <Card
                 key={card.id}
@@ -289,50 +301,51 @@ const PreCadastro = () => {
                 }`}
                 onClick={() => handleCardClick(card)}
               >
-                <CardContent className="p-3">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-sm truncate">
-                      {card.status === "completed" && card.data ? (
-                        card.data?.fields?.Cabecalho?.nome || 
-                        card.data?.fields?.Cabecalho?.cliente_nome || 
-                        card.data?.[0]?.fields?.Cabecalho?.nome ||
-                        "Sem nome"
-                      ) : (
-                        "Processando..."
-                      )}
-                    </p>
-                    
-                    <p className="text-xs text-muted-foreground">
-                      #{card.id.slice(0, 8)}
-                    </p>
-                    
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(card.timestamp).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "2-digit"
-                      })}
-                    </p>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">
+                        {card.nome_cliente || "-"}
+                      </p>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Código: {card.codigo_ficha || "-"}
+                      </p>
+                      
+                      <p className="text-xs text-muted-foreground">
+                        Data: {card.timestamp ? new Date(card.timestamp).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric"
+                        }) : "-"}
+                      </p>
 
-                    <div className="flex items-center gap-1 mt-2">
-                      {card.status === "processing" && (
-                        <>
-                          <Clock className="h-3 w-3 text-muted-foreground animate-pulse" />
-                          <span className="text-xs text-muted-foreground">Processando</span>
-                        </>
-                      )}
-                      {card.status === "completed" && (
-                        <>
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                          <span className="text-xs text-green-600">Processado</span>
-                        </>
-                      )}
-                      {card.status === "error" && (
-                        <>
-                          <XCircle className="h-3 w-3 text-destructive" />
-                          <span className="text-xs text-destructive">Erro</span>
-                        </>
-                      )}
+                      <div className="flex items-center gap-1 mt-2">
+                        {card.status === "processing" && (
+                          <>
+                            <Clock className="h-3 w-3 text-muted-foreground animate-pulse" />
+                            <span className="text-xs text-muted-foreground">Processando</span>
+                          </>
+                        )}
+                        {card.status === "completed" && (
+                          <>
+                            <CheckCircle className="h-3 w-3 text-green-500" />
+                            <span className="text-xs text-green-600">Processado</span>
+                          </>
+                        )}
+                        {card.status === "error" && (
+                          <>
+                            <XCircle className="h-3 w-3 text-destructive" />
+                            <span className="text-xs text-destructive">Erro</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex-shrink-0">
+                      <span className="inline-block px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded">
+                        {card.tipo || "-"}
+                      </span>
                     </div>
                   </div>
                 </CardContent>
