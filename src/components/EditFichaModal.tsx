@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon, Loader2, Image as ImageIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ interface EditFichaModalProps {
 
 export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, onSuccess }: EditFichaModalProps) {
   const [loading, setLoading] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
   const [formData, setFormData] = useState({
     nome_cliente: "",
     telefone_cliente: "",
@@ -304,13 +305,30 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Editar Ficha</DialogTitle>
-          <DialogDescription>
-            Altere os campos necessários e clique em salvar
-          </DialogDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <DialogTitle>Editar Ficha</DialogTitle>
+              <DialogDescription>
+                Altere os campos necessários e clique em salvar
+              </DialogDescription>
+            </div>
+            {ficha?.url_bucket && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageModal(true)}
+                className="flex items-center gap-2"
+              >
+                <ImageIcon className="h-4 w-4" />
+                Ver Ficha
+              </Button>
+            )}
+          </div>
           
           {/* Banner de processamento */}
           {isLoading && (
@@ -624,5 +642,32 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {/* Modal para visualizar a imagem */}
+    <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+      <DialogContent className="max-w-5xl max-h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle>Ficha Original</DialogTitle>
+          <DialogDescription>
+            Imagem capturada da ficha
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="relative w-full h-full px-6 pb-6 overflow-auto">
+          {ficha?.url_bucket ? (
+            <img 
+              src={ficha.url_bucket} 
+              alt="Ficha original" 
+              className="w-full h-auto rounded-lg shadow-lg"
+            />
+          ) : (
+            <div className="flex items-center justify-center h-64 bg-muted rounded-lg">
+              <p className="text-muted-foreground">Imagem não disponível</p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
