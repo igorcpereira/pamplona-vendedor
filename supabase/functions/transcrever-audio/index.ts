@@ -20,11 +20,12 @@ serve(async (req) => {
     // Busca o webhook URL
     const { data: webhookData, error: webhookError } = await supabaseClient
       .from('webhooks')
-      .select('url')
+      .select('webhook')
       .eq('nome', 'descricao_cliente')
       .single();
 
     if (webhookError || !webhookData) {
+      console.error('Erro ao buscar webhook:', webhookError);
       throw new Error('Webhook não encontrado');
     }
 
@@ -40,7 +41,7 @@ serve(async (req) => {
     const webhookFormData = new FormData();
     webhookFormData.append('audio', audioFile);
 
-    const webhookResponse = await fetch(webhookData.url, {
+    const webhookResponse = await fetch(webhookData.webhook, {
       method: 'POST',
       body: webhookFormData,
     });
@@ -73,8 +74,9 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Erro ao transcrever áudio:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
