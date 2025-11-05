@@ -114,25 +114,24 @@ Deno.serve(async (req) => {
       const webhookData = await webhookResponse.json()
       console.log('Resposta do webhook recebida:', webhookData)
 
-      // 7. Atualiza a ficha com os dados processados
-      await supabaseClient
-        .from('fichas')
-        .update({
-          status: 'processado',
-          nome_cliente: webhookData.nome || webhookData.name || null,
-          telefone_cliente: webhookData.telefone || webhookData.phone || null,
-          codigo_ficha: webhookData.codigo_ficha || webhookData.numero_ficha || null,
-          tipo: webhookData.tipo || null,
-          paleto: webhookData.paleto || null,
-          calca: webhookData.calca || null,
-          camisa: webhookData.camisa || null,
-          sapato: webhookData.sapato || null,
-          outros: webhookData.observacoes || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', ficha.id)
+      // 7. Verifica se o webhook processou com sucesso
+      if (webhookData.sucesso === true) {
+        // Webhook processou e salvou os dados no banco
+        // Apenas atualiza o status
+        await supabaseClient
+          .from('fichas')
+          .update({
+            status: 'processado',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', ficha.id)
 
-      console.log('Ficha atualizada com sucesso:', ficha.id)
+        console.log('Ficha marcada como processada:', ficha.id)
+      } else {
+        // Webhook retornou erro
+        console.error('Webhook retornou erro:', webhookData.erro || 'Erro desconhecido')
+        throw new Error(webhookData.erro || 'Erro no processamento da ficha')
+      }
 
       return new Response(
         JSON.stringify({
