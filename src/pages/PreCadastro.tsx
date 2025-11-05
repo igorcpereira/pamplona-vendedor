@@ -45,11 +45,19 @@ const PreCadastro = () => {
         if (!mounted) return;
 
         const mappedCards: ProcessingCard[] = data.map((item) => {
+          // Define o status baseado no campo status do banco
           let mappedStatus: "processing" | "completed" | "error" = "processing";
-          if (item.status === 'processando') mappedStatus = 'processing';
-          else if (item.status === 'processado') mappedStatus = 'completed';
-          else if (item.status === 'erro') mappedStatus = 'error';
-          else if (item.status === 'pendente') mappedStatus = 'processing';
+          
+          // Se tiver dados processados (nome ou telefone), considera como processado
+          if (item.status === 'processado' || (item.nome_cliente && item.telefone_cliente)) {
+            mappedStatus = 'completed';
+          } else if (item.status === 'erro') {
+            mappedStatus = 'error';
+          } else if (item.status === 'processando') {
+            mappedStatus = 'processing';
+          } else if (item.status === 'pendente') {
+            mappedStatus = 'processing';
+          }
           
           // Tenta fazer parse do url_bucket apenas se parecer um JSON
           let parsedData = null;
@@ -98,11 +106,19 @@ const PreCadastro = () => {
               
               if (payload.eventType === 'INSERT') {
                 const newItem = payload.new as any;
+                
+                // Define o status baseado no campo status do banco
                 let mappedStatus: "processing" | "completed" | "error" = "processing";
-                if (newItem.status === 'processando') mappedStatus = 'processing';
-                else if (newItem.status === 'processado') mappedStatus = 'completed';
-                else if (newItem.status === 'erro') mappedStatus = 'error';
-                else if (newItem.status === 'pendente') mappedStatus = 'processing';
+                
+                if (newItem.status === 'processado' || (newItem.nome_cliente && newItem.telefone_cliente)) {
+                  mappedStatus = 'completed';
+                } else if (newItem.status === 'erro') {
+                  mappedStatus = 'error';
+                } else if (newItem.status === 'processando') {
+                  mappedStatus = 'processing';
+                } else if (newItem.status === 'pendente') {
+                  mappedStatus = 'processing';
+                }
                 
                 // Tenta fazer parse do url_bucket apenas se parecer um JSON
                 let parsedData = null;
@@ -124,11 +140,19 @@ const PreCadastro = () => {
                 setCards((prev) => [newCard, ...prev]);
               } else if (payload.eventType === 'UPDATE') {
                 const updatedItem = payload.new as any;
+                
+                // Define o status baseado no campo status do banco
                 let mappedStatus: "processing" | "completed" | "error" = "processing";
-                if (updatedItem.status === 'processando') mappedStatus = 'processing';
-                else if (updatedItem.status === 'processado') mappedStatus = 'completed';
-                else if (updatedItem.status === 'erro') mappedStatus = 'error';
-                else if (updatedItem.status === 'pendente') mappedStatus = 'processing';
+                
+                if (updatedItem.status === 'processado' || (updatedItem.nome_cliente && updatedItem.telefone_cliente)) {
+                  mappedStatus = 'completed';
+                } else if (updatedItem.status === 'erro') {
+                  mappedStatus = 'error';
+                } else if (updatedItem.status === 'processando') {
+                  mappedStatus = 'processing';
+                } else if (updatedItem.status === 'pendente') {
+                  mappedStatus = 'processing';
+                }
                 
                 // Tenta fazer parse do url_bucket apenas se parecer um JSON
                 let parsedData = null;
