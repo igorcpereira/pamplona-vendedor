@@ -6,9 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface AudioRecorderProps {
   onTranscriptionComplete: (text: string) => void;
+  onTagsExtracted?: (tags: string[]) => void;
 }
 
-export function AudioRecorder({ onTranscriptionComplete }: AudioRecorderProps) {
+export function AudioRecorder({ onTranscriptionComplete, onTagsExtracted }: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -68,6 +69,13 @@ export function AudioRecorder({ onTranscriptionComplete }: AudioRecorderProps) {
 
       if (data?.text) {
         onTranscriptionComplete(data.text);
+        
+        // Extrair tags se existirem
+        if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
+          console.log('Tags recebidas do webhook:', data.tags);
+          onTagsExtracted?.(data.tags);
+        }
+        
         toast({
           title: "Sucesso",
           description: "Áudio transcrito com sucesso!",

@@ -54,19 +54,35 @@ serve(async (req) => {
 
     // Processa resposta: aceita tanto array quanto objeto direto
     let textContent: string | null = null;
+    let tagsContent: string[] = [];
 
-    if (Array.isArray(data) && data.length > 0 && data[0].text) {
-      textContent = data[0].text;
-    } else if (data && typeof data === 'object' && data.text) {
-      textContent = data.text;
+    if (Array.isArray(data) && data.length > 0) {
+      // Formato array: [{ tags: [...], text: "..." }]
+      if (data[0].text) {
+        textContent = data[0].text;
+      }
+      if (data[0].tags && Array.isArray(data[0].tags)) {
+        tagsContent = data[0].tags;
+      }
+    } else if (data && typeof data === 'object') {
+      // Formato objeto direto: { tags: [...], text: "..." }
+      if (data.text) {
+        textContent = data.text;
+      }
+      if (data.tags && Array.isArray(data.tags)) {
+        tagsContent = data.tags;
+      }
     }
 
     if (!textContent) {
       throw new Error('Formato de resposta inválido');
     }
 
+    console.log('Text extraído:', textContent);
+    console.log('Tags extraídas:', tagsContent);
+
     return new Response(
-      JSON.stringify({ text: textContent }),
+      JSON.stringify({ text: textContent, tags: tagsContent }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

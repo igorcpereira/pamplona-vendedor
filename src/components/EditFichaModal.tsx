@@ -17,6 +17,7 @@ import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { AudioRecorder } from "@/components/AudioRecorder";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 interface EditFichaModalProps {
   open: boolean;
@@ -46,35 +47,80 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
     sapato: "",
     pago: false,
     observacoes_cliente: "",
+    tags: [] as string[],
   });
 
   // Atualiza formData quando ficha mudar
   useEffect(() => {
-    if (ficha) {
-      setFormData({
-        nome_cliente: ficha.nome_cliente || "",
-        telefone_cliente: ficha.telefone_cliente || "",
-        codigo_ficha: ficha.codigo_ficha || "",
-        tipo: ficha.tipo || "Aluguel",
-        status: ficha.status || "pendente",
-        vendedor_responsavel: ficha.vendedor_responsavel || "",
-        data_retirada: ficha.data_retirada ? new Date(ficha.data_retirada) : undefined,
-        data_devolucao: ficha.data_devolucao ? new Date(ficha.data_devolucao) : undefined,
-        data_festa: ficha.data_festa ? new Date(ficha.data_festa) : undefined,
-        valor: ficha.valor || "",
-        garantia: ficha.garantia || "",
-        paleto: ficha.paleto || "",
-        calca: ficha.calca || "",
-        camisa: ficha.camisa || "",
-        sapato: ficha.sapato || "",
-        pago: ficha.pago || false,
-        observacoes_cliente: ficha.transcricao_audio || "",
-      });
-    }
+    const loadData = async () => {
+      if (ficha) {
+        // Buscar tags do cliente se houver cliente_id
+        let clienteTags: string[] = [];
+        
+        if (ficha.cliente_id) {
+          try {
+            const { data: relacoes, error } = await supabase
+              .from('relacao_cliente_tag')
+              .select('id_tag, tags(nome)')
+              .eq('id_cliente', ficha.cliente_id);
+            
+            if (!error && relacoes) {
+              clienteTags = relacoes
+                .map(r => (r as any).tags?.nome)
+                .filter(Boolean);
+            }
+          } catch (error) {
+            console.error('Erro ao buscar tags:', error);
+          }
+        }
+        
+        setFormData({
+          nome_cliente: ficha.nome_cliente || "",
+          telefone_cliente: ficha.telefone_cliente || "",
+          codigo_ficha: ficha.codigo_ficha || "",
+          tipo: ficha.tipo || "Aluguel",
+          status: ficha.status || "pendente",
+          vendedor_responsavel: ficha.vendedor_responsavel || "",
+          data_retirada: ficha.data_retirada ? new Date(ficha.data_retirada) : undefined,
+          data_devolucao: ficha.data_devolucao ? new Date(ficha.data_devolucao) : undefined,
+          data_festa: ficha.data_festa ? new Date(ficha.data_festa) : undefined,
+          valor: ficha.valor || "",
+          garantia: ficha.garantia || "",
+          paleto: ficha.paleto || "",
+          calca: ficha.calca || "",
+          camisa: ficha.camisa || "",
+          sapato: ficha.sapato || "",
+          pago: ficha.pago || false,
+          observacoes_cliente: ficha.transcricao_audio || "",
+          tags: clienteTags,
+        });
+      }
+    };
+    
+    loadData();
   }, [ficha]);
 
   const handleTranscription = (text: string) => {
     setFormData({ ...formData, observacoes_cliente: text });
+  };
+
+  const handleTagsExtracted = (tags: string[]) => {
+    // Adicionar novas tags sem duplicatas (lowercase para evitar duplicatas)
+    const normalizedTags = tags.map(tag => tag.toLowerCase().trim());
+    const existingTags = formData.tags.map(tag => tag.toLowerCase());
+    const newTags = normalizedTags.filter(tag => !existingTags.includes(tag));
+    
+    if (newTags.length > 0) {
+      console.log('Adicionando tags:', newTags);
+      setFormData({ ...formData, tags: [...formData.tags, ...newTags] });
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData({
+      ...formData,
+      tags: formData.tags.filter(tag => tag !== tagToRemove)
+    });
   };
 
   const handleSave = async () => {
@@ -164,6 +210,72 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
         .eq("id", ficha.id);
 
       if (error) throw error;
+
+      // Gerenciar tags se houver cliente_id
+      if (clienteId && formData.tags.length > 0) {
+        console.log('Salvando tags para cliente:', clienteId);
+        
+        // Criar ou obter IDs das tags
+        const tagIds: string[] = [];
+        
+        for (const tagNome of formData.tags) {
+          const tagNomeLower = tagNome.toLowerCase().trim();
+          
+          // Verificar se a tag já existe
+          const { data: tagExistente, error: searchTagError } = await supabase
+            .from('tags')
+            .select('id')
+            .eq('nome', tagNomeLower)
+            .maybeSingle();
+          
+          if (searchTagError) {
+            console.error('Erro ao buscar tag:', searchTagError);
+            continue;
+          }
+          
+          if (tagExistente) {
+            tagIds.push(tagExistente.id);
+          } else {
+            // Criar nova tag
+            const { data: novaTag, error: insertTagError } = await supabase
+              .from('tags')
+              .insert({ nome: tagNomeLower })
+              .select('id')
+              .single();
+            
+            if (insertTagError) {
+              console.error('Erro ao criar tag:', insertTagError);
+              continue;
+            }
+            
+            if (novaTag) {
+              tagIds.push(novaTag.id);
+            }
+          }
+        }
+        
+        // Deletar relações antigas
+        await supabase
+          .from('relacao_cliente_tag')
+          .delete()
+          .eq('id_cliente', clienteId);
+        
+        // Inserir novas relações
+        if (tagIds.length > 0) {
+          const relacoes = tagIds.map(tagId => ({
+            id_cliente: clienteId,
+            id_tag: tagId
+          }));
+          
+          const { error: insertRelacoesError } = await supabase
+            .from('relacao_cliente_tag')
+            .insert(relacoes);
+          
+          if (insertRelacoesError) {
+            console.error('Erro ao criar relações:', insertRelacoesError);
+          }
+        }
+      }
 
       toast({
         title: "Sucesso",
@@ -425,9 +537,34 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
               </div>
               <AudioRecorder 
                 onTranscriptionComplete={handleTranscription}
+                onTagsExtracted={handleTagsExtracted}
               />
             </div>
           </div>
+
+          {/* Tags do Cliente */}
+          {formData.tags.length > 0 && (
+            <>
+              <Separator />
+              <div className="space-y-4">
+                <h3 className="text-base font-semibold">Tags do Cliente</h3>
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map((tag, index) => (
+                    <Badge key={index} variant="secondary" className="text-sm px-3 py-1">
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="ml-2 hover:text-destructive"
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           <Separator />
 
