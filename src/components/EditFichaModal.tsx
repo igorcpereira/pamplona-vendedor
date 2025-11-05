@@ -129,6 +129,12 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
       }
 
       // Preparar dados de atualização da ficha
+      // Mudar status de pendente para ativa ao salvar
+      const novoStatus = formData.status === 'pendente' ? 'ativa' : formData.status;
+      
+      console.log('Status atual:', formData.status);
+      console.log('Novo status:', novoStatus);
+      
       const updateData: any = {
         nome_cliente: formData.nome_cliente || null,
         telefone_cliente: formData.telefone_cliente || null,
@@ -147,7 +153,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
         pago: formData.pago,
         transcricao_audio: formData.observacoes_cliente || null,
         cliente_id: clienteId,
-        status: ficha.status === 'pendente' ? 'ativa' : ficha.status,
+        status: novoStatus,
         updated_at: new Date().toISOString(),
       };
 
