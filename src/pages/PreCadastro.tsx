@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Phone, Clock, CheckCircle, XCircle } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import { CreateMockFichas } from "@/components/CreateMockFichas";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -339,6 +340,7 @@ const PreCadastro = () => {
         </DialogContent>
       </Dialog>
 
+      <CreateMockFichas />
       <BottomNav />
     </div>
   );
