@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { AudioRecorder } from "@/components/AudioRecorder";
 
 interface EditFichaModalProps {
   open: boolean;
@@ -24,6 +26,7 @@ interface EditFichaModalProps {
 
 export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFichaModalProps) {
   const [loading, setLoading] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [formData, setFormData] = useState({
     nome_cliente: "",
     telefone_cliente: "",
@@ -41,7 +44,35 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
     camisa: "",
     sapato: "",
     pago: false,
+    observacoes_cliente: "",
   });
+
+  // Busca o webhook ao montar o componente
+  useEffect(() => {
+    const fetchWebhook = async () => {
+      const { data, error } = await supabase
+        .from("webhooks")
+        .select("webhook")
+        .eq("nome", "descricao_cliente")
+        .single();
+
+      if (error) {
+        console.error("Erro ao buscar webhook:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar o webhook.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.webhook) {
+        setWebhookUrl(data.webhook);
+      }
+    };
+
+    fetchWebhook();
+  }, []);
 
   // Atualiza formData quando ficha mudar
   useEffect(() => {
@@ -63,9 +94,14 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
         camisa: ficha.camisa || "",
         sapato: ficha.sapato || "",
         pago: ficha.pago || false,
+        observacoes_cliente: ficha.outros || "",
       });
     }
   }, [ficha]);
+
+  const handleTranscription = (text: string) => {
+    setFormData({ ...formData, observacoes_cliente: text });
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -86,6 +122,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
         camisa: formData.camisa || null,
         sapato: formData.sapato || null,
         pago: formData.pago,
+        outros: formData.observacoes_cliente || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -301,6 +338,33 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
                   placeholder="Descrição do sapato"
                 />
               </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Observações sobre o Cliente */}
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold">Observações sobre o Cliente</h3>
+            <div className="space-y-2">
+              <div className="flex items-end justify-between gap-2">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="observacoes_cliente">Observações</Label>
+                  <Textarea
+                    id="observacoes_cliente"
+                    value={formData.observacoes_cliente}
+                    onChange={(e) => setFormData({ ...formData, observacoes_cliente: e.target.value })}
+                    placeholder="Digite observações sobre o cliente..."
+                    rows={4}
+                  />
+                </div>
+              </div>
+              {webhookUrl && (
+                <AudioRecorder 
+                  webhookUrl={webhookUrl} 
+                  onTranscriptionComplete={handleTranscription}
+                />
+              )}
             </div>
           </div>
 
