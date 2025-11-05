@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FichaAtendimento } from "@/components/FichaAtendimento";
+import { EditFichaModal } from "@/components/EditFichaModal";
 import { capitalizarNome } from "@/lib/utils";
 
 interface ProcessingCard {
@@ -25,6 +26,7 @@ const PreCadastro = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<ProcessingCard | null>(null);
+  const [editingCard, setEditingCard] = useState<ProcessingCard | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("todos");
 
   const getTipoColor = (tipo?: string) => {
@@ -246,9 +248,68 @@ const PreCadastro = () => {
     });
   };
 
-  const handleCardClick = (card: ProcessingCard) => {
+  const handleCardClick = (card: ProcessingCard, event: React.MouseEvent) => {
+    // Verifica se clicou no botão de editar
+    const target = event.target as HTMLElement;
+    if (target.closest('.edit-button')) {
+      setEditingCard(card);
+      return;
+    }
+    
+    // Se tiver dados processados, mostra o dialog de visualização
     if (card.data) {
       setSelectedCard(card);
+    }
+  };
+
+  const handleEditSuccess = async () => {
+    // Recarrega os dados após edição
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      const { data, error } = await supabase
+        .from('fichas')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Erro ao buscar pré-cadastros:', error);
+        return;
+      }
+
+      const mappedCards: ProcessingCard[] = data.map((item) => {
+        let mappedStatus: "processing" | "error" = "processing";
+        
+        if (item.status === 'erro') {
+          mappedStatus = 'error';
+        } else {
+          mappedStatus = 'processing';
+        }
+        
+        let parsedData = null;
+        if (item.url_bucket && (item.url_bucket.startsWith('{') || item.url_bucket.startsWith('['))) {
+          try {
+            parsedData = JSON.parse(item.url_bucket);
+          } catch (e) {
+            console.error('Erro ao parsear url_bucket:', e);
+          }
+        }
+        
+        return {
+          id: item.id,
+          timestamp: item.created_at,
+          status: mappedStatus,
+          phone: item.telefone_cliente || undefined,
+          data: parsedData,
+          nome_cliente: item.nome_cliente || undefined,
+          codigo_ficha: item.codigo_ficha || undefined,
+          tipo: item.tipo || undefined,
+        };
+      });
+
+      setCards(mappedCards);
+    } catch (error) {
+      console.error('Erro ao recarregar dados:', error);
     }
   };
 
@@ -307,7 +368,7 @@ const PreCadastro = () => {
               <Card
                 key={card.id}
                 className="transition-all hover:shadow-md cursor-pointer"
-                onClick={() => handleCardClick(card)}
+                onClick={(e) => handleCardClick(card, e)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -333,10 +394,21 @@ const PreCadastro = () => {
                       </p>
                     </div>
                     
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex flex-col gap-2 items-end">
                       <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(card.tipo)}`}>
                         {card.tipo || "-"}
                       </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="edit-button h-7 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCard(card);
+                        }}
+                      >
+                        Editar
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -373,6 +445,13 @@ const PreCadastro = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <EditFichaModal
+        open={!!editingCard}
+        onOpenChange={(open) => !open && setEditingCard(null)}
+        ficha={editingCard}
+        onSuccess={handleEditSuccess}
+      />
 
       <BottomNav />
     </div>
