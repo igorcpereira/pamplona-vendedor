@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FichaAtendimento } from "@/components/FichaAtendimento";
+import { capitalizarNome } from "@/lib/utils";
 
 interface ProcessingCard {
   id: string;
@@ -300,7 +301,7 @@ const PreCadastro = () => {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 space-y-1 min-w-0">
                       <p className="font-semibold text-sm truncate">
-                        {card.nome_cliente || "-"}
+                        {capitalizarNome(card.nome_cliente)}
                       </p>
                       
                       <p className="text-xs text-muted-foreground">
