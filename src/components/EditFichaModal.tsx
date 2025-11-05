@@ -278,8 +278,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
                       <SelectContent>
                         <SelectItem value="Aluguel">Aluguel</SelectItem>
                         <SelectItem value="Venda">Venda</SelectItem>
-                        <SelectItem value="Reparo">Reparo</SelectItem>
-                        <SelectItem value="Prova">Prova</SelectItem>
+                        <SelectItem value="Ajuste">Ajuste</SelectItem>
                       </SelectContent>
                     </Select>
                   )}

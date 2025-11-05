@@ -41,9 +41,7 @@ const PreCadastro = () => {
       return "bg-blue-100 text-blue-700 border border-blue-200";
     } else if (tipoLower.includes("venda") || tipoLower.includes("vender")) {
       return "bg-green-100 text-green-700 border border-green-200";
-    } else if (tipoLower.includes("reparo") || tipoLower.includes("conserto") || tipoLower.includes("ajuste")) {
-      return "bg-orange-100 text-orange-700 border border-orange-200";
-    } else if (tipoLower.includes("prova")) {
+    } else if (tipoLower.includes("ajuste") || tipoLower.includes("conserto")) {
       return "bg-purple-100 text-purple-700 border border-purple-200";
     } else {
       return "bg-primary/10 text-primary border border-primary/20";
