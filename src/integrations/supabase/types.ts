@@ -19,7 +19,6 @@ export type Database = {
           created_at: string
           id: string
           nome: string
-          tags: Json | null
           telefone: string | null
           updated_at: string
         }
@@ -27,7 +26,6 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
-          tags?: Json | null
           telefone?: string | null
           updated_at?: string
         }
@@ -35,7 +33,6 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
-          tags?: Json | null
           telefone?: string | null
           updated_at?: string
         }
@@ -95,6 +92,7 @@ export type Database = {
           tipo: string | null
           transcricao_audio: string | null
           updated_at: string
+          url_audio: string | null
           url_bucket: string | null
           valor: number | null
           vendedor_responsavel: string | null
@@ -128,6 +126,7 @@ export type Database = {
           tipo?: string | null
           transcricao_audio?: string | null
           updated_at?: string
+          url_audio?: string | null
           url_bucket?: string | null
           valor?: number | null
           vendedor_responsavel?: string | null
@@ -161,6 +160,7 @@ export type Database = {
           tipo?: string | null
           transcricao_audio?: string | null
           updated_at?: string
+          url_audio?: string | null
           url_bucket?: string | null
           valor?: number | null
           vendedor_responsavel?: string | null
@@ -350,6 +350,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      tipo_de_atendimento: "Aluguel" | "Venda" | "Ajuste"
       user_role: "Gestor" | "Franqueado" | "Vendedor"
     }
     CompositeTypes: {
@@ -478,6 +479,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      tipo_de_atendimento: ["Aluguel", "Venda", "Ajuste"],
       user_role: ["Gestor", "Franqueado", "Vendedor"],
     },
   },
