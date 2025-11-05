@@ -16,15 +16,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { AudioRecorder } from "@/components/AudioRecorder";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EditFichaModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ficha: any;
+  isLoading?: boolean;
   onSuccess: () => void;
 }
 
-export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFichaModalProps) {
+export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, onSuccess }: EditFichaModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     nome_cliente: "",
@@ -143,32 +145,44 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="nome_cliente">Nome</Label>
-                  <Input
-                    id="nome_cliente"
-                    value={formData.nome_cliente}
-                    onChange={(e) => setFormData({ ...formData, nome_cliente: e.target.value })}
-                    placeholder="Nome completo"
-                  />
+                  {isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Input
+                      id="nome_cliente"
+                      value={formData.nome_cliente}
+                      onChange={(e) => setFormData({ ...formData, nome_cliente: e.target.value })}
+                      placeholder="Nome completo"
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="telefone_cliente">Telefone</Label>
-                  <Input
-                    id="telefone_cliente"
-                    value={formData.telefone_cliente}
-                    onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value })}
-                    placeholder="(00) 00000-0000"
-                  />
+                  {isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Input
+                      id="telefone_cliente"
+                      value={formData.telefone_cliente}
+                      onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value })}
+                      placeholder="(00) 00000-0000"
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="vendedor_responsavel">Vendedor Responsável</Label>
-                  <Input
-                    id="vendedor_responsavel"
-                    value={formData.vendedor_responsavel}
-                    onChange={(e) => setFormData({ ...formData, vendedor_responsavel: e.target.value })}
-                    placeholder="Nome do vendedor"
-                  />
+                  {isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Input
+                      id="vendedor_responsavel"
+                      value={formData.vendedor_responsavel}
+                      onChange={(e) => setFormData({ ...formData, vendedor_responsavel: e.target.value })}
+                      placeholder="Nome do vendedor"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -176,34 +190,42 @@ export function EditFichaModal({ open, onOpenChange, ficha, onSuccess }: EditFic
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="codigo_ficha">Código da Ficha</Label>
-                  <Input
-                    id="codigo_ficha"
-                    value={formData.codigo_ficha}
-                    onChange={(e) => setFormData({ ...formData, codigo_ficha: e.target.value })}
-                    placeholder="Código"
-                  />
+                  {isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Input
+                      id="codigo_ficha"
+                      value={formData.codigo_ficha}
+                      onChange={(e) => setFormData({ ...formData, codigo_ficha: e.target.value })}
+                      placeholder="Código"
+                    />
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="tipo">Tipo de Atendimento</Label>
-                  <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Aluguel">Aluguel</SelectItem>
-                      <SelectItem value="Venda">Venda</SelectItem>
-                      <SelectItem value="Reparo">Reparo</SelectItem>
-                      <SelectItem value="Prova">Prova</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {isLoading ? (
+                    <Skeleton className="h-10 w-full" />
+                  ) : (
+                    <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Aluguel">Aluguel</SelectItem>
+                        <SelectItem value="Venda">Venda</SelectItem>
+                        <SelectItem value="Reparo">Reparo</SelectItem>
+                        <SelectItem value="Prova">Prova</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="status">Status</Label>
                   <Input
                     id="status"
-                    value={formData.status === "processing" ? "Pendente" : formData.status === "erro" ? "Erro" : formData.status}
+                    value={formData.status === "processing" || formData.status === "pendente" ? "Processando..." : formData.status === "erro" ? "Erro" : formData.status}
                     disabled
                     className="bg-muted"
                   />

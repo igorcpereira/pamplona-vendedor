@@ -55,98 +55,119 @@ Deno.serve(async (req) => {
 
     if (uploadError) {
       console.error('Erro ao fazer upload:', uploadError)
+      // Se falhar o upload, remove a ficha criada
+      await supabaseClient.from('fichas').delete().eq('id', ficha.id)
       throw uploadError
     }
 
     console.log('Upload concluído:', fileName)
 
-    // 3. Atualiza a ficha com a URL do storage
+    // 3. Atualiza a ficha com a URL do storage e status processando
     await supabaseClient
       .from('fichas')
-      .update({ url_bucket: fileName })
+      .update({ 
+        url_bucket: fileName,
+        status: 'processando' 
+      })
       .eq('id', ficha.id)
 
-    // 4. Processa em background (não bloqueia a resposta)
-    const processInBackground = async () => {
-      try {
-        console.log('Iniciando processamento em background para ficha:', ficha.id)
-        
-        // Atualiza status para processando
-        await supabaseClient
-          .from('fichas')
-          .update({ status: 'processando' })
-          .eq('id', ficha.id)
+    // 4. Busca o webhook principal da tabela
+    const { data: webhooks, error: webhookError } = await supabaseClient
+      .from('webhooks')
+      .select('webhook')
+      .eq('nome', 'processar-ficha')
+      .single()
 
-        // Busca o webhook da tabela
-        const { data: webhooks, error: webhookError } = await supabaseClient
-          .from('webhooks')
-          .select('webhook')
-          .limit(1)
-          .single()
-
-        if (webhookError || !webhooks) {
-          console.error('Erro ao buscar webhook:', webhookError)
-          throw new Error('Webhook não encontrado na tabela')
-        }
-
-        console.log('Webhook encontrado, enviando requisição...')
-
-        // Prepara FormData para enviar ao webhook
-        const webhookFormData = new FormData()
-        webhookFormData.append('image', file)
-
-        // Envia para o webhook
-        const webhookResponse = await fetch(webhooks.webhook, {
-          method: 'POST',
-          body: webhookFormData,
-        })
-
-        if (!webhookResponse.ok) {
-          throw new Error(`Webhook retornou status ${webhookResponse.status}`)
-        }
-
-        const webhookData = await webhookResponse.json()
-        console.log('Resposta do webhook recebida:', webhookData)
-
-        // Atualiza a ficha com os dados processados
-        await supabaseClient
-          .from('fichas')
-          .update({
-            status: 'processado',
-            nome_cliente: webhookData.nome || webhookData.name || null,
-            telefone_cliente: webhookData.telefone || webhookData.phone || null,
-            url_bucket: JSON.stringify(webhookData)
-          })
-          .eq('id', ficha.id)
-
-        console.log('Ficha atualizada com sucesso:', ficha.id)
-
-      } catch (error) {
-        console.error('Erro no processamento em background:', error)
-        
-        // Marca como erro
-        await supabaseClient
-          .from('fichas')
-          .update({ status: 'erro' })
-          .eq('id', ficha.id)
-      }
+    if (webhookError || !webhooks) {
+      console.error('Erro ao buscar webhook:', webhookError)
+      await supabaseClient
+        .from('fichas')
+        .update({ status: 'erro' })
+        .eq('id', ficha.id)
+      throw new Error('Webhook não encontrado na tabela')
     }
 
-    // Inicia o processamento em background
-    processInBackground()
+    console.log('Webhook encontrado, enviando requisição...')
 
-    // Retorna imediatamente a ficha criada
-    return new Response(
-      JSON.stringify({
-        success: true,
-        ficha_id: ficha.id,
-        message: 'Ficha criada e processamento iniciado'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+    // 5. Prepara FormData para enviar ao webhook com imagem + ficha_id
+    const webhookFormData = new FormData()
+    webhookFormData.append('image', file)
+    webhookFormData.append('ficha_id', ficha.id)
+
+    // 6. Envia para o webhook com timeout de 30s
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000)
+
+    try {
+      const webhookResponse = await fetch(webhooks.webhook, {
+        method: 'POST',
+        body: webhookFormData,
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!webhookResponse.ok) {
+        throw new Error(`Webhook retornou status ${webhookResponse.status}`)
       }
-    )
+
+      const webhookData = await webhookResponse.json()
+      console.log('Resposta do webhook recebida:', webhookData)
+
+      // 7. Atualiza a ficha com os dados processados
+      await supabaseClient
+        .from('fichas')
+        .update({
+          status: 'processado',
+          nome_cliente: webhookData.nome || webhookData.name || null,
+          telefone_cliente: webhookData.telefone || webhookData.phone || null,
+          codigo_ficha: webhookData.codigo_ficha || webhookData.numero_ficha || null,
+          tipo: webhookData.tipo || null,
+          paleto: webhookData.paleto || null,
+          calca: webhookData.calca || null,
+          camisa: webhookData.camisa || null,
+          sapato: webhookData.sapato || null,
+          outros: webhookData.observacoes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', ficha.id)
+
+      console.log('Ficha atualizada com sucesso:', ficha.id)
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          ficha_id: ficha.id,
+          message: 'Ficha processada com sucesso'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200
+        }
+      )
+
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      console.error('Erro ao chamar webhook:', fetchError)
+      
+      // Marca como erro
+      await supabaseClient
+        .from('fichas')
+        .update({ status: 'erro' })
+        .eq('id', ficha.id)
+
+      return new Response(
+        JSON.stringify({
+          success: false,
+          ficha_id: ficha.id,
+          error: 'Erro ao processar imagem'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 // Retorna 200 mesmo com erro para o frontend tratar
+        }
+      )
+    }
 
   } catch (error) {
     console.error('Erro na edge function:', error)
