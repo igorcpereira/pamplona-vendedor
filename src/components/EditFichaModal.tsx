@@ -80,6 +80,52 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
   const handleSave = async () => {
     setLoading(true);
     try {
+      // Gerenciar cliente: verificar se existe ou criar novo
+      let clienteId: string | null = null;
+      
+      if (formData.telefone_cliente && formData.telefone_cliente.trim() !== '') {
+        const telefone = formData.telefone_cliente.trim();
+        
+        // Buscar cliente existente por telefone
+        const { data: clienteExistente, error: searchError } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('telefone', telefone)
+          .maybeSingle();
+        
+        if (searchError) {
+          console.error('Erro ao buscar cliente:', searchError);
+          throw searchError;
+        }
+        
+        if (clienteExistente) {
+          // Cliente existe - usar ID existente
+          console.log('Cliente encontrado:', clienteExistente.id);
+          clienteId = clienteExistente.id;
+        } else {
+          // Cliente não existe - criar novo
+          console.log('Cliente não encontrado. Criando novo cliente...');
+          
+          const { data: novoCliente, error: insertError } = await supabase
+            .from('clientes')
+            .insert({
+              nome: formData.nome_cliente || 'Cliente sem nome',
+              telefone: telefone,
+            })
+            .select('id')
+            .single();
+          
+          if (insertError) {
+            console.error('Erro ao criar cliente:', insertError);
+            throw insertError;
+          }
+          
+          console.log('Novo cliente criado:', novoCliente.id);
+          clienteId = novoCliente.id;
+        }
+      }
+
+      // Preparar dados de atualização da ficha
       const updateData: any = {
         nome_cliente: formData.nome_cliente || null,
         telefone_cliente: formData.telefone_cliente || null,
@@ -97,9 +143,11 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
         sapato: formData.sapato || null,
         pago: formData.pago,
         outros: formData.observacoes_cliente || null,
+        cliente_id: clienteId,
         updated_at: new Date().toISOString(),
       };
 
+      // Atualizar ficha
       const { error } = await supabase
         .from("fichas")
         .update(updateData)
@@ -109,7 +157,9 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
 
       toast({
         title: "Sucesso",
-        description: "Ficha atualizada com sucesso!",
+        description: clienteId 
+          ? "Ficha atualizada e cliente vinculado!" 
+          : "Ficha atualizada com sucesso!",
       });
 
       onSuccess();
