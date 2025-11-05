@@ -27,7 +27,8 @@ interface ProcessingCard {
 const PreCadastro = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
-  const [editingCard, setEditingCard] = useState<ProcessingCard | null>(null);
+  const [editingCard, setEditingCard] = useState<any>(null);
+  const [isLoadingEditCard, setIsLoadingEditCard] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>("todos");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
 
@@ -253,8 +254,39 @@ const PreCadastro = () => {
     });
   };
 
-  const handleCardClick = (card: ProcessingCard) => {
-    setEditingCard(card);
+  const handleCardClick = async (card: ProcessingCard) => {
+    setIsLoadingEditCard(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      // Busca a ficha completa do banco
+      const { data: fichaCompleta, error } = await supabase
+        .from('fichas')
+        .select('*')
+        .eq('id', card.id)
+        .single();
+      
+      if (error) {
+        console.error('Erro ao buscar ficha:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar os dados da ficha.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setEditingCard(fichaCompleta);
+    } catch (error) {
+      console.error('Erro ao carregar ficha:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao carregar dados da ficha.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingEditCard(false);
+    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent, cardId: string) => {
@@ -462,6 +494,7 @@ const PreCadastro = () => {
         open={!!editingCard}
         onOpenChange={(open) => !open && setEditingCard(null)}
         ficha={editingCard}
+        isLoading={isLoadingEditCard}
         onSuccess={handleEditSuccess}
       />
 

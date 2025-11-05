@@ -68,7 +68,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
         camisa: ficha.camisa || "",
         sapato: ficha.sapato || "",
         pago: ficha.pago || false,
-        observacoes_cliente: ficha.outros || "",
+        observacoes_cliente: ficha.transcricao_audio || "",
       });
     }
   }, [ficha]);
@@ -145,7 +145,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
         camisa: formData.camisa || null,
         sapato: formData.sapato || null,
         pago: formData.pago,
-        outros: formData.observacoes_cliente || null,
+        transcricao_audio: formData.observacoes_cliente || null,
         cliente_id: clienteId,
         updated_at: new Date().toISOString(),
       };
