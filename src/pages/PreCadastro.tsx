@@ -226,77 +226,60 @@ const PreCadastro = () => {
             </TabsList>
           </Tabs>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3">
             {filteredCards.map((card) => (
               <Card
                 key={card.id}
-                className={`transition-all hover:shadow-lg ${
+                className={`transition-all hover:shadow-md ${
                   card.status === "completed" ? "cursor-pointer" : ""
                 }`}
                 onClick={() => handleCardClick(card)}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between text-lg">
-                    <span className="truncate">
+                <CardContent className="p-3">
+                  <div className="space-y-1">
+                    <p className="font-semibold text-sm truncate">
                       {card.status === "completed" && card.data ? (
                         card.data?.fields?.Cabecalho?.nome || 
                         card.data?.fields?.Cabecalho?.cliente_nome || 
                         card.data?.[0]?.fields?.Cabecalho?.nome ||
-                        "Cadastro"
+                        "Sem nome"
                       ) : (
-                        "Cadastro"
+                        "Processando..."
                       )}
-                    </span>
-                    {card.status === "processing" && (
-                      <Clock className="h-5 w-5 text-muted-foreground animate-pulse flex-shrink-0" />
-                    )}
-                    {card.status === "completed" && (
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                    )}
-                    {card.status === "error" && (
-                      <XCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      {formatTimestamp(card.timestamp)}
                     </p>
                     
-                    {card.status === "processing" && (
-                      <div className="py-4">
-                        <p className="text-center text-lg font-medium text-muted-foreground animate-pulse">
-                          Aguarde...
-                        </p>
-                        <p className="text-center text-xs text-muted-foreground mt-2">
-                          Processando imagem
-                        </p>
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      #{card.id.slice(0, 8)}
+                    </p>
                     
-                    {card.status === "completed" && card.phone && (
-                      <div className="py-2">
-                        <div className="flex items-center gap-2 text-lg font-semibold">
-                          <Phone className="h-5 w-5 text-primary" />
-                          <span>{card.phone}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Clique para ver detalhes
-                        </p>
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(card.timestamp).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit"
+                      })}
+                    </p>
 
-                    {card.status === "error" && (
-                      <div className="py-4">
-                        <p className="text-center text-lg font-medium text-destructive">
-                          Erro ao processar
-                        </p>
-                        <p className="text-center text-xs text-muted-foreground mt-2">
-                          Tente novamente
-                        </p>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1 mt-2">
+                      {card.status === "processing" && (
+                        <>
+                          <Clock className="h-3 w-3 text-muted-foreground animate-pulse" />
+                          <span className="text-xs text-muted-foreground">Processando</span>
+                        </>
+                      )}
+                      {card.status === "completed" && (
+                        <>
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                          <span className="text-xs text-green-600">Processado</span>
+                        </>
+                      )}
+                      {card.status === "error" && (
+                        <>
+                          <XCircle className="h-3 w-3 text-destructive" />
+                          <span className="text-xs text-destructive">Erro</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
