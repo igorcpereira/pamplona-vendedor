@@ -114,22 +114,24 @@ const NewRegistration = () => {
 
       console.log('Edge Function resposta:', data);
 
-      if (data.success && data.ficha_id) {
-        // Ficha criada com sucesso
+      if (data.ficha_id) {
+        // Modal abre SEMPRE que a ficha foi criada
         setCurrentFichaId(data.ficha_id);
-        
-        // Abre modal de edição imediatamente com loading
         setIsLoadingFicha(true);
         setFichaData({ id: data.ficha_id, status: 'processando' });
         setShowEditModal(true);
         
-        // Inicia polling
+        // Inicia polling independente do success
         toast.info("Processando ficha...");
         startPolling(data.ficha_id);
         
+        // Log para debug
+        if (!data.success) {
+          console.warn('Ficha criada mas webhook retornou erro. Polling irá verificar status.');
+        }
       } else {
-        // Erro retornado pela edge function
-        throw new Error(data.error || 'Erro ao processar ficha');
+        // Só lança erro se nem a ficha foi criada
+        throw new Error(data.error || 'Erro ao criar ficha no banco');
       }
 
     } catch (error: any) {
