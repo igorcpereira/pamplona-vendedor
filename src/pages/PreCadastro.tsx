@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone } from "lucide-react";
+import { ArrowLeft, Phone, Trash2 } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FichaAtendimento } from "@/components/FichaAtendimento";
 import { EditFichaModal } from "@/components/EditFichaModal";
 import { capitalizarNome } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 interface ProcessingCard {
   id: string;
@@ -27,6 +29,7 @@ const PreCadastro = () => {
   const [cards, setCards] = useState<ProcessingCard[]>([]);
   const [editingCard, setEditingCard] = useState<ProcessingCard | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("todos");
+  const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
 
   const getTipoColor = (tipo?: string) => {
     if (!tipo) return "bg-muted text-muted-foreground";
@@ -254,6 +257,42 @@ const PreCadastro = () => {
     setEditingCard(card);
   };
 
+  const handleDeleteClick = (e: React.MouseEvent, cardId: string) => {
+    e.stopPropagation(); // Evita abrir o modal de edição
+    setDeletingCardId(cardId);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingCardId) return;
+
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      
+      const { error } = await supabase
+        .from('fichas')
+        .delete()
+        .eq('id', deletingCardId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Ficha excluída com sucesso!",
+      });
+
+      setCards((prev) => prev.filter((card) => card.id !== deletingCardId));
+    } catch (error) {
+      console.error('Erro ao deletar ficha:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a ficha.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingCardId(null);
+    }
+  };
+
   const handleEditSuccess = async () => {
     // Recarrega os dados após edição
     try {
@@ -386,10 +425,18 @@ const PreCadastro = () => {
                       </p>
                     </div>
                     
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 flex flex-col items-end gap-2">
                       <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(card.tipo)}`}>
                         {card.tipo || "-"}
                       </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => handleDeleteClick(e, card.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -417,6 +464,23 @@ const PreCadastro = () => {
         ficha={editingCard}
         onSuccess={handleEditSuccess}
       />
+
+      <AlertDialog open={!!deletingCardId} onOpenChange={(open) => !open && setDeletingCardId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta ficha? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BottomNav />
     </div>
