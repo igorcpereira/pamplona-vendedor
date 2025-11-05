@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     const { data: webhooks, error: webhookError } = await supabaseClient
       .from('webhooks')
       .select('webhook')
-      .eq('nome', 'processar-ficha')
+      .eq('nome', 'nova-ficha')
       .single()
 
     if (webhookError || !webhooks) {
