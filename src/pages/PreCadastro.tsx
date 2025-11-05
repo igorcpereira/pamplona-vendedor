@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Phone, Clock, XCircle } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { FichaAtendimento } from "@/components/FichaAtendimento";
 interface ProcessingCard {
   id: string;
   timestamp: string;
-  status: "processing" | "completed" | "error";
+  status: "processing" | "error";
   phone?: string;
   data?: any;
   nome_cliente?: string;
@@ -67,16 +67,11 @@ const PreCadastro = () => {
 
         const mappedCards: ProcessingCard[] = data.map((item) => {
           // Define o status baseado no campo status do banco
-          let mappedStatus: "processing" | "completed" | "error" = "processing";
+          let mappedStatus: "processing" | "error" = "processing";
           
-          // Se tiver dados processados (nome ou telefone), considera como processado
-          if (item.status === 'processado' || (item.nome_cliente && item.telefone_cliente)) {
-            mappedStatus = 'completed';
-          } else if (item.status === 'erro') {
+          if (item.status === 'erro') {
             mappedStatus = 'error';
-          } else if (item.status === 'processando') {
-            mappedStatus = 'processing';
-          } else if (item.status === 'pendente') {
+          } else {
             mappedStatus = 'processing';
           }
           
@@ -132,15 +127,11 @@ const PreCadastro = () => {
                 const newItem = payload.new as any;
                 
                 // Define o status baseado no campo status do banco
-                let mappedStatus: "processing" | "completed" | "error" = "processing";
+                let mappedStatus: "processing" | "error" = "processing";
                 
-                if (newItem.status === 'processado' || (newItem.nome_cliente && newItem.telefone_cliente)) {
-                  mappedStatus = 'completed';
-                } else if (newItem.status === 'erro') {
+                if (newItem.status === 'erro') {
                   mappedStatus = 'error';
-                } else if (newItem.status === 'processando') {
-                  mappedStatus = 'processing';
-                } else if (newItem.status === 'pendente') {
+                } else {
                   mappedStatus = 'processing';
                 }
                 
@@ -169,15 +160,11 @@ const PreCadastro = () => {
                 const updatedItem = payload.new as any;
                 
                 // Define o status baseado no campo status do banco
-                let mappedStatus: "processing" | "completed" | "error" = "processing";
+                let mappedStatus: "processing" | "error" = "processing";
                 
-                if (updatedItem.status === 'processado' || (updatedItem.nome_cliente && updatedItem.telefone_cliente)) {
-                  mappedStatus = 'completed';
-                } else if (updatedItem.status === 'erro') {
+                if (updatedItem.status === 'erro') {
                   mappedStatus = 'error';
-                } else if (updatedItem.status === 'processando') {
-                  mappedStatus = 'processing';
-                } else if (updatedItem.status === 'pendente') {
+                } else {
                   mappedStatus = 'processing';
                 }
                 
@@ -247,7 +234,7 @@ const PreCadastro = () => {
   };
 
   const handleCardClick = (card: ProcessingCard) => {
-    if (card.status === "completed" && card.data) {
+    if (card.data) {
       setSelectedCard(card);
     }
   };
@@ -255,7 +242,6 @@ const PreCadastro = () => {
   const filteredCards = cards.filter((card) => {
     if (activeFilter === "todos") return true;
     if (activeFilter === "pendente") return card.status === "processing";
-    if (activeFilter === "processado") return card.status === "completed";
     if (activeFilter === "erro") return card.status === "error";
     return true;
   });
@@ -263,7 +249,6 @@ const PreCadastro = () => {
   const getStatusCount = (status: string) => {
     if (status === "todos") return cards.length;
     if (status === "pendente") return cards.filter(c => c.status === "processing").length;
-    if (status === "processado") return cards.filter(c => c.status === "completed").length;
     if (status === "erro") return cards.filter(c => c.status === "error").length;
     return 0;
   };
@@ -282,7 +267,7 @@ const PreCadastro = () => {
           </div>
 
           <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2 gap-2 h-auto p-2 bg-muted/50">
+            <TabsList className="grid w-full grid-cols-3 gap-2 h-auto p-2 bg-muted/50">
               <TabsTrigger 
                 value="todos"
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
@@ -294,12 +279,6 @@ const PreCadastro = () => {
                 className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
               >
                 Pendente ({getStatusCount("pendente")})
-              </TabsTrigger>
-              <TabsTrigger 
-                value="processado"
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs"
-              >
-                Processado ({getStatusCount("processado")})
               </TabsTrigger>
               <TabsTrigger 
                 value="erro"
@@ -314,9 +293,7 @@ const PreCadastro = () => {
             {filteredCards.map((card) => (
               <Card
                 key={card.id}
-                className={`transition-all hover:shadow-md ${
-                  card.status === "completed" ? "cursor-pointer" : ""
-                }`}
+                className="transition-all hover:shadow-md cursor-pointer"
                 onClick={() => handleCardClick(card)}
               >
                 <CardContent className="p-4">
@@ -341,9 +318,6 @@ const PreCadastro = () => {
                       <div className="flex items-center gap-1 mt-2">
                         {card.status === "processing" && (
                           <Clock className="h-4 w-4 text-muted-foreground animate-pulse" />
-                        )}
-                        {card.status === "completed" && (
-                          <CheckCircle className="h-4 w-4 text-green-500" />
                         )}
                         {card.status === "error" && (
                           <XCircle className="h-4 w-4 text-destructive" />
