@@ -105,6 +105,12 @@ const NewRegistration = () => {
       const nome = result?.fields?.Cabecalho?.nome || 
                    result?.[0]?.fields?.Cabecalho?.nome || '';
       
+      // Atualiza status para processando
+      await supabase
+        .from('fichas')
+        .update({ status: 'processando' })
+        .eq('id', preCadastro.id);
+
       const { error: updateError } = await supabase
         .from('fichas')
         .update({
@@ -122,6 +128,12 @@ const NewRegistration = () => {
       toast.success("Imagem processada com sucesso!");
     } catch (error) {
       console.error("Erro ao enviar imagem:", error);
+      
+      // Atualiza status para erro
+      await supabase
+        .from('fichas')
+        .update({ status: 'erro' })
+        .eq('id', preCadastro.id);
       
       // Verifica se é erro de timeout
       if (error instanceof Error && error.message.includes('Timeout')) {

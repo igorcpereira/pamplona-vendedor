@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Phone, Clock, CheckCircle } from "lucide-react";
+import { ArrowLeft, Phone, Clock, CheckCircle, XCircle } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FichaAtendimento } from "@/components/FichaAtendimento";
 
 interface ProcessingCard {
@@ -20,6 +21,7 @@ const PreCadastro = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
   const [selectedCard, setSelectedCard] = useState<ProcessingCard | null>(null);
+  const [activeFilter, setActiveFilter] = useState<string>("todos");
 
   useEffect(() => {
     let mounted = true;
@@ -33,7 +35,6 @@ const PreCadastro = () => {
         const { data, error } = await supabase
           .from('fichas')
           .select('*')
-          .in('status', ['pendente', 'processado', 'erro'])
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -43,13 +44,21 @@ const PreCadastro = () => {
 
         if (!mounted) return;
 
-        const mappedCards: ProcessingCard[] = data.map((item) => ({
-          id: item.id,
-          timestamp: item.created_at,
-          status: item.status === 'pendente' ? 'processing' : (item.status === 'processado' ? 'completed' : 'error'),
-          phone: item.telefone_cliente || undefined,
-          data: item.url_bucket ? JSON.parse(item.url_bucket) : null,
-        }));
+        const mappedCards: ProcessingCard[] = data.map((item) => {
+          let mappedStatus: "processing" | "completed" | "error" = "processing";
+          if (item.status === 'processando') mappedStatus = 'processing';
+          else if (item.status === 'processado') mappedStatus = 'completed';
+          else if (item.status === 'erro') mappedStatus = 'error';
+          else if (item.status === 'pendente') mappedStatus = 'processing';
+          
+          return {
+            id: item.id,
+            timestamp: item.created_at,
+            status: mappedStatus,
+            phone: item.telefone_cliente || undefined,
+            data: item.url_bucket ? JSON.parse(item.url_bucket) : null,
+          };
+        });
 
         setCards(mappedCards);
       } catch (error) {
@@ -70,8 +79,7 @@ const PreCadastro = () => {
             {
               event: '*',
               schema: 'public',
-              table: 'fichas',
-              filter: 'status=in.(pendente,processado,erro)'
+              table: 'fichas'
             },
             (payload) => {
               if (!mounted) return;
@@ -80,22 +88,34 @@ const PreCadastro = () => {
               
               if (payload.eventType === 'INSERT') {
                 const newItem = payload.new as any;
+                let mappedStatus: "processing" | "completed" | "error" = "processing";
+                if (newItem.status === 'processando') mappedStatus = 'processing';
+                else if (newItem.status === 'processado') mappedStatus = 'completed';
+                else if (newItem.status === 'erro') mappedStatus = 'error';
+                else if (newItem.status === 'pendente') mappedStatus = 'processing';
+                
                 const newCard: ProcessingCard = {
                   id: newItem.id,
                   timestamp: newItem.created_at,
-                  status: newItem.status === 'pendente' ? 'processing' : (newItem.status === 'processado' ? 'completed' : 'error'),
+                  status: mappedStatus,
                   phone: newItem.telefone_cliente || undefined,
                   data: newItem.url_bucket ? JSON.parse(newItem.url_bucket) : null,
                 };
                 setCards((prev) => [newCard, ...prev]);
               } else if (payload.eventType === 'UPDATE') {
                 const updatedItem = payload.new as any;
+                let mappedStatus: "processing" | "completed" | "error" = "processing";
+                if (updatedItem.status === 'processando') mappedStatus = 'processing';
+                else if (updatedItem.status === 'processado') mappedStatus = 'completed';
+                else if (updatedItem.status === 'erro') mappedStatus = 'error';
+                else if (updatedItem.status === 'pendente') mappedStatus = 'processing';
+                
                 setCards((prev) =>
                   prev.map((card) =>
                     card.id === updatedItem.id
                       ? {
                           ...card,
-                          status: updatedItem.status === 'pendente' ? 'processing' : (updatedItem.status === 'processado' ? 'completed' : 'error'),
+                          status: mappedStatus,
                           phone: updatedItem.telefone_cliente || undefined,
                           data: updatedItem.url_bucket ? JSON.parse(updatedItem.url_bucket) : null,
                         }
@@ -148,6 +168,22 @@ const PreCadastro = () => {
     }
   };
 
+  const filteredCards = cards.filter((card) => {
+    if (activeFilter === "todos") return true;
+    if (activeFilter === "pendente") return card.status === "processing";
+    if (activeFilter === "processado") return card.status === "completed";
+    if (activeFilter === "erro") return card.status === "error";
+    return true;
+  });
+
+  const getStatusCount = (status: string) => {
+    if (status === "todos") return cards.length;
+    if (status === "pendente") return cards.filter(c => c.status === "processing").length;
+    if (status === "processado") return cards.filter(c => c.status === "completed").length;
+    if (status === "erro") return cards.filter(c => c.status === "error").length;
+    return 0;
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header title="Pré-Cadastros" />
@@ -170,8 +206,25 @@ const PreCadastro = () => {
             </div>
           </div>
 
+          <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="todos">
+                Todos ({getStatusCount("todos")})
+              </TabsTrigger>
+              <TabsTrigger value="pendente">
+                Pendente ({getStatusCount("pendente")})
+              </TabsTrigger>
+              <TabsTrigger value="processado">
+                Processado ({getStatusCount("processado")})
+              </TabsTrigger>
+              <TabsTrigger value="erro">
+                Erro ({getStatusCount("erro")})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {cards.map((card) => (
+            {filteredCards.map((card) => (
               <Card
                 key={card.id}
                 className={`transition-all hover:shadow-lg ${
@@ -196,6 +249,9 @@ const PreCadastro = () => {
                     )}
                     {card.status === "completed" && (
                       <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                    )}
+                    {card.status === "error" && (
+                      <XCircle className="h-5 w-5 text-destructive flex-shrink-0" />
                     )}
                   </CardTitle>
                 </CardHeader>
@@ -227,25 +283,40 @@ const PreCadastro = () => {
                         </p>
                       </div>
                     )}
+
+                    {card.status === "error" && (
+                      <div className="py-4">
+                        <p className="text-center text-lg font-medium text-destructive">
+                          Erro ao processar
+                        </p>
+                        <p className="text-center text-xs text-muted-foreground mt-2">
+                          Tente novamente
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
-          {cards.length === 0 && (
+          {filteredCards.length === 0 && (
             <Card className="py-12">
               <CardContent className="text-center">
                 <p className="text-muted-foreground">
-                  Nenhum pré-cadastro em processamento
+                  {cards.length === 0 
+                    ? "Nenhuma ficha encontrada" 
+                    : `Nenhuma ficha ${activeFilter === "todos" ? "" : activeFilter}`}
                 </p>
-                <Button
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => navigate("/novo")}
-                >
-                  Enviar Nova Imagem
-                </Button>
+                {cards.length === 0 && (
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={() => navigate("/novo")}
+                  >
+                    Enviar Nova Imagem
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
