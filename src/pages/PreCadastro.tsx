@@ -25,7 +25,6 @@ interface ProcessingCard {
 const PreCadastro = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
-  const [selectedCard, setSelectedCard] = useState<ProcessingCard | null>(null);
   const [editingCard, setEditingCard] = useState<ProcessingCard | null>(null);
   const [activeFilter, setActiveFilter] = useState<string>("todos");
 
@@ -248,18 +247,8 @@ const PreCadastro = () => {
     });
   };
 
-  const handleCardClick = (card: ProcessingCard, event: React.MouseEvent) => {
-    // Verifica se clicou no botão de editar
-    const target = event.target as HTMLElement;
-    if (target.closest('.edit-button')) {
-      setEditingCard(card);
-      return;
-    }
-    
-    // Se tiver dados processados, mostra o dialog de visualização
-    if (card.data) {
-      setSelectedCard(card);
-    }
+  const handleCardClick = (card: ProcessingCard) => {
+    setEditingCard(card);
   };
 
   const handleEditSuccess = async () => {
@@ -368,7 +357,7 @@ const PreCadastro = () => {
               <Card
                 key={card.id}
                 className="transition-all hover:shadow-md cursor-pointer"
-                onClick={(e) => handleCardClick(card, e)}
+                onClick={() => handleCardClick(card)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -394,21 +383,10 @@ const PreCadastro = () => {
                       </p>
                     </div>
                     
-                    <div className="flex-shrink-0 flex flex-col gap-2 items-end">
+                    <div className="flex-shrink-0">
                       <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(card.tipo)}`}>
                         {card.tipo || "-"}
                       </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="edit-button h-7 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCard(card);
-                        }}
-                      >
-                        Editar
-                      </Button>
                     </div>
                   </div>
                 </CardContent>
@@ -429,22 +407,6 @@ const PreCadastro = () => {
           )}
         </div>
       </main>
-
-      <Dialog open={!!selectedCard} onOpenChange={() => setSelectedCard(null)}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>Ficha de Atendimento</DialogTitle>
-            <DialogDescription>
-              Dados extraídos da imagem
-            </DialogDescription>
-          </DialogHeader>
-          <div className="overflow-y-auto max-h-[70vh]">
-            {selectedCard?.data && (
-              <FichaAtendimento data={selectedCard.data} />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <EditFichaModal
         open={!!editingCard}
