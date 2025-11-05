@@ -219,6 +219,13 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
 
       if (error) throw error;
 
+      // Enviar notificação WhatsApp (não-bloqueante)
+      supabase.functions.invoke('notificar-ficha-whatsapp', {
+        body: { ficha_id: ficha.id }
+      }).catch(err => {
+        console.error('Erro ao enviar notificação WhatsApp:', err);
+      });
+
       // Gerenciar tags se houver cliente_id
       if (clienteId && formData.tags.length > 0) {
         console.log('Salvando tags para cliente:', clienteId);

@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.transcrever-audio]
 verify_jwt = false
+
+[functions.notificar-ficha-whatsapp]
+verify_jwt = false
