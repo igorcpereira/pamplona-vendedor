@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EditFichaModal } from "@/components/EditFichaModal";
+import logoJRP from "@/assets/logo-jrp.png";
 
 const NewRegistration = () => {
   const navigate = useNavigate();
@@ -279,10 +280,19 @@ const NewRegistration = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Novo Pré-Cadastro" />
       
-      <main className="px-4 py-6 max-w-md mx-auto">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img 
+          src={logoJRP} 
+          alt="JRP Logo" 
+          className="w-96 h-96 object-contain"
+        />
+      </div>
+      
+      <main className="px-4 py-6 max-w-md mx-auto relative z-10">
         <div className="bg-card rounded-2xl p-8 shadow-sm">
           {/* Camera Icon Area */}
           <div className="flex justify-center mb-6">

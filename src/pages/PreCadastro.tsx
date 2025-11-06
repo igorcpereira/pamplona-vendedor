@@ -13,6 +13,7 @@ import { EditFichaModal } from "@/components/EditFichaModal";
 import { capitalizarNome } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
+import logoJRP from "@/assets/logo-jrp.png";
 interface ProcessingCard {
   id: string;
   timestamp: string;
@@ -353,10 +354,19 @@ const PreCadastro = () => {
     if (status === "erro") return cards.filter(c => c.status === "error").length;
     return 0;
   };
-  return <div className="min-h-screen bg-background flex flex-col">
+  return <div className="min-h-screen bg-background flex flex-col relative">
       <Header title="Fichas" />
       
-      <main className="flex-1 p-4 pb-20">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img 
+          src={logoJRP} 
+          alt="JRP Logo" 
+          className="w-96 h-96 object-contain"
+        />
+      </div>
+      
+      <main className="flex-1 p-4 pb-20 relative z-10">
         <div className="max-w-4xl mx-auto">
           <div className="mb-4">
             <div className="relative">

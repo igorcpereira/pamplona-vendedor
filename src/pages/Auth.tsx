@@ -52,8 +52,17 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4 relative">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img 
+          src={logoJRP} 
+          alt="JRP Logo" 
+          className="w-96 h-96 object-contain"
+        />
+      </div>
+
+      <Card className="w-full max-w-md p-8 relative z-10">
         <div className="flex justify-center mb-6">
           <div className="w-24 h-24 flex items-center justify-center">
             <img src={logoJRP} alt="JRP Logo" className="w-full h-full object-contain" />

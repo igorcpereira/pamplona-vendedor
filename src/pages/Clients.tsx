@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import logoJRP from "@/assets/logo-jrp.png";
 
 const Clients = () => {
   const [clientes, setClientes] = useState<any[]>([]);
@@ -97,10 +98,19 @@ const Clients = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Clientes" />
       
-      <main className="px-4 py-6 max-w-md mx-auto">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img 
+          src={logoJRP} 
+          alt="JRP Logo" 
+          className="w-96 h-96 object-contain"
+        />
+      </div>
+      
+      <main className="px-4 py-6 max-w-md mx-auto relative z-10">
         {loading ? (
           <div className="bg-card rounded-2xl p-12 text-center shadow-sm">
             <p className="text-muted-foreground">Carregando...</p>
