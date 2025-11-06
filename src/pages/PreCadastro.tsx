@@ -71,7 +71,7 @@ const PreCadastro = () => {
           error
         } = await supabase.from('fichas').select('*').eq('vendedor_id', user?.id).order('created_at', {
           ascending: false
-        });
+        }).range(0, 99); // Paginação: primeiras 100 fichas
         if (error) {
           console.error('Erro ao buscar pré-cadastros:', error);
           return;
@@ -117,12 +117,14 @@ const PreCadastro = () => {
         const {
           supabase
         } = await import("@/integrations/supabase/client");
+        const user = (await supabase.auth.getUser()).data.user;
 
-        // Configura realtime para receber updates
+        // Configura realtime para receber updates APENAS das fichas do vendedor
         const channel = supabase.channel('fichas_changes').on('postgres_changes', {
           event: '*',
           schema: 'public',
-          table: 'fichas'
+          table: 'fichas',
+          filter: `vendedor_id=eq.${user?.id}` // Filtro para reduzir carga
         }, payload => {
           if (!mounted) return;
           console.log('Realtime update:', payload);

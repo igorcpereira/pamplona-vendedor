@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Users, Phone, ChevronRight, Calendar, DollarSign, Search } from "lucide-react";
@@ -11,37 +11,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import logoJRP from "@/assets/logo-jrp.png";
+import { useClientes } from "@/hooks/useClientes";
 
 const Clients = () => {
-  const [clientes, setClientes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Usa React Query para cache automático
+  const { data: clientes = [], isLoading: loading } = useClientes();
+  
   const [selectedCliente, setSelectedCliente] = useState<any>(null);
   const [fichasCliente, setFichasCliente] = useState<any[]>([]);
   const [loadingFichas, setLoadingFichas] = useState(false);
   const [filtroNome, setFiltroNome] = useState("");
-
-  useEffect(() => {
-    const fetchClientes = async () => {
-      try {
-        const user = (await supabase.auth.getUser()).data.user;
-        
-        const { data, error } = await supabase
-          .from('clientes')
-          .select('*')
-          .eq('vendedor_id', user?.id)
-          .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setClientes(data || []);
-      } catch (error) {
-        console.error('Erro ao buscar clientes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchClientes();
-  }, []);
 
   const handleClienteClick = async (cliente: any) => {
     setSelectedCliente(cliente);
