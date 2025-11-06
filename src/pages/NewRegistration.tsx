@@ -334,7 +334,7 @@ const NewRegistration = () => {
           </div>
 
           {/* Manual Registration Link */}
-          <button className="w-full py-3 text-accent-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+          <button className="w-full py-3 text-primary hover:text-accent transition-colors flex items-center justify-center gap-2 font-semibold">
             <Edit className="w-4 h-4" />
             <span className="font-medium">Cadastrar Manualmente</span>
           </button>
