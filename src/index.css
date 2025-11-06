@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -6,54 +8,64 @@
 All colors MUST be HSL.
 */
 
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Playfair Display', serif;
+}
+
+
 @layer base {
   :root {
-    /* Background claro #F2F2F2 */
-    --background: 0 0% 95%;
-    --foreground: 200 25% 29%;
+    /* Paleta Alfaiataria Sóbria */
+    --tailoring-navy: 200 25% 29%;      /* #364C59 - Primary */
+    --tailoring-slate: 200 18% 46%;     /* #61808C - Secondary */
+    --tailoring-taupe: 20 21% 46%;      /* #8C6E5D - Accent */
+    --tailoring-brown: 11 47% 17%;      /* #401D16 */
+    --tailoring-cream: 0 0% 95%;        /* #F2F2F2 - Backgrounds */
 
-    /* Cards com branco puro para destaque */
+    /* Mapeamento para tokens do sistema */
+    --background: var(--tailoring-cream);
+    --foreground: var(--tailoring-navy);
+
     --card: 0 0% 100%;
-    --card-foreground: 200 25% 29%;
+    --card-foreground: var(--tailoring-navy);
 
     --popover: 0 0% 100%;
-    --popover-foreground: 200 25% 29%;
+    --popover-foreground: var(--tailoring-navy);
 
-    /* Azul escuro #364C59 - cor principal */
-    --primary: 200 25% 29%;
-    --primary-foreground: 0 0% 95%;
+    --primary: var(--tailoring-navy);
+    --primary-foreground: var(--tailoring-cream);
 
-    /* Azul acinzentado #61808C - cor secundária */
-    --secondary: 200 18% 46%;
+    --secondary: var(--tailoring-slate);
     --secondary-foreground: 0 0% 100%;
 
-    /* Tom médio - elementos suaves */
     --muted: 200 10% 85%;
-    --muted-foreground: 200 18% 46%;
+    --muted-foreground: var(--tailoring-slate);
 
-    /* Marrom acinzentado #8C6E5D - acento */
-    --accent: 20 21% 46%;
+    --accent: var(--tailoring-taupe);
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Bordas sutis */
     --border: 200 10% 85%;
     --input: 200 10% 85%;
-    --ring: 200 25% 29%;
+    --ring: var(--tailoring-navy);
 
     --radius: 0.75rem;
 
-    /* Gradientes com as cores da paleta */
-    --gradient-primary: linear-gradient(135deg, hsl(200 25% 29%), hsl(200 18% 46%));
-    --gradient-secondary: linear-gradient(135deg, hsl(200 18% 46%), hsl(20 21% 46%));
-    --gradient-soft: linear-gradient(180deg, hsl(0 0% 95%), hsl(200 10% 90%));
-    --gradient-accent: linear-gradient(135deg, hsl(20 21% 46%), hsl(11 47% 17%));
+    /* Gradientes com as cores da alfaiataria */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--tailoring-navy)), hsl(var(--tailoring-slate)));
+    --gradient-secondary: linear-gradient(135deg, hsl(var(--tailoring-slate)), hsl(var(--tailoring-taupe)));
+    --gradient-soft: linear-gradient(180deg, hsl(var(--tailoring-cream)), hsl(200 10% 90%));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--tailoring-taupe)), hsl(var(--tailoring-brown)));
     
-    --shadow-card: 0 2px 8px -2px hsl(200 25% 29% / 0.08);
-    --shadow-button: 0 2px 6px hsl(200 25% 29% / 0.1);
-    --shadow-elegant: 0 8px 24px -4px hsl(200 25% 29% / 0.12);
+    --shadow-card: 0 2px 8px -2px hsl(var(--tailoring-navy) / 0.08);
+    --shadow-button: 0 2px 6px hsl(var(--tailoring-navy) / 0.1);
+    --shadow-elegant: 0 8px 24px -4px hsl(var(--tailoring-navy) / 0.12);
     
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
