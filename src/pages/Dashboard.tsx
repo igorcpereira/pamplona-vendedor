@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import logoJRP from "@/assets/logo-jrp.png";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -26,10 +27,19 @@ const Dashboard = () => {
         });
     }
   }, [user]);
-  return <div className="min-h-screen bg-background pb-20">
+  return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Dashboard" />
       
-      <main className="px-4 py-6 max-w-md mx-auto space-y-6">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img 
+          src={logoJRP} 
+          alt="JRP Logo" 
+          className="w-96 h-96 object-contain"
+        />
+      </div>
+
+      <main className="px-4 py-6 max-w-md mx-auto space-y-6 relative z-10">
         {/* Welcome Section */}
         <div className="bg-card rounded-2xl p-6 shadow-sm">
           <h2 className="text-2xl font-bold text-foreground mb-2">
