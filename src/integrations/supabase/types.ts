@@ -76,6 +76,7 @@ export type Database = {
           data_festa: string | null
           data_retirada: string | null
           descricao_cliente: string | null
+          enviada_whatsapp: boolean
           garantia: number | null
           id: string
           nome_cliente: string | null
@@ -104,6 +105,7 @@ export type Database = {
           data_festa?: string | null
           data_retirada?: string | null
           descricao_cliente?: string | null
+          enviada_whatsapp?: boolean
           garantia?: number | null
           id?: string
           nome_cliente?: string | null
@@ -132,6 +134,7 @@ export type Database = {
           data_festa?: string | null
           data_retirada?: string | null
           descricao_cliente?: string | null
+          enviada_whatsapp?: boolean
           garantia?: number | null
           id?: string
           nome_cliente?: string | null
@@ -260,27 +263,41 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           created_at: string
           id: string
           nome: string | null
           role: Database["public"]["Enums"]["user_role"]
+          unidade_id: number
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           id: string
           nome?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          unidade_id: number
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           id?: string
           nome?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          unidade_id?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       relacao_cliente_tag: {
         Row: {
@@ -354,6 +371,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       usuarios: {
         Row: {
           created_at: string
@@ -407,9 +445,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_access_unidade: {
+        Args: { _target_unidade_id: number; _user_id: string }
+        Returns: boolean
+      }
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_unidade: { Args: { _user_id: string }; Returns: number }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "gestor" | "franqueado" | "vendedor"
       status_ficha: "erro" | "pendente" | "ativa" | "baixa"
       tipo_de_atendimento: "Aluguel" | "Venda" | "Ajuste"
       user_role: "Gestor" | "Franqueado" | "Vendedor"
@@ -540,6 +594,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["gestor", "franqueado", "vendedor"],
       status_ficha: ["erro", "pendente", "ativa", "baixa"],
       tipo_de_atendimento: ["Aluguel", "Venda", "Ajuste"],
       user_role: ["Gestor", "Franqueado", "Vendedor"],

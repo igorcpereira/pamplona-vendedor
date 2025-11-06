@@ -1,9 +1,10 @@
-import { Camera, User, LogOut } from "lucide-react";
+import { Camera, User, LogOut, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useNavigate } from "react-router-dom";
 interface HeaderProps {
   title: string;
 }
@@ -14,6 +15,7 @@ const Header = ({
     user,
     signOut
   } = useAuth();
+  const navigate = useNavigate();
   const [nomeUsuario, setNomeUsuario] = useState<string>('Vendedor');
   useEffect(() => {
     if (user) {
@@ -30,7 +32,7 @@ const Header = ({
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
           
-          <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+          <h1 className="text-lg font-semibold text-foreground">Flavio Pamplona Alfaiataria</h1>
         </div>
         
         <DropdownMenu>
@@ -46,6 +48,10 @@ const Header = ({
             <div className="px-2 py-1.5 text-xs text-muted-foreground">
               {user?.email}
             </div>
+            <DropdownMenuItem onClick={() => navigate('/perfil')} className="cursor-pointer">
+              <Settings className="w-4 h-4 mr-2" />
+              Editar Perfil
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={signOut} className="cursor-pointer">
               <LogOut className="w-4 h-4 mr-2" />
               Sair

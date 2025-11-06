@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Camera } from 'lucide-react';
-
+import logoJRP from '@/assets/logo-jrp.png';
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [nome, setNome] = useState('');
@@ -15,30 +14,32 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const {
+          error
+        } = await supabase.auth.signInWithPassword({
           email,
-          password,
+          password
         });
         if (error) throw error;
         toast.success('Login realizado com sucesso!');
         navigate('/');
       } else {
-        const { error } = await supabase.auth.signUp({
+        const {
+          error
+        } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
-              nome: nome.trim(),
-            },
-          },
+              nome: nome.trim()
+            }
+          }
         });
         if (error) throw error;
         toast.success('Cadastro realizado! Você já pode fazer login.');
@@ -50,60 +51,38 @@ const Auth = () => {
       setLoading(false);
     }
   };
+  return <div className="min-h-screen bg-background flex items-center justify-center px-4 relative">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img src={logoJRP} alt="JRP Logo" className="w-96 h-96 object-contain" />
+      </div>
 
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8">
+      <Card className="w-full max-w-md p-8 relative z-10">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Camera className="w-8 h-8 text-primary" />
+          <div className="w-24 h-24 flex items-center justify-center">
+            <img src={logoJRP} alt="JRP Logo" className="w-full h-full object-contain" />
           </div>
         </div>
         
         <h1 className="text-2xl font-bold text-center mb-2">
-          {isLogin ? 'Bem-vindo' : 'Criar Conta'}
+          Flávio Pamplona Alfaiataria
         </h1>
-        <p className="text-muted-foreground text-center mb-6">
-          {isLogin ? 'Entre com suas credenciais' : 'Cadastre-se para começar'}
-        </p>
+        
 
         <form onSubmit={handleAuth} className="space-y-4">
-          {!isLogin && (
-            <div className="space-y-2">
+          {!isLogin && <div className="space-y-2">
               <Label htmlFor="nome">Nome</Label>
-              <Input
-                id="nome"
-                type="text"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Seu nome completo"
-                required
-              />
-            </div>
-          )}
+              <Input id="nome" type="text" value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" required />
+            </div>}
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              required
-            />
+            <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" required />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
+            <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
@@ -112,20 +91,14 @@ const Auth = () => {
         </form>
 
         <div className="mt-4 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setNome('');
-            }}
-            className="text-sm text-primary hover:underline"
-          >
+          <button type="button" onClick={() => {
+          setIsLogin(!isLogin);
+          setNome('');
+        }} className="text-sm text-primary hover:underline">
             {isLogin ? 'Não tem conta? Cadastre-se' : 'Já tem conta? Entre'}
           </button>
         </div>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default Auth;

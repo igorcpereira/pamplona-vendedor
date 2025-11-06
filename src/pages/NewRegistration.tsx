@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { EditFichaModal } from "@/components/EditFichaModal";
+import logoJRP from "@/assets/logo-jrp.png";
 
 const NewRegistration = () => {
   const navigate = useNavigate();
@@ -279,10 +280,19 @@ const NewRegistration = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Novo Pré-Cadastro" />
       
-      <main className="px-4 py-6 max-w-md mx-auto">
+      {/* Logo de fundo */}
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <img 
+          src={logoJRP} 
+          alt="JRP Logo" 
+          className="w-96 h-96 object-contain"
+        />
+      </div>
+      
+      <main className="px-4 py-6 max-w-md mx-auto relative z-10">
         <div className="bg-card rounded-2xl p-8 shadow-sm">
           {/* Camera Icon Area */}
           <div className="flex justify-center mb-6">
@@ -334,7 +344,7 @@ const NewRegistration = () => {
           </div>
 
           {/* Manual Registration Link */}
-          <button className="w-full py-3 text-accent-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+          <button className="w-full py-3 text-primary hover:text-accent transition-colors flex items-center justify-center gap-2 font-semibold">
             <Edit className="w-4 h-4" />
             <span className="font-medium">Cadastrar Manualmente</span>
           </button>
