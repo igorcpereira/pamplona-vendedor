@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Camera } from 'lucide-react';
+import logoJRP from '@/assets/logo-jrp.png';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -55,8 +55,8 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <Card className="w-full max-w-md p-8">
         <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-            <Camera className="w-8 h-8 text-primary" />
+          <div className="w-24 h-24 flex items-center justify-center">
+            <img src={logoJRP} alt="JRP Logo" className="w-full h-full object-contain" />
           </div>
         </div>
         
