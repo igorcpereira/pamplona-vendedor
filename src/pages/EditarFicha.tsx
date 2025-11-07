@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Image as ImageIcon, X } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -397,7 +397,18 @@ export default function EditarFicha() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold">Editar Ficha</h1>
+            <h1 className="text-xl font-semibold flex-1">Editar Ficha</h1>
+            {ficha?.cliente_id && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/cliente/${ficha.cliente_id}`)}
+                className="flex items-center gap-2"
+              >
+                <User className="h-4 w-4" />
+                Ver Cliente
+              </Button>
+            )}
           </div>
 
           {ficha?.status === "pendente" && (

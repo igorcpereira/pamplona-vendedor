@@ -10,6 +10,7 @@ import NewRegistration from "./pages/NewRegistration";
 import PreCadastro from "./pages/PreCadastro";
 import EditarFicha from "./pages/EditarFicha";
 import Clients from "./pages/Clients";
+import ClienteDetalhes from "./pages/ClienteDetalhes";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
@@ -69,6 +70,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Clients />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cliente/:id"
+            element={
+              <ProtectedRoute>
+                <ClienteDetalhes />
               </ProtectedRoute>
             }
           />
