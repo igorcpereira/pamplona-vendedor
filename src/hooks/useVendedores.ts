@@ -68,19 +68,32 @@ export const useVendedores = () => {
       }
 
       // Mapear e filtrar apenas vendedores e franqueados
+      // Agora suporta múltiplas roles por usuário
       const vendedores: Vendedor[] = (profiles || [])
         .filter((p: any) => {
-          const role = p.user_roles?.[0]?.role;
-          return role === 'vendedor' || role === 'franqueado';
+          // Verificar se o usuário tem ALGUMA role de vendedor ou franqueado
+          const userRoles = p.user_roles || [];
+          return userRoles.some((ur: any) => 
+            ur.role === 'vendedor' || ur.role === 'franqueado'
+          );
         })
-        .map((p: any) => ({
-          id: p.id,
-          nome: p.nome || 'Sem nome',
-          email: '',
-          unidade_id: p.unidade_id,
-          unidade_nome: p.unidades?.nome || '',
-          role: p.user_roles?.[0]?.role || 'vendedor',
-        }));
+        .map((p: any) => {
+          // Obter a role "principal" (mais alta na hierarquia) para exibição
+          const userRoles = p.user_roles || [];
+          const roleHierarchy = ['gestor', 'master', 'admin', 'franqueado', 'vendedor'];
+          const principalRole = roleHierarchy.find((role: string) =>
+            userRoles.some((ur: any) => ur.role === role)
+          ) || 'vendedor';
+          
+          return {
+            id: p.id,
+            nome: p.nome || 'Sem nome',
+            email: '',
+            unidade_id: p.unidade_id,
+            unidade_nome: p.unidades?.nome || '',
+            role: principalRole,
+          };
+        });
 
       return vendedores;
     },
