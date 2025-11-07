@@ -398,16 +398,38 @@ export default function EditarFicha() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold flex-1">Editar Ficha</h1>
+            <h1 className="text-xl font-semibold">Editar Ficha</h1>
+          </div>
+
+          {ficha?.status === "pendente" && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
+              <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Processando imagem</p>
+                <p className="text-xs text-amber-700 dark:text-amber-300">Os campos serão preenchidos automaticamente quando o processamento terminar.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4 flex gap-2">
+            {ficha?.url_bucket && (
+              <Button
+                type="button"
+                onClick={handleOpenImageModal}
+                className="flex-1 flex items-center justify-center gap-2"
+              >
+                <ImageIcon className="h-4 w-4" />
+                Ver Ficha Original
+              </Button>
+            )}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => ficha?.cliente_id && navigate(`/cliente/${ficha.cliente_id}`)}
                     disabled={!ficha?.cliente_id}
-                    className="flex items-center gap-2"
+                    className={`${ficha?.url_bucket ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2`}
                   >
                     <User className="h-4 w-4" />
                     Ver Cliente
@@ -421,29 +443,6 @@ export default function EditarFicha() {
               </Tooltip>
             </TooltipProvider>
           </div>
-
-          {ficha?.status === "pendente" && (
-            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Processando imagem</p>
-                <p className="text-xs text-amber-700 dark:text-amber-300">Os campos serão preenchidos automaticamente quando o processamento terminar.</p>
-              </div>
-            </div>
-          )}
-
-          {ficha?.url_bucket && (
-            <div className="mb-4">
-              <Button
-                type="button"
-                onClick={handleOpenImageModal}
-                className="w-full flex items-center justify-center gap-2"
-              >
-                <ImageIcon className="h-4 w-4" />
-                Ver Ficha Original
-              </Button>
-            </div>
-          )}
 
           <div className="space-y-6">
             {/* Cabeçalho */}
