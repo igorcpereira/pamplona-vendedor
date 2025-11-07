@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import NewRegistration from "./pages/NewRegistration";
 import PreCadastro from "./pages/PreCadastro";
+import EditarFicha from "./pages/EditarFicha";
 import Clients from "./pages/Clients";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
@@ -52,6 +53,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <PreCadastro />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editar-ficha/:id"
+            element={
+              <ProtectedRoute>
+                <EditarFicha />
               </ProtectedRoute>
             }
           />

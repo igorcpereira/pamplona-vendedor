@@ -5,11 +5,8 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { FichaAtendimento } from "@/components/FichaAtendimento";
-import { EditFichaModal } from "@/components/EditFichaModal";
 import { capitalizarNome } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -27,8 +24,6 @@ interface ProcessingCard {
 const PreCadastro = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
-  const [editingCard, setEditingCard] = useState<any>(null);
-  const [isLoadingEditCard, setIsLoadingEditCard] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string>("todos");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>("");
@@ -203,38 +198,8 @@ const PreCadastro = () => {
       minute: "2-digit"
     });
   };
-  const handleCardClick = async (card: ProcessingCard) => {
-    setIsLoadingEditCard(true);
-    try {
-      const {
-        supabase
-      } = await import("@/integrations/supabase/client");
-
-      // Busca a ficha completa do banco
-      const {
-        data: fichaCompleta,
-        error
-      } = await supabase.from('fichas').select('*').eq('id', card.id).single();
-      if (error) {
-        console.error('Erro ao buscar ficha:', error);
-        toast({
-          title: "Erro",
-          description: "Não foi possível carregar os dados da ficha.",
-          variant: "destructive"
-        });
-        return;
-      }
-      setEditingCard(fichaCompleta);
-    } catch (error) {
-      console.error('Erro ao carregar ficha:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao carregar dados da ficha.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoadingEditCard(false);
-    }
+  const handleCardClick = (card: ProcessingCard) => {
+    navigate(`/editar-ficha/${card.id}`);
   };
   const handleDeleteClick = (e: React.MouseEvent, cardId: string) => {
     e.stopPropagation(); // Evita abrir o modal de edição
@@ -264,47 +229,6 @@ const PreCadastro = () => {
       });
     } finally {
       setDeletingCardId(null);
-    }
-  };
-  const handleEditSuccess = async () => {
-    // Recarrega os dados após edição
-    try {
-      const {
-        supabase
-      } = await import("@/integrations/supabase/client");
-      const {
-        data,
-        error
-      } = await supabase.from('fichas').select('*').order('created_at', {
-        ascending: false
-      });
-      if (error) {
-        console.error('Erro ao buscar pré-cadastros:', error);
-        return;
-      }
-      const mappedCards: ProcessingCard[] = data.map(item => {
-        let parsedData = null;
-        if (item.url_bucket && (item.url_bucket.startsWith('{') || item.url_bucket.startsWith('['))) {
-          try {
-            parsedData = JSON.parse(item.url_bucket);
-          } catch (e) {
-            console.error('Erro ao parsear url_bucket:', e);
-          }
-        }
-        return {
-          id: item.id,
-          timestamp: item.created_at,
-          status: item.status, // Usa o status diretamente do banco
-          phone: item.telefone_cliente || undefined,
-          data: parsedData,
-          nome_cliente: item.nome_cliente || undefined,
-          codigo_ficha: item.codigo_ficha || undefined,
-          tipo: item.tipo || undefined
-        };
-      });
-      setCards(mappedCards);
-    } catch (error) {
-      console.error('Erro ao recarregar dados:', error);
     }
   };
   const filteredCards = cards.filter(card => {
@@ -419,8 +343,6 @@ const PreCadastro = () => {
             </Card>}
         </div>
       </main>
-
-      <EditFichaModal open={!!editingCard} onOpenChange={open => !open && setEditingCard(null)} ficha={editingCard} isLoading={isLoadingEditCard} onSuccess={handleEditSuccess} />
 
       <AlertDialog open={!!deletingCardId} onOpenChange={open => !open && setDeletingCardId(null)}>
         <AlertDialogContent>
