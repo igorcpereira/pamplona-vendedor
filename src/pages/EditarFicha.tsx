@@ -22,10 +22,14 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useVendedores } from "@/hooks/useVendedores";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function EditarFicha() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: vendedores = [], isLoading: isLoadingVendedores } = useVendedores();
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -100,13 +104,27 @@ export default function EditarFicha() {
           }
         }
 
+        // Buscar nome do usuário logado para pré-selecionar
+        let vendedorNome = "";
+        if (fichaData.vendedor_responsavel) {
+          vendedorNome = fichaData.vendedor_responsavel;
+        } else if (user?.id) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome')
+            .eq('id', user.id)
+            .single();
+          
+          vendedorNome = profile?.nome || "";
+        }
+
         setFormData({
           nome_cliente: fichaData.nome_cliente || "",
           telefone_cliente: fichaData.telefone_cliente || "",
           codigo_ficha: fichaData.codigo_ficha || "",
           tipo: fichaData.tipo || "Aluguel",
           status: fichaData.status || "pendente",
-          vendedor_responsavel: fichaData.vendedor_responsavel || "",
+          vendedor_responsavel: vendedorNome,
           data_retirada: fichaData.data_retirada ? new Date(fichaData.data_retirada) : undefined,
           data_devolucao: fichaData.data_devolucao ? new Date(fichaData.data_devolucao) : undefined,
           data_festa: fichaData.data_festa ? new Date(fichaData.data_festa) : undefined,
@@ -134,7 +152,7 @@ export default function EditarFicha() {
     };
 
     loadFicha();
-  }, [id, navigate]);
+  }, [id, navigate, user?.id]);
 
   const handleTranscription = (text: string) => {
     console.log('Texto recebido da transcrição:', text);
@@ -433,12 +451,22 @@ export default function EditarFicha() {
 
                   <div className="space-y-2">
                     <Label htmlFor="vendedor_responsavel">Vendedor Responsável</Label>
-                    <Input
-                      id="vendedor_responsavel"
-                      value={formData.vendedor_responsavel}
-                      onChange={(e) => setFormData({ ...formData, vendedor_responsavel: e.target.value })}
-                      placeholder="Nome do vendedor"
-                    />
+                    <Select 
+                      value={formData.vendedor_responsavel} 
+                      onValueChange={(value) => setFormData({ ...formData, vendedor_responsavel: value })}
+                      disabled={isLoadingVendedores}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={isLoadingVendedores ? "Carregando..." : "Selecione um vendedor"} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {vendedores.map((vendedor) => (
+                          <SelectItem key={vendedor.id} value={vendedor.nome || ""}>
+                            {vendedor.nome} {vendedor.unidade_nome ? `(${vendedor.unidade_nome})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
