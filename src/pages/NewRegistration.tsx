@@ -48,8 +48,9 @@ const NewRegistration = () => {
       console.log('Edge Function resposta:', data);
 
       if (data.ficha_id) {
-        // Navega para EditarFicha com a imagem
-        toast.info("Processando ficha...");
+        // Navega IMEDIATAMENTE para EditarFicha
+        // O processamento do webhook continua em background
+        toast.success("Ficha criada! Aguardando processamento...");
         navigate(`/editar-ficha/${data.ficha_id}`, {
           state: { 
             imageFile: file,
@@ -62,13 +63,7 @@ const NewRegistration = () => {
 
     } catch (error: any) {
       console.error('Erro:', error);
-      
-      // Se houver ficha criada, excluir
-      if (currentFichaId) {
-        await supabase.from('fichas').delete().eq('id', currentFichaId);
-      }
-      
-      toast.error("Falha ao enviar a imagem. Tente novamente.");
+      toast.error("Falha ao criar a ficha. Tente novamente.");
       setShowErrorDialog(true);
     } finally {
       setIsUploading(false);
@@ -104,7 +99,6 @@ const NewRegistration = () => {
     
     setShowErrorDialog(false);
     setCurrentFichaId(null);
-    setFichaData(null);
     setSelectedFile(null);
     
     // Permite nova captura
