@@ -7,9 +7,20 @@ import { supabase } from "@/integrations/supabase/client";
 interface AudioRecorderProps {
   onTranscriptionComplete: (text: string) => void;
   onTagsExtracted?: (tags: string[]) => void;
+  onRecordingStart?: () => void;
+  onRecordingStop?: () => void;
+  onProcessingStart?: () => void;
+  onProcessingEnd?: () => void;
 }
 
-export function AudioRecorder({ onTranscriptionComplete, onTagsExtracted }: AudioRecorderProps) {
+export function AudioRecorder({ 
+  onTranscriptionComplete, 
+  onTagsExtracted,
+  onRecordingStart,
+  onRecordingStop,
+  onProcessingStart,
+  onProcessingEnd
+}: AudioRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -36,6 +47,7 @@ export function AudioRecorder({ onTranscriptionComplete, onTagsExtracted }: Audi
 
       mediaRecorder.start();
       setIsRecording(true);
+      onRecordingStart?.();
     } catch (error) {
       console.error("Erro ao iniciar gravação:", error);
     }
@@ -45,11 +57,13 @@ export function AudioRecorder({ onTranscriptionComplete, onTagsExtracted }: Audi
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      onRecordingStop?.();
     }
   };
 
   const sendAudioToWebhook = async (audioBlob: Blob) => {
     setIsProcessing(true);
+    onProcessingStart?.();
     try {
       const formData = new FormData();
       formData.append("audio", audioBlob, "recording.webm");
@@ -77,6 +91,7 @@ export function AudioRecorder({ onTranscriptionComplete, onTagsExtracted }: Audi
       console.error("Erro ao processar áudio:", error);
     } finally {
       setIsProcessing(false);
+      onProcessingEnd?.();
     }
   };
 

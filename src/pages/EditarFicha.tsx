@@ -40,7 +40,8 @@ export default function EditarFicha() {
   const [imageError, setImageError] = useState<string | null>(null);
   const [ficha, setFicha] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isAudioRecording, setIsAudioRecording] = useState(false);
+  const [isAudioProcessing, setIsAudioProcessing] = useState(false);
   const [formData, setFormData] = useState({
     nome_cliente: "",
     telefone_cliente: "",
@@ -62,14 +63,6 @@ export default function EditarFicha() {
     tags: [] as string[],
   });
 
-  // Limpa polling quando componente desmonta
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const loadFicha = async () => {
@@ -163,37 +156,83 @@ export default function EditarFicha() {
     };
 
     loadFicha();
-
-    // Polling a cada 2s se estiver processando
-    if (isNewFicha && id) {
-      const interval = setInterval(loadFicha, 2000);
-      pollingIntervalRef.current = interval;
-      return () => clearInterval(interval);
-    }
   }, [id, navigate, user?.id, isNewFicha]);
 
-  // Detectar quando webhook terminou (status mudou de pendente)
+  // Subscrição Realtime para updates da ficha
   useEffect(() => {
-    if (ficha && ficha.status !== 'pendente' && isProcessing) {
-      setIsProcessing(false);
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-      }
-      
-      if (ficha.status === 'erro') {
-        toast({
-          title: "Erro ao processar",
-          description: "Não foi possível processar a imagem. Você pode preencher manualmente.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Processamento concluído",
-          description: "Campos preenchidos automaticamente. Você pode editá-los antes de salvar.",
-        });
-      }
-    }
-  }, [ficha?.status, isProcessing]);
+    if (!id || !isNewFicha) return;
+
+    console.log('📡 Iniciando subscrição realtime para ficha:', id);
+    
+    const channel = supabase
+      .channel(`ficha-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'fichas',
+          filter: `id=eq.${id}`
+        },
+        (payload) => {
+          console.log('🔄 Ficha atualizada via realtime:', payload.new);
+          
+          // BLOQUEIO: Não atualizar se estiver gravando ou processando áudio
+          if (isAudioRecording || isAudioProcessing) {
+            console.log('🔒 Update bloqueado: áudio em uso');
+            return;
+          }
+          
+          const fichaAtualizada = payload.new;
+          setFicha(fichaAtualizada);
+          
+          // Atualizar formData apenas com campos do webhook
+          setFormData(prev => ({
+            ...prev,
+            nome_cliente: fichaAtualizada.nome_cliente || prev.nome_cliente,
+            telefone_cliente: fichaAtualizada.telefone_cliente || prev.telefone_cliente,
+            codigo_ficha: fichaAtualizada.codigo_ficha || prev.codigo_ficha,
+            tipo: fichaAtualizada.tipo || prev.tipo,
+            status: fichaAtualizada.status || prev.status,
+            data_retirada: fichaAtualizada.data_retirada ? new Date(fichaAtualizada.data_retirada) : prev.data_retirada,
+            data_devolucao: fichaAtualizada.data_devolucao ? new Date(fichaAtualizada.data_devolucao) : prev.data_devolucao,
+            data_festa: fichaAtualizada.data_festa ? new Date(fichaAtualizada.data_festa) : prev.data_festa,
+            valor: fichaAtualizada.valor?.toString() || prev.valor,
+            garantia: fichaAtualizada.garantia?.toString() || prev.garantia,
+            paleto: fichaAtualizada.paleto || prev.paleto,
+            calca: fichaAtualizada.calca || prev.calca,
+            camisa: fichaAtualizada.camisa || prev.camisa,
+            sapato: fichaAtualizada.sapato || prev.sapato,
+            pago: fichaAtualizada.pago ?? prev.pago,
+            observacoes_cliente: prev.observacoes_cliente || fichaAtualizada.transcricao_audio || "",
+          }));
+          
+          // Detectar término do processamento
+          if (fichaAtualizada.status !== 'pendente') {
+            setIsProcessing(false);
+            
+            if (fichaAtualizada.status === 'erro') {
+              toast({
+                title: "Erro ao processar",
+                description: "Não foi possível processar a imagem. Você pode preencher manualmente.",
+                variant: "destructive"
+              });
+            } else {
+              toast({
+                title: "Processamento concluído",
+                description: "Campos preenchidos automaticamente. Você pode editá-los antes de salvar.",
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('🔌 Desconectando subscrição realtime');
+      supabase.removeChannel(channel);
+    };
+  }, [id, isNewFicha, isAudioRecording, isAudioProcessing]);
 
   const handleTranscription = (text: string) => {
     console.log('Texto recebido da transcrição:', text);
@@ -514,6 +553,10 @@ export default function EditarFicha() {
               <AudioRecorder
                 onTranscriptionComplete={handleTranscription}
                 onTagsExtracted={handleTagsExtracted}
+                onRecordingStart={() => setIsAudioRecording(true)}
+                onRecordingStop={() => setIsAudioRecording(false)}
+                onProcessingStart={() => setIsAudioProcessing(true)}
+                onProcessingEnd={() => setIsAudioProcessing(false)}
               />
               <Textarea
                 value={formData.observacoes_cliente}
