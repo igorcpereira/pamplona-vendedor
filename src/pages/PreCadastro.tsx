@@ -24,7 +24,7 @@ interface ProcessingCard {
 const PreCadastro = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
-  const [activeFilter, setActiveFilter] = useState<string>("todos");
+  const [activeFilter, setActiveFilter] = useState<string>("pendente");
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>("");
   const getTipoColor = (tipo?: string) => {
@@ -68,7 +68,7 @@ const PreCadastro = () => {
         const {
           data,
           error
-        } = await supabase.from('fichas').select('*').eq('vendedor_id', user?.id).order('created_at', {
+        } = await supabase.from('fichas').select('*').eq('vendedor_id', user?.id).in('status', ['pendente', 'erro']).order('created_at', {
           ascending: false
         }).range(0, 99); // Paginação: primeiras 100 fichas
         if (error) {
@@ -224,9 +224,7 @@ const PreCadastro = () => {
   };
   const filteredCards = cards.filter(card => {
     // Filtro de status
-    let statusMatch = true;
-    if (activeFilter === "pendente") statusMatch = card.status === "pendente";
-    if (activeFilter === "erro") statusMatch = card.status === "erro";
+    const statusMatch = card.status === activeFilter;
     
     // Filtro de texto (busca em nome_cliente e codigo_ficha)
     let textMatch = true;
@@ -240,7 +238,6 @@ const PreCadastro = () => {
     return statusMatch && textMatch;
   });
   const getStatusCount = (status: string) => {
-    if (status === "todos") return cards.length;
     if (status === "pendente") return cards.filter(c => c.status === "pendente").length;
     if (status === "erro") return cards.filter(c => c.status === "erro").length;
     return 0;
@@ -273,10 +270,7 @@ const PreCadastro = () => {
           </div>
 
           <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
-            <TabsList className="grid w-full grid-cols-3 gap-2 h-auto p-2 bg-muted/50">
-              <TabsTrigger value="todos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs">
-                Todos ({getStatusCount("todos")})
-              </TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 gap-2 h-auto p-2 bg-muted/50">
               <TabsTrigger value="pendente" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs">
                 Pendente ({getStatusCount("pendente")})
               </TabsTrigger>
@@ -328,7 +322,7 @@ const PreCadastro = () => {
           {filteredCards.length === 0 && <Card className="py-12">
               <CardContent className="text-center">
                 <p className="text-muted-foreground">
-                  {cards.length === 0 ? "Nenhuma ficha encontrada" : `Nenhuma ficha ${activeFilter === "todos" ? "" : activeFilter}`}
+                  {cards.length === 0 ? "Nenhuma ficha encontrada" : `Nenhuma ficha com status ${activeFilter}`}
                 </p>
               </CardContent>
             </Card>}
