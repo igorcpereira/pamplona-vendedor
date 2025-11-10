@@ -57,12 +57,60 @@ async function processWebhookInBackground(
       const webhookData = await webhookResponse.json()
       console.log('Resposta do webhook recebida (background):', webhookData)
 
-      if (webhookData.sucesso === true) {
-        console.log('Webhook processou com sucesso em background')
-        // Status continua 'pendente' - usuário vai editar na página
+      // Webhook retorna array, extrair primeiro elemento
+      const resultado = Array.isArray(webhookData) ? webhookData[0] : webhookData
+
+      if (resultado.sucesso === true) {
+        console.log('Webhook processou com sucesso, atualizando ficha...')
+        
+        const updateData: any = {
+          status: 'processado',
+          updated_at: new Date().toISOString()
+        }
+        
+        // Dados básicos
+        if (resultado.numero_ficha) updateData.codigo_ficha = resultado.numero_ficha
+        if (resultado.cliente_nome) updateData.nome_cliente = resultado.cliente_nome
+        
+        // Telefone: manter sem formatação no banco
+        if (resultado.cliente_telefone) updateData.telefone_cliente = resultado.cliente_telefone
+        
+        // Tipo: normalizar para primeira letra maiúscula
+        if (resultado.tipo) {
+          const tipoNormalizado = resultado.tipo.toLowerCase()
+          updateData.tipo = tipoNormalizado.charAt(0).toUpperCase() + tipoNormalizado.slice(1)
+        }
+        
+        // Datas
+        if (resultado.data_retirada) updateData.data_retirada = resultado.data_retirada
+        if (resultado.data_devolucao) updateData.data_devolucao = resultado.data_devolucao
+        if (resultado.data_evento) updateData.data_festa = resultado.data_evento
+        
+        // Peças: extrair descrições
+        if (resultado.paleto?.descricao) updateData.paleto = resultado.paleto.descricao
+        if (resultado.calca?.descricao) updateData.calca = resultado.calca.descricao
+        if (resultado.camisa?.descricao) updateData.camisa = resultado.camisa.descricao
+        
+        // Valores: usar apenas rodape.valor
+        if (resultado.rodape?.sapato) updateData.sapato = resultado.rodape.sapato
+        if (resultado.rodape?.valor) updateData.valor = parseFloat(resultado.rodape.valor)
+        if (resultado.rodape?.garantia) updateData.garantia = parseFloat(resultado.rodape.garantia)
+        
+        // Atualizar ficha
+        const { error: updateError } = await supabaseClient
+          .from('fichas')
+          .update(updateData)
+          .eq('id', fichaId)
+        
+        if (updateError) {
+          console.error('Erro ao atualizar ficha:', updateError)
+          throw updateError
+        }
+        
+        console.log('Ficha atualizada com sucesso! Dados salvos:', updateData)
       } else {
-        console.error('Webhook retornou erro:', webhookData.erro || 'Erro desconhecido')
-        throw new Error(webhookData.erro || 'Erro no processamento da ficha')
+        console.error('Webhook retornou erro:', resultado.erro || 'Erro desconhecido')
+        throw new Error(resultado.erro || 'Erro no processamento da ficha')
       }
 
     } catch (fetchError) {

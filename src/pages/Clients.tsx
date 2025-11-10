@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import logoJRP from "@/assets/logo-jrp.png";
 import { useClientes } from "@/hooks/useClientes";
+import { formatarTelefone } from "@/lib/utils";
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -90,7 +91,7 @@ const Clients = () => {
                       {cliente.telefone && (
                         <div className="flex items-center gap-1 mt-1 text-muted-foreground">
                           <Phone className="w-3 h-3" />
-                          <p className="text-xs">{cliente.telefone}</p>
+                          <p className="text-xs">{formatarTelefone(cliente.telefone)}</p>
                         </div>
                       )}
                       <p className="text-xs text-muted-foreground mt-1">

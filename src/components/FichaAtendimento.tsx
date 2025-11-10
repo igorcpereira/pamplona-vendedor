@@ -1,5 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
+import { formatarTelefone } from "@/lib/utils";
 
 interface FichaAtendimentoProps {
   data: any;
@@ -64,7 +65,7 @@ export const FichaAtendimento = ({ data, processingTime }: FichaAtendimentoProps
     
     const nome = data.nome || data.cliente_nome || '-';
     const numeroFicha = data.numero_ficha || '-';
-    const telefone = String(data.telefone || data.cliente_telefone || '-');
+    const telefone = formatarTelefone(data.telefone || data.cliente_telefone);
     
     const getTipo = () => {
       if (data.tipo_ajuste) return 'Ajuste';
