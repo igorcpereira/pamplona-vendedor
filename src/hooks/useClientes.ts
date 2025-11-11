@@ -20,7 +20,7 @@ export const useClientes = () => {
       return data || [];
     },
     enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    refetchOnWindowFocus: false,
+    refetchOnMount: 'always', // Sempre busca novos dados ao montar o componente
+    refetchOnWindowFocus: true, // Busca ao focar na janela
   });
 };
