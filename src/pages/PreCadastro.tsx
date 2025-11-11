@@ -121,6 +121,13 @@ const PreCadastro = () => {
           console.log('Realtime update:', payload);
           if (payload.eventType === 'INSERT') {
             const newItem = payload.new as any;
+            console.log('📥 Nova ficha inserida:', newItem);
+
+            // Só adiciona se tiver status pendente ou erro
+            if (!['pendente', 'erro'].includes(newItem.status)) {
+              console.log('⏭️ Ficha ignorada (status não é pendente/erro):', newItem.status);
+              return;
+            }
 
             // Tenta fazer parse do url_bucket apenas se parecer um JSON
             let parsedData = null;
@@ -134,16 +141,23 @@ const PreCadastro = () => {
             const newCard: ProcessingCard = {
               id: newItem.id,
               timestamp: newItem.created_at,
-              status: newItem.status, // Usa o status diretamente do banco
+              status: newItem.status,
               phone: newItem.telefone_cliente || undefined,
               data: parsedData,
               nome_cliente: newItem.nome_cliente || undefined,
               codigo_ficha: newItem.codigo_ficha || undefined,
               tipo: newItem.tipo || undefined
             };
+            console.log('✅ Adicionando nova ficha ao estado:', newCard);
             setCards(prev => [newCard, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
             const updatedItem = payload.new as any;
+            console.log('🔄 Ficha atualizada:', {
+              id: updatedItem.id,
+              status: updatedItem.status,
+              nome: updatedItem.nome_cliente,
+              codigo: updatedItem.codigo_ficha
+            });
 
             // Tenta fazer parse do url_bucket apenas se parecer um JSON
             let parsedData = null;
@@ -154,15 +168,44 @@ const PreCadastro = () => {
                 console.error('Erro ao parsear url_bucket:', e);
               }
             }
-            setCards(prev => prev.map(card => card.id === updatedItem.id ? {
-              ...card,
-              status: updatedItem.status, // Usa o status diretamente do banco
-              phone: updatedItem.telefone_cliente || undefined,
-              data: parsedData,
-              nome_cliente: updatedItem.nome_cliente || undefined,
-              codigo_ficha: updatedItem.codigo_ficha || undefined,
-              tipo: updatedItem.tipo || undefined
-            } : card));
+            // Se o status mudou para algo diferente de pendente/erro, remove do estado
+            if (!['pendente', 'erro'].includes(updatedItem.status)) {
+              console.log('🗑️ Removendo ficha (status mudou para ativa/concluída)');
+              setCards(prev => prev.filter(card => card.id !== updatedItem.id));
+              return;
+            }
+
+            // Se o status ainda é pendente/erro, atualiza os dados
+            setCards(prev => {
+              const cardIndex = prev.findIndex(card => card.id === updatedItem.id);
+              if (cardIndex >= 0) {
+                // Atualiza ficha existente
+                console.log('✅ Ficha atualizada no estado');
+                return prev.map(card => card.id === updatedItem.id ? {
+                  ...card,
+                  status: updatedItem.status,
+                  phone: updatedItem.telefone_cliente || undefined,
+                  data: parsedData,
+                  nome_cliente: updatedItem.nome_cliente || undefined,
+                  codigo_ficha: updatedItem.codigo_ficha || undefined,
+                  tipo: updatedItem.tipo || undefined
+                } : card);
+              } else {
+                // Se não existe, adiciona (pode ter sido processada e agora tem dados)
+                console.log('➕ Ficha não estava no estado, adicionando...');
+                const newCard: ProcessingCard = {
+                  id: updatedItem.id,
+                  timestamp: updatedItem.created_at,
+                  status: updatedItem.status,
+                  phone: updatedItem.telefone_cliente || undefined,
+                  data: parsedData,
+                  nome_cliente: updatedItem.nome_cliente || undefined,
+                  codigo_ficha: updatedItem.codigo_ficha || undefined,
+                  tipo: updatedItem.tipo || undefined
+                };
+                return [newCard, ...prev];
+              }
+            });
           } else if (payload.eventType === 'DELETE') {
             const deletedItem = payload.old as any;
             setCards(prev => prev.filter(card => card.id !== deletedItem.id));
