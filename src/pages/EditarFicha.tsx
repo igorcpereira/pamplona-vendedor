@@ -31,7 +31,7 @@ export default function EditarFicha() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { imageFile, isNewFicha, isReprocessing } = location.state || {};
+  const { imageFile, isNewFicha, isReprocessing, cliente_id } = location.state || {};
   const { data: vendedores = [], isLoading: isLoadingVendedores } = useVendedores();
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
@@ -436,7 +436,11 @@ export default function EditarFicha() {
         }
       }
 
-      navigate("/pre-cadastro");
+      if (cliente_id) {
+        navigate(`/cliente/${cliente_id}`);
+      } else {
+        navigate("/pre-cadastro");
+      }
     } catch (error) {
       console.error("Erro ao atualizar ficha:", error);
     } finally {
@@ -489,7 +493,13 @@ export default function EditarFicha() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate("/pre-cadastro")}
+              onClick={() => {
+                if (cliente_id) {
+                  navigate(`/cliente/${cliente_id}`);
+                } else {
+                  navigate("/pre-cadastro");
+                }
+              }}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>

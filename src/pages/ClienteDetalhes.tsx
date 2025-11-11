@@ -158,7 +158,7 @@ export default function ClienteDetalhes() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/clientes')}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -235,7 +235,7 @@ export default function ClienteDetalhes() {
                 <Card 
                   key={ficha.id} 
                   className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
-                  onClick={() => navigate(`/editar-ficha/${ficha.id}`)}
+                  onClick={() => navigate(`/editar-ficha/${ficha.id}`, { state: { cliente_id: id } })}
                 >
                   <CardContent className="p-4">
                     <div className="space-y-3">
