@@ -185,8 +185,8 @@ async function processWebhookInBackground(
           return
         }
         
-        // Define status como processado
-        updateData.status = 'processado'
+        // Define status como pendente (aguardando conferência manual)
+        updateData.status = 'pendente'
         
         console.log('Dados finais para atualização:', JSON.stringify(updateData, null, 2))
         
