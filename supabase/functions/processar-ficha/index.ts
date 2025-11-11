@@ -5,6 +5,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Função para capitalizar nomes corretamente
+function capitalizarNome(nome?: string): string {
+  if (!nome) return "";
+  return nome.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 // Função para processar webhook em background
 async function processWebhookInBackground(
   supabaseClient: any,
@@ -79,7 +85,7 @@ async function processWebhookInBackground(
         }
         
         if (resultado.cliente_nome != null && resultado.cliente_nome !== '') {
-          updateData.nome_cliente = resultado.cliente_nome
+          updateData.nome_cliente = capitalizarNome(resultado.cliente_nome)
         } else {
           camposIgnorados.push('nome_cliente')
         }
@@ -118,21 +124,21 @@ async function processWebhookInBackground(
           camposIgnorados.push('data_festa')
         }
         
-        // Peças: extrair descrições
+        // Peças: extrair descrições e capitalizar
         if (resultado.paleto?.descricao != null && resultado.paleto.descricao !== '') {
-          updateData.paleto = resultado.paleto.descricao
+          updateData.paleto = capitalizarNome(resultado.paleto.descricao)
         } else {
           camposIgnorados.push('paleto')
         }
         
         if (resultado.calca?.descricao != null && resultado.calca.descricao !== '') {
-          updateData.calca = resultado.calca.descricao
+          updateData.calca = capitalizarNome(resultado.calca.descricao)
         } else {
           camposIgnorados.push('calca')
         }
         
         if (resultado.camisa?.descricao != null && resultado.camisa.descricao !== '') {
-          updateData.camisa = resultado.camisa.descricao
+          updateData.camisa = capitalizarNome(resultado.camisa.descricao)
         } else {
           camposIgnorados.push('camisa')
         }
