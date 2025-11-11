@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,22 +11,15 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Busca o webhook URL
-    const { data: webhookData, error: webhookError } = await supabaseClient
-      .from('webhooks')
-      .select('webhook')
-      .eq('nome', 'descricao_cliente')
-      .single();
-
-    if (webhookError || !webhookData) {
-      console.error('Erro ao buscar webhook:', webhookError);
-      throw new Error('Webhook não encontrado');
+    // Busca o webhook URL do secret
+    const webhookUrl = Deno.env.get('WEBHOOK_DESCRICAO_CLIENTE');
+    
+    if (!webhookUrl) {
+      console.error('Webhook URL não configurado nos secrets');
+      throw new Error('Webhook não configurado nos secrets');
     }
+
+    console.log('Webhook URL carregado do secret com sucesso');
 
     // Recebe o áudio do frontend
     const formData = await req.formData();
@@ -41,7 +33,8 @@ serve(async (req) => {
     const webhookFormData = new FormData();
     webhookFormData.append('audio', audioFile);
 
-    const webhookResponse = await fetch(webhookData.webhook, {
+    console.log('Enviando áudio para webhook externo...');
+    const webhookResponse = await fetch(webhookUrl, {
       method: 'POST',
       body: webhookFormData,
     });
