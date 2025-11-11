@@ -87,8 +87,8 @@ export default function EditarFicha() {
 
         setFicha(fichaData);
 
-        // Se está processando e é ficha nova, inicia polling
-        if (fichaData.status === 'pendente' && isNewFicha) {
+        // Se está processando, inicia monitoramento via Realtime
+        if (fichaData.status === 'pendente') {
           setIsProcessing(true);
         }
 
