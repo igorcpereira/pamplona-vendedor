@@ -37,9 +37,10 @@ async function processWebhookInBackground(
     webhookFormData.append('image', file)
     webhookFormData.append('ficha_id', fichaId)
 
-    // Envia para o webhook com timeout de 30s
+    // Envia para o webhook com timeout de 2 minutos (120s)
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
+    const timeoutId = setTimeout(() => controller.abort(), 120000)
+    console.log('Timeout configurado: 120 segundos (2 minutos)')
 
     try {
       const webhookResponse = await fetch(webhooks.webhook, {
@@ -55,46 +56,139 @@ async function processWebhookInBackground(
       }
 
       const webhookData = await webhookResponse.json()
-      console.log('Resposta do webhook recebida (background):', webhookData)
+      console.log('Resposta completa do webhook:', JSON.stringify(webhookData, null, 2))
 
       // Webhook retorna array, extrair primeiro elemento
       const resultado = Array.isArray(webhookData) ? webhookData[0] : webhookData
+      console.log('Resultado extraído:', JSON.stringify(resultado, null, 2))
 
       if (resultado.sucesso === true) {
-        console.log('Webhook processou com sucesso, atualizando ficha...')
+        console.log('Webhook processou com sucesso, preparando dados para atualização...')
         
         const updateData: any = {
-          status: 'processado',
           updated_at: new Date().toISOString()
         }
         
-        // Dados básicos
-        if (resultado.numero_ficha) updateData.codigo_ficha = resultado.numero_ficha
-        if (resultado.cliente_nome) updateData.nome_cliente = resultado.cliente_nome
+        const camposIgnorados: string[] = []
+        
+        // Dados básicos - verificação robusta contra null/undefined/vazio
+        if (resultado.numero_ficha != null && resultado.numero_ficha !== '') {
+          updateData.codigo_ficha = resultado.numero_ficha
+        } else {
+          camposIgnorados.push('codigo_ficha')
+        }
+        
+        if (resultado.cliente_nome != null && resultado.cliente_nome !== '') {
+          updateData.nome_cliente = resultado.cliente_nome
+        } else {
+          camposIgnorados.push('nome_cliente')
+        }
         
         // Telefone: manter sem formatação no banco
-        if (resultado.cliente_telefone) updateData.telefone_cliente = resultado.cliente_telefone
+        if (resultado.cliente_telefone != null && resultado.cliente_telefone !== '') {
+          updateData.telefone_cliente = resultado.cliente_telefone
+        } else {
+          camposIgnorados.push('telefone_cliente')
+        }
         
         // Tipo: normalizar para primeira letra maiúscula
-        if (resultado.tipo) {
+        if (resultado.tipo != null && resultado.tipo !== '') {
           const tipoNormalizado = resultado.tipo.toLowerCase()
           updateData.tipo = tipoNormalizado.charAt(0).toUpperCase() + tipoNormalizado.slice(1)
+        } else {
+          camposIgnorados.push('tipo')
         }
         
         // Datas
-        if (resultado.data_retirada) updateData.data_retirada = resultado.data_retirada
-        if (resultado.data_devolucao) updateData.data_devolucao = resultado.data_devolucao
-        if (resultado.data_evento) updateData.data_festa = resultado.data_evento
+        if (resultado.data_retirada != null && resultado.data_retirada !== '') {
+          updateData.data_retirada = resultado.data_retirada
+        } else {
+          camposIgnorados.push('data_retirada')
+        }
+        
+        if (resultado.data_devolucao != null && resultado.data_devolucao !== '') {
+          updateData.data_devolucao = resultado.data_devolucao
+        } else {
+          camposIgnorados.push('data_devolucao')
+        }
+        
+        if (resultado.data_evento != null && resultado.data_evento !== '') {
+          updateData.data_festa = resultado.data_evento
+        } else {
+          camposIgnorados.push('data_festa')
+        }
         
         // Peças: extrair descrições
-        if (resultado.paleto?.descricao) updateData.paleto = resultado.paleto.descricao
-        if (resultado.calca?.descricao) updateData.calca = resultado.calca.descricao
-        if (resultado.camisa?.descricao) updateData.camisa = resultado.camisa.descricao
+        if (resultado.paleto?.descricao != null && resultado.paleto.descricao !== '') {
+          updateData.paleto = resultado.paleto.descricao
+        } else {
+          camposIgnorados.push('paleto')
+        }
         
-        // Valores: usar apenas rodape.valor
-        if (resultado.rodape?.sapato) updateData.sapato = resultado.rodape.sapato
-        if (resultado.rodape?.valor) updateData.valor = parseFloat(resultado.rodape.valor)
-        if (resultado.rodape?.garantia) updateData.garantia = parseFloat(resultado.rodape.garantia)
+        if (resultado.calca?.descricao != null && resultado.calca.descricao !== '') {
+          updateData.calca = resultado.calca.descricao
+        } else {
+          camposIgnorados.push('calca')
+        }
+        
+        if (resultado.camisa?.descricao != null && resultado.camisa.descricao !== '') {
+          updateData.camisa = resultado.camisa.descricao
+        } else {
+          camposIgnorados.push('camisa')
+        }
+        
+        // Valores: usar apenas rodape.valor com validação numérica
+        if (resultado.rodape?.sapato != null && resultado.rodape.sapato !== '') {
+          updateData.sapato = resultado.rodape.sapato
+        } else {
+          camposIgnorados.push('sapato')
+        }
+        
+        if (resultado.rodape?.valor != null && resultado.rodape.valor !== '') {
+          const valorParsed = parseFloat(resultado.rodape.valor)
+          if (!isNaN(valorParsed)) {
+            updateData.valor = valorParsed
+          } else {
+            console.warn('Valor inválido recebido:', resultado.rodape.valor)
+            camposIgnorados.push('valor (inválido)')
+          }
+        } else {
+          camposIgnorados.push('valor')
+        }
+        
+        if (resultado.rodape?.garantia != null && resultado.rodape.garantia !== '') {
+          const garantiaParsed = parseFloat(resultado.rodape.garantia)
+          if (!isNaN(garantiaParsed)) {
+            updateData.garantia = garantiaParsed
+          } else {
+            console.warn('Garantia inválida recebida:', resultado.rodape.garantia)
+            camposIgnorados.push('garantia (inválido)')
+          }
+        } else {
+          camposIgnorados.push('garantia')
+        }
+        
+        // Log de campos ignorados
+        if (camposIgnorados.length > 0) {
+          console.log('Campos ignorados (null/vazio):', camposIgnorados.join(', '))
+        }
+        
+        // Validação de sucesso mínimo: pelo menos codigo_ficha OU nome_cliente devem estar presentes
+        const temDadosEssenciais = updateData.codigo_ficha || updateData.nome_cliente
+        
+        if (!temDadosEssenciais) {
+          console.error('ERRO: Webhook não retornou dados essenciais (codigo_ficha ou nome_cliente)')
+          await supabaseClient
+            .from('fichas')
+            .update({ status: 'erro' })
+            .eq('id', fichaId)
+          return
+        }
+        
+        // Define status como processado
+        updateData.status = 'processado'
+        
+        console.log('Dados finais para atualização:', JSON.stringify(updateData, null, 2))
         
         // Atualizar ficha
         const { error: updateError } = await supabaseClient
