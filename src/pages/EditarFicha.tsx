@@ -208,21 +208,27 @@ export default function EditarFicha() {
           }));
           
           // Detectar término do processamento
-          if (fichaAtualizada.status !== 'pendente') {
+          // Se campos essenciais foram preenchidos, o processamento terminou
+          const foiProcessado = fichaAtualizada.codigo_ficha || fichaAtualizada.nome_cliente;
+          
+          if (isProcessing && foiProcessado) {
             setIsProcessing(false);
             
-            if (fichaAtualizada.status === 'erro') {
-              toast({
-                title: "Erro ao processar",
-                description: "Não foi possível processar a imagem. Você pode preencher manualmente.",
-                variant: "destructive"
-              });
-            } else {
-              toast({
-                title: "Processamento concluído",
-                description: "Campos preenchidos automaticamente. Você pode editá-los antes de salvar.",
-              });
-            }
+            toast({
+              title: "Processamento concluído",
+              description: "Campos preenchidos automaticamente. Você pode editá-los antes de salvar.",
+            });
+          }
+          
+          // Detectar erro apenas se status for explicitamente 'erro'
+          if (fichaAtualizada.status === 'erro') {
+            setIsProcessing(false);
+            
+            toast({
+              title: "Erro ao processar",
+              description: "Não foi possível processar a imagem. Você pode preencher manualmente.",
+              variant: "destructive"
+            });
           }
         }
       )
