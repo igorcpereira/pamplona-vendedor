@@ -88,8 +88,8 @@ export default function EditarFicha() {
 
         setFicha(fichaData);
 
-        // Se está processando, inicia monitoramento via Realtime
-        if (fichaData.status === 'pendente') {
+        // Ativar processamento apenas se não tem codigo_ficha E status é pendente
+        if (!fichaData.codigo_ficha && fichaData.status === 'pendente') {
           setIsProcessing(true);
         }
 
@@ -185,6 +185,21 @@ export default function EditarFicha() {
           }
           
           const fichaAtualizada = payload.new;
+          const codigoAnterior = ficha?.codigo_ficha; // Valor anterior
+          const codigoNovo = fichaAtualizada.codigo_ficha; // Valor novo
+          
+          // Detectar processamento concluído: codigo_ficha mudou de null/undefined para um valor
+          if (!codigoAnterior && codigoNovo) {
+            console.log('✅ Processamento detectado: codigo_ficha preenchido');
+            setIsProcessing(false);
+            setWasProcessed(true);
+            
+            // Remove a mensagem de sucesso após 5 segundos
+            setTimeout(() => {
+              setWasProcessed(false);
+            }, 5000);
+          }
+          
           setFicha(fichaAtualizada);
           
           // Atualizar formData apenas com campos do webhook
@@ -207,20 +222,6 @@ export default function EditarFicha() {
             pago: fichaAtualizada.pago ?? prev.pago,
             observacoes_cliente: prev.observacoes_cliente || fichaAtualizada.transcricao_audio || "",
           }));
-          
-          // Detectar término do processamento
-          // Se campos essenciais foram preenchidos, o processamento terminou
-          const foiProcessado = fichaAtualizada.codigo_ficha || fichaAtualizada.nome_cliente;
-          
-          if (isProcessing && foiProcessado) {
-            setIsProcessing(false);
-            setWasProcessed(true);
-            
-            // Remove a mensagem de sucesso após 5 segundos
-            setTimeout(() => {
-              setWasProcessed(false);
-            }, 5000);
-          }
           
           // Detectar erro apenas se status for explicitamente 'erro'
           if (fichaAtualizada.status === 'erro') {
