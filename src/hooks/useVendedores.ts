@@ -48,8 +48,8 @@ export const useVendedores = () => {
           id,
           nome,
           unidade_id,
-          unidades(nome),
-          user_roles(role)
+          unidades!inner(nome),
+          user_roles!inner(role)
         `);
 
       // Se não for gestor, master ou admin, filtrar por unidade
