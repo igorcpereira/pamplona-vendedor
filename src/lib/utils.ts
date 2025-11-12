@@ -42,3 +42,28 @@ export function formatarTelefone(telefone?: string): string {
   // Se não bater formato esperado, retorna como está
   return telefone;
 }
+
+// Converte string de data "yyyy-MM-dd" para Date object sem problemas de timezone
+// Garante que a data exibida seja exatamente a mesma salva no banco
+export function parseDataSemFuso(dataString?: string): Date | undefined {
+  if (!dataString) return undefined;
+  
+  // Se for formato yyyy-MM-dd, cria Date com hora local (não UTC)
+  const [ano, mes, dia] = dataString.split('-').map(Number);
+  if (ano && mes && dia) {
+    return new Date(ano, mes - 1, dia); // mes-1 porque JS começa em 0
+  }
+  
+  return undefined;
+}
+
+// Formata Date para string "yyyy-MM-dd" sem problemas de timezone
+export function formatarDataParaBanco(data?: Date): string | null {
+  if (!data) return null;
+  
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  
+  return `${ano}-${mes}-${dia}`;
+}
