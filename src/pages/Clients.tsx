@@ -12,16 +12,31 @@ import { formatarTelefone } from "@/lib/utils";
 const Clients = () => {
   const navigate = useNavigate();
   const { data: clientes = [], isLoading: loading } = useClientes();
-  const [filtroNome, setFiltroNome] = useState("");
+  const [termoBusca, setTermoBusca] = useState("");
 
   const handleClienteClick = (cliente: any) => {
     navigate(`/cliente/${cliente.id}`);
   };
 
-  // Filtrar clientes por nome
-  const clientesFiltrados = clientes.filter(cliente => 
-    cliente.nome.toLowerCase().includes(filtroNome.toLowerCase())
-  );
+  // Filtrar clientes por nome, telefone ou ficha
+  const clientesFiltrados = clientes.filter(cliente => {
+    const termo = termoBusca.toLowerCase().trim();
+    if (!termo) return true;
+    
+    // Buscar no nome
+    const nomeMatch = cliente.nome.toLowerCase().includes(termo);
+    
+    // Buscar no telefone (remover formatação)
+    const telefoneRaw = cliente.telefone?.replace(/\D/g, '') || '';
+    const telefoneMatch = telefoneRaw.includes(termo.replace(/\D/g, ''));
+    
+    // Buscar nos códigos das fichas
+    const fichasMatch = (cliente as any).fichas?.some((ficha: any) => 
+      ficha.codigo_ficha?.toString().toLowerCase().includes(termo)
+    ) || false;
+    
+    return nomeMatch || telefoneMatch || fichasMatch;
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
@@ -60,9 +75,9 @@ const Clients = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Filtrar por nome..."
-                value={filtroNome}
-                onChange={(e) => setFiltroNome(e.target.value)}
+                placeholder="Buscar por nome, telefone ou ficha..."
+                value={termoBusca}
+                onChange={(e) => setTermoBusca(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -71,7 +86,7 @@ const Clients = () => {
             {clientesFiltrados.length === 0 ? (
               <div className="bg-card rounded-2xl p-12 text-center shadow-sm">
                 <p className="text-muted-foreground text-sm">
-                  Nenhum cliente encontrado com esse nome.
+                  Nenhum resultado encontrado.
                 </p>
               </div>
             ) : (
