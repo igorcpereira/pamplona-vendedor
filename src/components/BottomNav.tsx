@@ -27,7 +27,7 @@ const BottomNav = () => {
               className={cn(
                 "flex flex-col items-center gap-1 py-2 px-4 rounded-lg transition-all",
                 isActive 
-                  ? "text-primary" 
+                  ? "text-primary bg-primary/10 border border-primary/20" 
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )}
             >

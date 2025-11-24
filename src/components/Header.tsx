@@ -31,8 +31,7 @@ const Header = ({
   return <header className="bg-card border-b border-border sticky top-0 z-50">
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-3">
-          
-          <h1 className="text-lg font-semibold text-foreground">Flavio Pamplona Alfaiataria</h1>
+          <h1 className="text-lg font-semibold text-foreground">{title}</h1>
         </div>
         
         <DropdownMenu>
