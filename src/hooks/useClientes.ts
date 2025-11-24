@@ -12,7 +12,10 @@ export const useClientes = () => {
 
       const { data, error } = await supabase
         .from('clientes')
-        .select('*')
+        .select(`
+          *,
+          fichas (codigo_ficha)
+        `)
         .eq('vendedor_id', user.id)
         .order('created_at', { ascending: false });
       

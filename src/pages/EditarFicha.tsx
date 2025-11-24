@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, parseDataSemFuso, formatarDataParaBanco } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -134,9 +134,9 @@ export default function EditarFicha() {
           tipo: fichaData.tipo || "Aluguel",
           status: fichaData.status || "pendente",
           vendedor_responsavel: vendedorNome,
-          data_retirada: fichaData.data_retirada ? new Date(fichaData.data_retirada) : undefined,
-          data_devolucao: fichaData.data_devolucao ? new Date(fichaData.data_devolucao) : undefined,
-          data_festa: fichaData.data_festa ? new Date(fichaData.data_festa) : undefined,
+          data_retirada: parseDataSemFuso(fichaData.data_retirada),
+          data_devolucao: parseDataSemFuso(fichaData.data_devolucao),
+          data_festa: parseDataSemFuso(fichaData.data_festa),
           valor: fichaData.valor?.toString() || "",
           garantia: fichaData.garantia?.toString() || "",
           paleto: fichaData.paleto || "",
@@ -356,9 +356,9 @@ export default function EditarFicha() {
         codigo_ficha: formData.codigo_ficha || null,
         tipo: formData.tipo || null,
         vendedor_responsavel: formData.vendedor_responsavel || null,
-        data_retirada: formData.data_retirada ? format(formData.data_retirada, "yyyy-MM-dd") : null,
-        data_devolucao: formData.data_devolucao ? format(formData.data_devolucao, "yyyy-MM-dd") : null,
-        data_festa: formData.data_festa ? format(formData.data_festa, "yyyy-MM-dd") : null,
+        data_retirada: formatarDataParaBanco(formData.data_retirada),
+        data_devolucao: formatarDataParaBanco(formData.data_devolucao),
+        data_festa: formatarDataParaBanco(formData.data_festa),
         valor: formData.valor ? parseFloat(formData.valor.toString()) : null,
         garantia: formData.garantia ? parseFloat(formData.garantia.toString()) : null,
         paleto: formData.paleto || null,
