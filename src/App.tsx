@@ -13,6 +13,7 @@ import Clients from "./pages/Clients";
 import ClienteDetalhes from "./pages/ClienteDetalhes";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import TesteEnvio from "./pages/TesteEnvio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -86,6 +87,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teste-de-envio"
+            element={
+              <ProtectedRoute>
+                <TesteEnvio />
               </ProtectedRoute>
             }
           />

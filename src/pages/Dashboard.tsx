@@ -46,7 +46,7 @@ const Dashboard = () => {
 
       <main className="px-4 py-6 max-w-md mx-auto space-y-6 relative z-10">
         {/* Welcome Section */}
-        <div className="bg-card rounded-2xl p-6 shadow-sm">
+        <div className="bg-card rounded-lg p-6 shadow-sm">
           <h2 className="text-2xl font-bold text-foreground mb-2">
             Bem-vindo(a), {nomeVendedor}!
           </h2>

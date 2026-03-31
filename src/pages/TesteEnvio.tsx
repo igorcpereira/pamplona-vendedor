@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Edit, X, Check, RefreshCw } from "lucide-react";
+import { Camera, Upload, Edit, X, Check, RefreshCw, Clock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 import logoJRP from "@/assets/logo-jrp.png";
 
-const NewRegistration = () => {
+const TesteEnvio = () => {
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -20,23 +20,45 @@ const NewRegistration = () => {
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [currentFichaId, setCurrentFichaId] = useState<string | null>(null);
+
+  interface FichaStats {
+    id: string;
+    codigo_ficha: string | null;
+    nome_cliente: string | null;
+    tempo_processamento: number | null;
+    created_at: string;
+  }
+  const [ultimasFichas, setUltimasFichas] = useState<FichaStats[]>([]);
+
+  const carregarUltimasFichas = async () => {
+    const { data } = await supabase
+      .from("fichas")
+      .select("id, codigo_ficha, nome_cliente, tempo_processamento, created_at")
+      .not("tempo_processamento", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (data) setUltimasFichas(data);
+  };
+
+  useEffect(() => {
+    carregarUltimasFichas();
+  }, []);
 
   const sendImageToWebhook = async (file: File) => {
     try {
       setIsUploading(true);
 
-      console.log('Enviando imagem para Edge Function...');
+      console.log('Enviando imagem para processar-ficha-v2...');
 
       const user = (await supabase.auth.getUser()).data.user;
-      
+
       const formData = new FormData();
       formData.append('image', file);
       formData.append('user_id', user?.id || '');
 
-      // Chama a Edge Function
-      const { data, error } = await supabase.functions.invoke('processar-ficha', {
+      const { data, error } = await supabase.functions.invoke('processar-ficha-v2', {
         body: formData,
       });
 
@@ -48,14 +70,13 @@ const NewRegistration = () => {
       console.log('Edge Function resposta:', data);
 
       if (data.ficha_id) {
-        // Navega IMEDIATAMENTE para EditarFicha
-        // O processamento do webhook continua em background
         toast.success("Ficha criada! Aguardando processamento...");
+        setTimeout(carregarUltimasFichas, 35000);
         navigate(`/editar-ficha/${data.ficha_id}`, {
-          state: { 
+          state: {
             imageFile: file,
-            isNewFicha: true 
-          }
+            isNewFicha: true,
+          },
         });
       } else {
         throw new Error(data.error || 'Erro ao criar ficha no banco');
@@ -72,18 +93,17 @@ const NewRegistration = () => {
 
   const reenviarImagem = async () => {
     if (!currentFichaId) return;
-    
+
     try {
       setShowErrorDialog(false);
       toast.info("Reenviando imagem...");
-      
-      // Navega para EditarFicha com flag de reprocessamento
+
       navigate(`/editar-ficha/${currentFichaId}`, {
-        state: { 
-          isReprocessing: true 
-        }
+        state: {
+          isReprocessing: true,
+        },
       });
-      
+
     } catch (error) {
       console.error('Erro ao reenviar imagem:', error);
       toast.error("Erro ao reenviar imagem");
@@ -92,16 +112,14 @@ const NewRegistration = () => {
   };
 
   const handleNovaFoto = () => {
-    // Exclui a ficha com erro
     if (currentFichaId) {
       supabase.from('fichas').delete().eq('id', currentFichaId);
     }
-    
+
     setShowErrorDialog(false);
     setCurrentFichaId(null);
     setSelectedFile(null);
-    
-    // Permite nova captura
+
     cameraInputRef.current?.click();
   };
 
@@ -128,13 +146,12 @@ const NewRegistration = () => {
 
   const handleCancelSend = async () => {
     setShowConfirmDialog(false);
-    
-    // Se já criou uma ficha, excluir
+
     if (currentFichaId) {
       await supabase.from('fichas').delete().eq('id', currentFichaId);
       setCurrentFichaId(null);
     }
-    
+
     setSelectedFile(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -152,33 +169,40 @@ const NewRegistration = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
-      <Header title="Novo Pré-Cadastro" />
-      
+      <Header title="Teste de Envio (v2)" />
+
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
-        <img 
-          src={logoJRP} 
-          alt="JRP Logo" 
+        <img
+          src={logoJRP}
+          alt="JRP Logo"
           className="w-96 h-96 object-contain"
         />
       </div>
-      
+
       <main className="px-4 py-6 max-w-md mx-auto relative z-10">
         <div className="bg-card rounded-lg p-8 shadow-sm">
+          {/* Badge de identificação */}
+          <div className="flex justify-center mb-4">
+            <span className="bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded tracking-wide">
+              AMBIENTE DE TESTE — v2 (OpenAI direto)
+            </span>
+          </div>
+
           {/* Camera Icon Area */}
           <div className="flex justify-center mb-6">
-            <div className="w-32 h-32 rounded-lg border-2 border-dashed border-primary/40 dark:border-primary/70 bg-accent/30 dark:bg-primary/10 flex items-center justify-center">
-              <Camera className="w-16 h-16 text-primary/60 dark:text-primary/90" />
+            <div className="w-32 h-32 rounded-lg border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center">
+              <Camera className="w-16 h-16 text-amber-500" />
             </div>
           </div>
 
           {/* Title and Description */}
           <div className="text-center mb-8">
             <h2 className="text-xl font-semibold text-foreground mb-2">
-              Capturar Ficha de Atendimento
+              [TESTE] Capturar Ficha de Atendimento
             </h2>
             <p className="text-muted-foreground text-sm">
-              Tire uma foto da ficha ou carregue uma imagem da sua galeria.
+              Versão de teste com OCR direto via OpenAI. Tire uma foto ou carregue uma imagem.
             </p>
           </div>
 
@@ -187,20 +211,19 @@ const NewRegistration = () => {
             <Button
               onClick={handleCameraClick}
               disabled={isUploading}
-              className="w-full h-12 bg-gradient-to-r from-primary to-primary/90 hover:shadow-lg transition-all"
+              className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-lg transition-all text-white"
             >
               <Camera className="w-5 h-5 mr-2" />
-              {isUploading ? "Enviando..." : "Tirar Foto"}
+              {isUploading ? "Enviando [teste]..." : "[Teste] Tirar Foto"}
             </Button>
 
             <Button
               onClick={handleUploadClick}
               disabled={isUploading}
-              variant="secondary"
-              className="w-full h-12 bg-gradient-to-r from-secondary to-secondary/90 hover:shadow-lg transition-all"
+              className="w-full h-12 bg-gradient-to-r from-amber-100 to-amber-200 hover:from-amber-200 hover:to-amber-300 hover:shadow-lg transition-all text-amber-800 border border-amber-300"
             >
               <Upload className="w-5 h-5 mr-2" />
-              Carregar Imagem
+              [Teste] Carregar Imagem
             </Button>
           </div>
 
@@ -215,9 +238,9 @@ const NewRegistration = () => {
           </div>
 
           {/* Manual Registration Link */}
-          <button className="w-full py-3 text-primary hover:text-accent transition-colors flex items-center justify-center gap-2 font-semibold">
+          <button className="w-full py-3 text-amber-600 hover:text-amber-800 transition-colors flex items-center justify-center gap-2 font-semibold">
             <Edit className="w-4 h-4" />
-            <span className="font-medium">Cadastrar Manualmente</span>
+            <span className="font-medium">[Teste] Cadastrar Manualmente</span>
           </button>
 
           {/* Hidden File Inputs */}
@@ -315,10 +338,47 @@ const NewRegistration = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      {ultimasFichas.length > 0 && (
+        <div className="px-4 pb-4 max-w-md mx-auto relative z-10">
+          <div className="bg-card rounded-lg p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 text-amber-500" />
+              <h3 className="text-sm font-semibold text-foreground">Últimas fichas processadas</h3>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              {ultimasFichas.map((f) => (
+                <div key={f.id} className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground truncate max-w-[60%]">
+                    {f.codigo_ficha
+                      ? `#${f.codigo_ficha}`
+                      : f.nome_cliente
+                      ? f.nome_cliente
+                      : f.id.slice(0, 8)}
+                  </span>
+                  <span className="font-mono font-medium text-amber-600">
+                    {f.tempo_processamento}s
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-border pt-3 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Média de processamento</span>
+              <span className="font-mono font-bold text-amber-600">
+                {Math.round(
+                  ultimasFichas.reduce((acc, f) => acc + (f.tempo_processamento ?? 0), 0) /
+                    ultimasFichas.length
+                )}s
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <BottomNav />
     </div>
   );
 };
 
-export default NewRegistration;
+export default TesteEnvio;

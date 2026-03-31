@@ -53,11 +53,11 @@ const Clients = () => {
       
       <main className="px-4 py-6 max-w-md mx-auto relative z-10">
         {loading ? (
-          <div className="bg-card rounded-2xl p-12 text-center shadow-sm">
+          <div className="bg-card rounded-lg p-12 text-center shadow-sm">
             <p className="text-muted-foreground">Carregando...</p>
           </div>
         ) : clientes.length === 0 ? (
-          <div className="bg-card rounded-2xl p-12 text-center shadow-sm">
+          <div className="bg-card rounded-lg p-12 text-center shadow-sm">
             <div className="w-16 h-16 rounded-full bg-accent mx-auto mb-4 flex items-center justify-center">
               <Users className="w-8 h-8 text-primary" />
             </div>
@@ -84,7 +84,7 @@ const Clients = () => {
 
             {/* Lista de clientes filtrados */}
             {clientesFiltrados.length === 0 ? (
-              <div className="bg-card rounded-2xl p-12 text-center shadow-sm">
+              <div className="bg-card rounded-lg p-12 text-center shadow-sm">
                 <p className="text-muted-foreground text-sm">
                   Nenhum resultado encontrado.
                 </p>

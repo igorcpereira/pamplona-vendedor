@@ -1,10 +1,11 @@
-import { Camera, User, LogOut, Settings } from "lucide-react";
+import { User, LogOut, Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
+import { useTheme } from "@/hooks/useTheme";
 
 interface HeaderProps {
   title: string;
@@ -13,11 +14,9 @@ interface HeaderProps {
 const Header = ({
   title
 }: HeaderProps) => {
-  const {
-    user,
-    signOut
-  } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { isDark, toggle } = useTheme();
   const [nomeUsuario, setNomeUsuario] = useState<string>('Vendedor');
 
   useEffect(() => {
@@ -37,6 +36,16 @@ const Header = ({
       <div className="flex items-center gap-3">
         <h1 className="text-lg font-semibold text-primary-foreground">Flavio Pamplona Alfaiataria</h1>
       </div>
+
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggle}
+          className="w-10 h-10 rounded-full text-primary-foreground hover:bg-primary-foreground/10"
+        >
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -61,6 +70,7 @@ const Header = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </div>
   </header>;
 };

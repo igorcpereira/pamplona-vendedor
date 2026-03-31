@@ -16,7 +16,6 @@ export const useClientes = () => {
           *,
           fichas (codigo_ficha)
         `)
-        .eq('vendedor_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;

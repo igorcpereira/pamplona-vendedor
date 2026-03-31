@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.notificar-ficha-whatsapp]
 verify_jwt = false
+
+[functions.processar-ficha-v2]
+verify_jwt = false

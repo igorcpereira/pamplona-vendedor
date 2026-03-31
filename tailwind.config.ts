@@ -14,31 +14,8 @@ export default {
   	},
   	extend: {
   		fontFamily: {
-  			playfair: [
-  				'Playfair Display',
-  				'serif'
-  			],
-  			inter: [
-  				'Inter',
-  				'sans-serif'
-  			],
-  			sans: [
-  				'ui-sans-serif',
-  				'system-ui',
-  				'sans-serif',
-  				'Apple Color Emoji',
-  				'Segoe UI Emoji',
-  				'Segoe UI Symbol',
-  				'Noto Color Emoji'
-  			],
-  			serif: [
-  				'ui-serif',
-  				'Georgia',
-  				'Cambria',
-  				'Times New Roman',
-  				'Times',
-  				'serif'
-  			],
+  			sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+  			display: ['Cinzel', 'serif'],
   			mono: [
   				'ui-monospace',
   				'SFMono-Regular',
@@ -72,6 +49,10 @@ export default {
   				DEFAULT: 'hsl(var(--success))',
   				foreground: 'hsl(var(--success-foreground))'
   			},
+  			warning: {
+  				DEFAULT: 'hsl(var(--warning))',
+  				foreground: 'hsl(var(--warning-foreground))'
+  			},
   			muted: {
   				DEFAULT: 'hsl(var(--muted))',
   				foreground: 'hsl(var(--muted-foreground))'
@@ -87,6 +68,12 @@ export default {
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
+  			},
+  			brand: {
+  				ouro: 'hsl(var(--primary))',
+  				nogueira: 'hsl(var(--secondary))',
+  				pedra: 'hsl(var(--foreground))',
+  				meianoite: 'hsl(var(--background))'
   			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
