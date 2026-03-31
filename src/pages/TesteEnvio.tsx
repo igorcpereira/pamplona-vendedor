@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-import logoJRP from "@/assets/logo-jrp.png";
+import Logo from "@/components/Logo";
 
 const TesteEnvio = () => {
   const navigate = useNavigate();
@@ -173,11 +173,7 @@ const TesteEnvio = () => {
 
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
-        <img
-          src={logoJRP}
-          alt="JRP Logo"
-          className="w-96 h-96 object-contain"
-        />
+        <Logo className="w-96 h-96 object-contain" />
       </div>
 
       <main className="px-4 py-6 max-w-md mx-auto relative z-10">

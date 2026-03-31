@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Camera, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import logoJRP from '@/assets/logo-jrp.png';
+import Logo from '@/components/Logo';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -153,7 +153,7 @@ const Profile = () => {
     <div className="min-h-screen bg-background relative">
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
-        <img src={logoJRP} alt="JRP Logo" className="w-96 h-96 object-contain" />
+        <Logo className="w-96 h-96 object-contain" />
       </div>
 
       <div className="relative z-10">

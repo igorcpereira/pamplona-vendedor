@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { capitalizarNome } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
-import logoJRP from "@/assets/logo-jrp.png";
+import Logo from "@/components/Logo";
 interface ProcessingCard {
   id: string;
   timestamp: string;
@@ -290,11 +290,7 @@ const PreCadastro = () => {
       
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
-        <img 
-          src={logoJRP} 
-          alt="JRP Logo" 
-          className="w-96 h-96 object-contain"
-        />
+        <Logo className="w-96 h-96 object-contain" />
       </div>
       
       <main className="flex-1 p-4 pb-20 relative z-10">

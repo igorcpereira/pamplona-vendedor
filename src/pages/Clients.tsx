@@ -5,7 +5,7 @@ import BottomNav from "@/components/BottomNav";
 import { Users, Phone, ChevronRight, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import logoJRP from "@/assets/logo-jrp.png";
+import Logo from "@/components/Logo";
 import { useClientes } from "@/hooks/useClientes";
 import { formatarTelefone } from "@/lib/utils";
 
@@ -44,11 +44,7 @@ const Clients = () => {
       
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
-        <img 
-          src={logoJRP} 
-          alt="JRP Logo" 
-          className="w-96 h-96 object-contain"
-        />
+        <Logo className="w-96 h-96 object-contain" />
       </div>
       
       <main className="px-4 py-6 max-w-md mx-auto relative z-10">
