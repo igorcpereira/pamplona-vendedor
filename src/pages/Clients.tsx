@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { Users, Phone, ChevronRight, Search } from "lucide-react";
+import { Users, Phone, ChevronRight, Search, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
@@ -11,94 +11,101 @@ import { formatarTelefone } from "@/lib/utils";
 
 const Clients = () => {
   const navigate = useNavigate();
-  const { data: clientes = [], isLoading: loading } = useClientes();
   const [termoBusca, setTermoBusca] = useState("");
+  const [debouncedTermo, setDebouncedTermo] = useState("");
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const handleClienteClick = (cliente: any) => {
-    navigate(`/cliente/${cliente.id}`);
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedTermo(termoBusca), 400);
+    return () => clearTimeout(timer);
+  }, [termoBusca]);
 
-  // Filtrar clientes por nome, telefone ou ficha
-  const clientesFiltrados = clientes.filter(cliente => {
-    const termo = termoBusca.toLowerCase().trim();
-    if (!termo) return true;
-    
-    // Buscar no nome
-    const nomeMatch = cliente.nome.toLowerCase().includes(termo);
-    
-    // Buscar no telefone (remover formatação)
-    const telefoneRaw = cliente.telefone?.replace(/\D/g, '') || '';
-    const telefoneMatch = telefoneRaw.includes(termo.replace(/\D/g, ''));
-    
-    // Buscar nos códigos das fichas
-    const fichasMatch = (cliente as any).fichas?.some((ficha: any) => 
-      ficha.codigo_ficha?.toString().toLowerCase().includes(termo)
-    ) || false;
-    
-    return nomeMatch || telefoneMatch || fichasMatch;
-  });
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useClientes(debouncedTermo);
+
+  const clientes = data?.pages.flat() ?? [];
+
+  // IntersectionObserver: carrega próxima página quando o sentinel entra na tela
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(handleObserver, { threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleObserver]);
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Clientes" />
-      
+
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
         <Logo className="w-96 h-96 object-contain" />
       </div>
-      
-      <main className="px-4 py-6 max-w-md mx-auto relative z-10">
-        {loading ? (
+
+      <main className="px-4 py-6 max-w-md mx-auto relative z-10 space-y-4">
+
+        {/* Campo de busca — sempre visível */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Buscar por nome ou telefone..."
+            value={termoBusca}
+            onChange={(e) => setTermoBusca(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        {/* Estados */}
+        {isLoading ? (
           <div className="bg-card rounded-lg p-12 text-center shadow-sm">
-            <p className="text-muted-foreground">Carregando...</p>
+            <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
           </div>
         ) : clientes.length === 0 ? (
           <div className="bg-card rounded-lg p-12 text-center shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-accent mx-auto mb-4 flex items-center justify-center">
-              <Users className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="text-lg font-semibold text-foreground mb-2">
-              Nenhum cliente cadastrado
-            </h2>
-            <p className="text-muted-foreground text-sm">
-              Os clientes aparecerão aqui após o primeiro cadastro.
-            </p>
+            {termoBusca ? (
+              <p className="text-muted-foreground text-sm">Nenhum resultado encontrado.</p>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-accent mx-auto mb-4 flex items-center justify-center">
+                  <Users className="w-8 h-8 text-primary" />
+                </div>
+                <h2 className="text-lg font-semibold text-foreground mb-2">
+                  Nenhum cliente cadastrado
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Os clientes aparecerão aqui após o primeiro cadastro.
+                </p>
+              </>
+            )}
           </div>
         ) : (
-          <div className="space-y-4">
-            {/* Campo de filtro */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Buscar por nome, telefone ou ficha..."
-                value={termoBusca}
-                onChange={(e) => setTermoBusca(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-
-            {/* Lista de clientes filtrados */}
-            {clientesFiltrados.length === 0 ? (
-              <div className="bg-card rounded-lg p-12 text-center shadow-sm">
-                <p className="text-muted-foreground text-sm">
-                  Nenhum resultado encontrado.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {clientesFiltrados.map((cliente) => (
-              <Card 
-                key={cliente.id} 
+          <div className="space-y-3">
+            {clientes.map((cliente) => (
+              <Card
+                key={cliente.id}
                 className="hover:shadow-md transition-all cursor-pointer active:scale-95"
-                onClick={() => handleClienteClick(cliente)}
+                onClick={() => navigate(`/cliente/${cliente.id}`)}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">
-                        {cliente.nome}
-                      </p>
+                      <p className="font-semibold text-sm truncate">{cliente.nome}</p>
                       {cliente.telefone && (
                         <div className="flex items-center gap-1 mt-1 text-muted-foreground">
                           <Phone className="w-3 h-3" />
@@ -114,10 +121,16 @@ const Clients = () => {
                 </CardContent>
               </Card>
             ))}
-              </div>
-            )}
+
+            {/* Sentinel + indicador de carregamento */}
+            <div ref={sentinelRef} className="py-2 flex justify-center">
+              {isFetchingNextPage && (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              )}
+            </div>
           </div>
         )}
+
       </main>
 
       <BottomNav />

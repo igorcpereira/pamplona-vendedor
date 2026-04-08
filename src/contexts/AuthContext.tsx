@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadUserData = useCallback(async (userId: string) => {
     const [profileResult, vinculosResult] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
+      supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
       supabase.from('usuario_unidade_role').select('*, unidades(*)').eq('user_id', userId),
     ]);
 
@@ -66,14 +66,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        if (session?.user) {
-          await loadUserData(session.user.id);
-        } else {
-          setProfile(null);
-          setVinculos([]);
-          setActiveUnidade(null);
+        try {
+          if (session?.user) {
+            await loadUserData(session.user.id);
+          } else {
+            setProfile(null);
+            setVinculos([]);
+            setActiveUnidade(null);
+          }
+        } finally {
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
@@ -81,10 +84,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await loadUserData(session.user.id);
+      try {
+        if (session?.user) {
+          await loadUserData(session.user.id);
+        }
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

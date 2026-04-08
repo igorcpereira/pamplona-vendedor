@@ -1,4 +1,4 @@
-import { Home, Users, Plus, ClipboardList, FlaskConical } from "lucide-react";
+import { Home, Users, Plus, ClipboardList } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useFichas } from "@/hooks/useFichas";
@@ -16,7 +16,6 @@ const BottomNav = () => {
     { icon: Users, label: "Clientes", path: "/clientes" },
     { icon: ClipboardList, label: "Fichas", path: "/pre-cadastro" },
     { icon: Plus, label: "Novo", path: "/novo" },
-    { icon: FlaskConical, label: "Teste v2", path: "/teste-de-envio" },
   ];
 
   return (
