@@ -104,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!vinculo) return;
     localStorage.setItem(`active_unidade_${user.id}`, String(unidadeId));
     setActiveUnidade({ unidade: vinculo.unidades, role: vinculo.role });
+    await supabase.from("profiles").update({ unidade_id: unidadeId }).eq("id", user.id);
   }
 
   async function signIn(email: string, password: string) {

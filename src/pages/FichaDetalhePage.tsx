@@ -107,14 +107,15 @@ export default function FichaDetalhePage() {
     const updated = payload.new;
     queryClient.setQueryData<Ficha>(["ficha", id], updated);
 
-    if (updated.status === "pendente") {
-      setOcrStatus(updated.ocr_tentativa === 2 ? "retry" : "processing");
-    } else if (updated.status === "erro") {
+    if (updated.status === "erro") {
       setOcrStatus("error");
       toast.error("OCR falhou. Tire uma nova foto ou preencha manualmente.");
-    } else if (updated.status === "ativa" || updated.ocr_tentativa != null) {
+    } else if (updated.tempo_processamento != null) {
+      // OCR completed successfully — tempo_processamento is set only on success
       setOcrStatus("done");
       toast.success("Dados extraídos com sucesso!");
+    } else if (updated.status === "pendente") {
+      setOcrStatus(updated.ocr_tentativa === 2 ? "retry" : "processing");
     }
   }, [id, queryClient]);
 
@@ -157,9 +158,10 @@ export default function FichaDetalhePage() {
 
       const payload = {
         ficha_id: id,
+        user_id: user.id,
         nome_cliente: form.nome_cliente,
         telefone_cliente: form.telefone_cliente,
-        numero_ficha: form.codigo_ficha,
+        codigo_ficha: form.codigo_ficha,
         tipo: form.tipo,
         data_retirada: form.data_retirada || null,
         data_devolucao: form.data_devolucao || null,

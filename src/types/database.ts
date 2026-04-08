@@ -81,7 +81,7 @@ export interface Database {
           id: string;
           nome: string | null;
           avatar_url: string | null;
-          unidade_id: string | null;
+          unidade_id: number | null;
           ativo: boolean | null;
           role: string | null;
           created_at: string;
