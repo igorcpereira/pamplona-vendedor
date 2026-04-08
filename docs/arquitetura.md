@@ -7,7 +7,7 @@
 | **Frontend** | React + Vite + TypeScript | SPA mobile-first |
 | **Estilização** | Tailwind CSS + shadcn/ui | Design system |
 | **Backend** | Supabase | Auth, banco, storage, edge functions |
-| **OCR** | OpenAI gpt-4.5 (Chat Completions) | Leitura de fichas manuscritas |
+| **OCR** | OpenAI gpt-5.4 (Chat Completions) | Leitura de fichas manuscritas |
 | **Notificação** | Evolution API | Envio de imagens via WhatsApp |
 
 ---

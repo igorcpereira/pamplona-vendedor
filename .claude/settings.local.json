@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Supabase__execute_sql",
+      "Bash(npx supabase:*)",
+      "mcp__claude_ai_Supabase__get_project_url",
+      "mcp__claude_ai_Supabase__get_edge_function",
+      "Bash(echo \"exit: $?\")"
+    ]
+  }
+}

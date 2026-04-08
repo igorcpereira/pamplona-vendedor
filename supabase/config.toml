@@ -1,13 +1,16 @@
 project_id = "pukcbqfjzswqmjkhwzfk"
 
-[functions.processar-ficha]
-verify_jwt = false
-
-[functions.transcrever-audio]
+[functions.processar-ficha-v2]
 verify_jwt = false
 
 [functions.notificar-ficha-whatsapp]
 verify_jwt = false
 
-[functions.processar-ficha-v2]
+[functions.transcrever-audio]
+verify_jwt = false
+
+[functions.salvar-ficha]
+verify_jwt = false
+
+[functions.criar-cliente]
 verify_jwt = false
