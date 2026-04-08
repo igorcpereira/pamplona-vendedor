@@ -1,48 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
-import type { Cliente } from "@/types/database";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-export function useClientes(search?: string) {
-  const { activeUnidade } = useAuth();
+export const useClientes = () => {
+  const { user } = useAuth();
 
-  return useQuery<Cliente[]>({
-    queryKey: ["clientes", activeUnidade?.unidade.id, search],
+  return useQuery({
+    queryKey: ['clientes', user?.id],
     queryFn: async () => {
-      let q = supabase
-        .from("clientes")
-        .select("*")
-        .order("nome", { ascending: true });
+      if (!user?.id) return [];
 
-      if (activeUnidade) {
-        q = q.eq("unidade_id", activeUnidade.unidade.id);
-      }
-
-      if (search && search.length >= 2) {
-        q = q.ilike("nome", `%${search}%`);
-      }
-
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!activeUnidade,
-  });
-}
-
-export function useCliente(id: string | undefined) {
-  return useQuery<Cliente | null>({
-    queryKey: ["cliente", id],
-    queryFn: async () => {
-      if (!id) return null;
       const { data, error } = await supabase
-        .from("clientes")
-        .select("*")
-        .eq("id", id)
-        .single();
+        .from('clientes')
+        .select(`
+          *,
+          fichas (codigo_ficha)
+        `)
+        .order('created_at', { ascending: false });
+      
       if (error) throw error;
-      return data;
+      return data || [];
     },
-    enabled: !!id,
+    enabled: !!user?.id,
+    refetchOnMount: 'always', // Sempre busca novos dados ao montar o componente
+    refetchOnWindowFocus: true, // Busca ao focar na janela
   });
-}
+};

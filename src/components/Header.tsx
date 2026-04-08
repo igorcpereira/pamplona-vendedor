@@ -1,62 +1,78 @@
-import { Sun, Moon, LogOut, ChevronDown } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { User, LogOut, Settings, Sun, Moon } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { useTheme } from "@/hooks/useTheme";
 
 interface HeaderProps {
-  title?: string;
+  title: string;
 }
 
-export default function Header({ title }: HeaderProps) {
-  const { theme, toggleTheme } = useTheme();
-  const { activeUnidade, signOut } = useAuth();
+const Header = ({
+  title
+}: HeaderProps) => {
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { isDark, toggle } = useTheme();
+  const [nomeUsuario, setNomeUsuario] = useState<string>('Vendedor');
 
-  async function handleSignOut() {
-    await signOut();
-    navigate("/login");
-    toast.success("Até logo!");
-  }
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('nome').eq('id', user.id).single().then(({
+        data
+      }) => {
+        if (data?.nome) {
+          setNomeUsuario(data.nome);
+        }
+      });
+    }
+  }, [user]);
 
-  return (
-    <header className="sticky top-0 z-50 bg-primary py-3 px-4 flex items-center justify-between">
-      <div className="flex flex-col">
-        <span className="text-lg font-semibold text-primary-foreground leading-tight">
-          {title ?? "Pamplona"}
-        </span>
-        {activeUnidade && (
-          <button
-            onClick={() => navigate("/select-unidade")}
-            className="flex items-center gap-0.5 text-xs text-primary-foreground/70 hover:text-primary-foreground transition-colors"
-          >
-            {activeUnidade.unidade.nome}
-            <ChevronDown className="w-3 h-3" />
-          </button>
-        )}
+  return <header className="bg-primary border-b border-primary-foreground/10 sticky top-0 z-50">
+    <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center gap-3">
+        <h1 className="text-lg font-semibold text-primary-foreground">Flavio Pamplona Alfaiataria</h1>
       </div>
 
       <div className="flex items-center gap-1">
-        <button
-          onClick={toggleTheme}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary-foreground/10 transition-colors"
-          aria-label="Alternar tema"
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggle}
+          className="w-10 h-10 rounded-full text-primary-foreground hover:bg-primary-foreground/10"
         >
-          {theme === "dark" ? (
-            <Sun className="w-5 h-5 text-primary-foreground" />
-          ) : (
-            <Moon className="w-5 h-5 text-primary-foreground" />
-          )}
-        </button>
+          {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+        </Button>
 
-        <button
-          onClick={handleSignOut}
-          className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary-foreground/10 transition-colors"
-          aria-label="Sair"
-        >
-          <LogOut className="w-5 h-5 text-primary-foreground" />
-        </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" className="w-10 h-10 rounded-full text-primary-foreground hover:bg-primary-foreground/10">
+            <User className="w-5 h-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <div className="px-2 py-1.5 text-sm font-medium">
+            {nomeUsuario}
+          </div>
+          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+            {user?.email}
+          </div>
+          <DropdownMenuItem onClick={() => navigate('/perfil')} className="cursor-pointer">
+            <Settings className="w-4 h-4 mr-2" />
+            Editar Perfil
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+            <LogOut className="w-4 h-4 mr-2" />
+            Sair
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       </div>
-    </header>
-  );
-}
+    </div>
+  </header>;
+};
+
+export default Header;

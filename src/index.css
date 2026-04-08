@@ -4,8 +4,9 @@
 
 @layer base {
   :root {
-    --background: 36 20% 95%;
-    --foreground: 223 39% 7%;
+    /* LIGHT MODE - Linho, Papel e Luz Natural */
+    --background: 36 20% 95%;         /* #F5F2EB - Bege muito claro */
+    --foreground: 223 39% 7%;         /* #0B0F19 - Azul Quase Preto */
 
     --card: 0 0% 100%;
     --card-foreground: 223 39% 7%;
@@ -13,46 +14,38 @@
     --popover: 0 0% 100%;
     --popover-foreground: 223 39% 7%;
 
-    --primary: 40 47% 56%;
+    --primary: 40 47% 56%;            /* #C5A059 - Ouro Bronze */
     --primary-foreground: 223 39% 7%;
 
-    --secondary: 25 33% 18%;
+    --secondary: 25 33% 18%;          /* #3D2B1F - Marrom Nogueira */
     --secondary-foreground: 36 20% 95%;
 
     --muted: 36 15% 90%;
-    --muted-foreground: 215 16% 47%;
+    --muted-foreground: 215 16% 47%;  /* Cinza Alfaiate */
 
-    --accent: 40 47% 56%;
+    --accent: 36 15% 90%;
     --accent-foreground: 223 39% 7%;
 
-    --destructive: 0 50% 36%;
+    --destructive: 0 50% 36%;         /* #8B2E2E - Vermelho Vinho */
     --destructive-foreground: 36 20% 95%;
 
-    --success: 142 33% 27%;
+    --success: 142 33% 27%;           /* #2E5C3E - Verde Musgo */
     --success-foreground: 36 20% 95%;
 
-    --warning: 32 54% 45%;
-    --warning-foreground: 223 39% 7%;
+    --warning: 32 54% 45%;            /* #B07D35 - Ouro Envelhecido */
+    --warning-foreground: 36 20% 95%;
 
     --border: 36 15% 85%;
     --input: 36 15% 85%;
     --ring: 40 47% 56%;
 
-    --radius: 3px;
-
-    --sidebar-background: 36 20% 95%;
-    --sidebar-foreground: 223 39% 7%;
-    --sidebar-primary: 40 47% 56%;
-    --sidebar-primary-foreground: 223 39% 7%;
-    --sidebar-accent: 36 15% 90%;
-    --sidebar-accent-foreground: 223 39% 7%;
-    --sidebar-border: 36 15% 85%;
-    --sidebar-ring: 40 47% 56%;
+    --radius: 0.1875rem; /* 3px */
   }
 
   .dark {
-    --background: 223 39% 7%;
-    --foreground: 36 15% 88%;
+    /* DARK MODE - Ambiente noturno da loja */
+    --background: 223 39% 7%;         /* #0B0F19 - Azul Meia-Noite */
+    --foreground: 36 15% 88%;         /* #E6E2DD - Bege Pedra Rústica */
 
     --card: 222 47% 11%;
     --card-foreground: 36 15% 88%;
@@ -60,17 +53,17 @@
     --popover: 222 47% 11%;
     --popover-foreground: 36 15% 88%;
 
-    --primary: 40 47% 56%;
+    --primary: 40 47% 56%;            /* Ouro Bronze */
     --primary-foreground: 223 39% 7%;
 
-    --secondary: 25 33% 18%;
+    --secondary: 25 33% 18%;          /* Marrom Nogueira */
     --secondary-foreground: 36 15% 88%;
 
     --muted: 223 47% 15%;
     --muted-foreground: 215 20% 65%;
 
-    --accent: 40 47% 56%;
-    --accent-foreground: 223 39% 7%;
+    --accent: 25 33% 18%;
+    --accent-foreground: 36 15% 88%;
 
     --destructive: 0 45% 40%;
     --destructive-foreground: 36 15% 88%;
@@ -79,20 +72,11 @@
     --success-foreground: 36 15% 88%;
 
     --warning: 32 45% 50%;
-    --warning-foreground: 223 39% 7%;
+    --warning-foreground: 36 15% 88%;
 
     --border: 223 47% 15%;
     --input: 223 47% 15%;
     --ring: 40 47% 56%;
-
-    --sidebar-background: 223 39% 7%;
-    --sidebar-foreground: 36 15% 88%;
-    --sidebar-primary: 40 47% 56%;
-    --sidebar-primary-foreground: 223 39% 7%;
-    --sidebar-accent: 223 47% 15%;
-    --sidebar-accent-foreground: 36 15% 88%;
-    --sidebar-border: 223 47% 15%;
-    --sidebar-ring: 40 47% 56%;
   }
 }
 
@@ -103,11 +87,10 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  h1, h2 {
-    @apply font-display;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-medium tracking-wide;
   }
 }

@@ -1,30 +1,29 @@
-import { Navigate } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2 } from 'lucide-react';
 
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireUnidade?: boolean;
-}
+export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
-export default function ProtectedRoute({
-  children,
-  requireUnidade = false,
-}: ProtectedRouteProps) {
-  const { user, loading, activeUnidade, vinculos } = useAuth();
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate('/auth');
+    }
+  }, [user, loading, navigate]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
-
-  if (requireUnidade && !activeUnidade && vinculos.length > 0) {
-    return <Navigate to="/select-unidade" replace />;
+  if (!user) {
+    return null;
   }
 
   return <>{children}</>;
-}
+};

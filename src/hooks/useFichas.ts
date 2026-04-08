@@ -1,44 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
-import type { Ficha } from "@/types/database";
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-export function useFichas() {
-  const { activeUnidade } = useAuth();
+export const useFichas = (limit?: number) => {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
-  return useQuery<Ficha[]>({
-    queryKey: ["fichas", activeUnidade?.unidade.id],
+  return useQuery({
+    queryKey: ['fichas', user?.id, limit],
     queryFn: async () => {
-      let q = supabase
-        .from("fichas")
-        .select("*")
-        .order("created_at", { ascending: false });
+      if (!user?.id) return [];
 
-      if (activeUnidade) {
-        q = q.eq("unidade_id", activeUnidade.unidade.id);
+      let query = supabase
+        .from('fichas')
+        .select('*')
+        .eq('vendedor_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (limit) {
+        query = query.range(0, limit - 1);
       }
 
-      const { data, error } = await q;
+      const { data, error } = await query;
+      
       if (error) throw error;
-      return data ?? [];
+      return data || [];
     },
-    enabled: !!activeUnidade,
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: false,
   });
-}
+};
 
-export function useFicha(id: string | undefined) {
-  return useQuery<Ficha | null>({
-    queryKey: ["ficha", id],
-    queryFn: async () => {
-      if (!id) return null;
-      const { data, error } = await supabase
-        .from("fichas")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!id,
-  });
-}
+export const useInvalidateFichas = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['fichas', user?.id] });
+  };
+};

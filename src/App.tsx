@@ -1,94 +1,110 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "@/components/ui/toaster";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { Toaster } from "sonner";
-import ProtectedRoute from "@/components/ProtectedRoute";
-import LoginPage from "@/pages/LoginPage";
-import SelectUnidadePage from "@/pages/SelectUnidadePage";
-import DashboardPage from "@/pages/DashboardPage";
-import CriarFichaPage from "@/pages/CriarFichaPage";
-import FichaDetalhePage from "@/pages/FichaDetalhePage";
-import ClientesPage from "@/pages/ClientesPage";
-import ClienteDetalhePage from "@/pages/ClienteDetalhePage";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Dashboard from "./pages/Dashboard";
+import NewRegistration from "./pages/NewRegistration";
+import PreCadastro from "./pages/PreCadastro";
+import EditarFicha from "./pages/EditarFicha";
+import Clients from "./pages/Clients";
+import ClienteDetalhes from "./pages/ClienteDetalhes";
+import Auth from "./pages/Auth";
+import Profile from "./pages/Profile";
+import TesteEnvio from "./pages/TesteEnvio";
+import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 1000 * 60, retry: 1 },
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
   },
 });
 
-export default function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
         <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route
-                path="/select-unidade"
-                element={
-                  <ProtectedRoute>
-                    <SelectUnidadePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute requireUnidade>
-                    <DashboardPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/fichas/nova"
-                element={
-                  <ProtectedRoute requireUnidade>
-                    <CriarFichaPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/fichas/:id"
-                element={
-                  <ProtectedRoute requireUnidade>
-                    <FichaDetalhePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/clientes"
-                element={
-                  <ProtectedRoute requireUnidade>
-                    <ClientesPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/clientes/:id"
-                element={
-                  <ProtectedRoute requireUnidade>
-                    <ClienteDetalhePage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-          <Toaster
-            position="top-center"
-            toastOptions={{
-              classNames: {
-                toast: "bg-card text-card-foreground border border-border shadow-lg",
-                error: "border-destructive",
-                success: "border-success",
-              },
-            }}
+        <Routes>
+          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
           />
+          <Route
+            path="/novo"
+            element={
+              <ProtectedRoute>
+                <NewRegistration />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pre-cadastro"
+            element={
+              <ProtectedRoute>
+                <PreCadastro />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editar-ficha/:id"
+            element={
+              <ProtectedRoute>
+                <EditarFicha />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clientes"
+            element={
+              <ProtectedRoute>
+                <Clients />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cliente/:id"
+            element={
+              <ProtectedRoute>
+                <ClienteDetalhes />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teste-de-envio"
+            element={
+              <ProtectedRoute>
+                <TesteEnvio />
+              </ProtectedRoute>
+            }
+          />
+          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
         </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  );
-}
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
+
+export default App;

@@ -1,20 +1,21 @@
-import { useTheme } from "@/contexts/ThemeContext";
-import { cn } from "@/lib/utils";
+import logoEscuro from "@/assets/logo-jrp.png";
+import logoClaro from "@/assets/logo-claro.png";
+import { useTheme } from "@/hooks/useTheme";
 
 interface LogoProps {
   className?: string;
+  alt?: string;
 }
 
-export default function Logo({ className }: LogoProps) {
-  const { theme } = useTheme();
-
-  const src = theme === "dark" ? "/logo_claro.png" : "/logo_jrp.png";
-
+const Logo = ({ className, alt = "JRP Logo" }: LogoProps) => {
+  const { isDark } = useTheme();
   return (
     <img
-      src={src}
-      alt="Pamplona Alfaiataria"
-      className={cn("object-contain", className)}
+      src={isDark ? logoClaro : logoEscuro}
+      alt={alt}
+      className={className}
     />
   );
-}
+};
+
+export default Logo;
