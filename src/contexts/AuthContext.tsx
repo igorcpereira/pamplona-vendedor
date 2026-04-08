@@ -61,26 +61,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // Configurar listener PRIMEIRO
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        try {
-          if (session?.user) {
-            await loadUserData(session.user.id);
-          } else {
-            setProfile(null);
-            setVinculos([]);
-            setActiveUnidade(null);
-          }
-        } finally {
-          setLoading(false);
-        }
-      }
-    );
-
-    // DEPOIS verificar sessão existente
+    // getSession() lê o localStorage de forma confiável e define o estado inicial.
+    // É a única fonte que chama setLoading(false), evitando race condition com
+    // o INITIAL_SESSION do onAuthStateChange (que pode chegar com null mesmo
+    // havendo sessão válida no storage).
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -92,6 +76,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
       }
     });
+
+    // onAuthStateChange cuida apenas de mudanças posteriores (login, logout,
+    // refresh de token). Ignora INITIAL_SESSION — já tratado pelo getSession.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'INITIAL_SESSION') return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          await loadUserData(session.user.id);
+        } else {
+          setProfile(null);
+          setVinculos([]);
+          setActiveUnidade(null);
+        }
+      }
+    );
 
     return () => subscription.unsubscribe();
   }, [loadUserData]);

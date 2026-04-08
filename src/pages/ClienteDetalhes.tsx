@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDataSemFuso } from "@/lib/utils";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 
@@ -268,21 +269,21 @@ export default function ClienteDetalhes() {
                             <div className="flex items-center gap-2 text-xs">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
                               <span className="text-muted-foreground">Retirada:</span>
-                              <span className="font-medium">{format(new Date(ficha.data_retirada), "dd/MM/yyyy", { locale: ptBR })}</span>
+                              <span className="font-medium">{format(parseDataSemFuso(ficha.data_retirada)!, "dd/MM/yyyy", { locale: ptBR })}</span>
                             </div>
                           )}
                           {ficha.data_devolucao && (
                             <div className="flex items-center gap-2 text-xs">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
                               <span className="text-muted-foreground">Devolução:</span>
-                              <span className="font-medium">{format(new Date(ficha.data_devolucao), "dd/MM/yyyy", { locale: ptBR })}</span>
+                              <span className="font-medium">{format(parseDataSemFuso(ficha.data_devolucao)!, "dd/MM/yyyy", { locale: ptBR })}</span>
                             </div>
                           )}
                           {ficha.data_festa && (
                             <div className="flex items-center gap-2 text-xs">
                               <Calendar className="w-3 h-3 text-muted-foreground" />
                               <span className="text-muted-foreground">Festa:</span>
-                              <span className="font-medium">{format(new Date(ficha.data_festa), "dd/MM/yyyy", { locale: ptBR })}</span>
+                              <span className="font-medium">{format(parseDataSemFuso(ficha.data_festa)!, "dd/MM/yyyy", { locale: ptBR })}</span>
                             </div>
                           )}
                         </div>

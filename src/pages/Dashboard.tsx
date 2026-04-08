@@ -1,37 +1,19 @@
-import { Camera, ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import Logo from "@/components/Logo";
 import { useFichas } from "@/hooks/useFichas";
 import { Card } from "@/components/ui/card";
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [nomeVendedor, setNomeVendedor] = useState<string>('Vendedor(a)');
+  const { profile } = useAuth();
   const { data: fichas = [] } = useFichas();
-  
-  const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
 
-  useEffect(() => {
-    if (user) {
-      supabase
-        .from('profiles')
-        .select('nome')
-        .eq('id', user.id)
-        .single()
-        .then(({ data }) => {
-          if (data?.nome) {
-            setNomeVendedor(data.nome);
-          }
-        });
-    }
-  }, [user]);
+  const nomeVendedor = profile?.nome || 'Vendedor(a)';
+  const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
   return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Início" />
       

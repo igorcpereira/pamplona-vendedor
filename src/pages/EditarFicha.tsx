@@ -23,7 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { useVendedores } from "@/hooks/useVendedores";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function EditarFicha() {
@@ -32,12 +31,12 @@ export default function EditarFicha() {
   const location = useLocation();
   const { user, profile } = useAuth();
   const { imageFile, isNewFicha, isReprocessing, cliente_id } = location.state || {};
-  const { data: vendedores = [], isLoading: isLoadingVendedores } = useVendedores();
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
   const [ficha, setFicha] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [wasProcessed, setWasProcessed] = useState(false);
@@ -47,9 +46,8 @@ export default function EditarFicha() {
     nome_cliente: "",
     telefone_cliente: "",
     codigo_ficha: "",
-    tipo: "Aluguel",
+    tipo: "aluguel",
     status: "pendente",
-    vendedor_responsavel: "",
     data_retirada: undefined as Date | undefined,
     data_devolucao: undefined as Date | undefined,
     data_festa: undefined as Date | undefined,
@@ -112,28 +110,13 @@ export default function EditarFicha() {
           }
         }
 
-        // Buscar nome do usuário logado para pré-selecionar
-        let vendedorNome = "";
-        if (fichaData.vendedor_responsavel) {
-          vendedorNome = fichaData.vendedor_responsavel;
-        } else if (user?.id) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('nome')
-            .eq('id', user.id)
-            .single();
-          
-          vendedorNome = profile?.nome || "";
-        }
-
         setFormData(prev => ({
           ...prev,
           nome_cliente: fichaData.nome_cliente || "",
           telefone_cliente: fichaData.telefone_cliente || "",
           codigo_ficha: fichaData.codigo_ficha || "",
-          tipo: fichaData.tipo || "Aluguel",
+          tipo: fichaData.tipo || "aluguel",
           status: fichaData.status || "pendente",
-          vendedor_responsavel: vendedorNome,
           data_retirada: parseDataSemFuso(fichaData.data_retirada),
           data_devolucao: parseDataSemFuso(fichaData.data_devolucao),
           data_festa: parseDataSemFuso(fichaData.data_festa),
@@ -210,9 +193,9 @@ export default function EditarFicha() {
             codigo_ficha: fichaAtualizada.codigo_ficha || prev.codigo_ficha,
             tipo: fichaAtualizada.tipo || prev.tipo,
             status: fichaAtualizada.status || prev.status,
-            data_retirada: fichaAtualizada.data_retirada ? new Date(fichaAtualizada.data_retirada) : prev.data_retirada,
-            data_devolucao: fichaAtualizada.data_devolucao ? new Date(fichaAtualizada.data_devolucao) : prev.data_devolucao,
-            data_festa: fichaAtualizada.data_festa ? new Date(fichaAtualizada.data_festa) : prev.data_festa,
+            data_retirada: fichaAtualizada.data_retirada ? parseDataSemFuso(fichaAtualizada.data_retirada) : prev.data_retirada,
+            data_devolucao: fichaAtualizada.data_devolucao ? parseDataSemFuso(fichaAtualizada.data_devolucao) : prev.data_devolucao,
+            data_festa: fichaAtualizada.data_festa ? parseDataSemFuso(fichaAtualizada.data_festa) : prev.data_festa,
             valor: fichaAtualizada.valor?.toString() || prev.valor,
             garantia: fichaAtualizada.garantia?.toString() || prev.garantia,
             paleto: fichaAtualizada.paleto || prev.paleto,
@@ -356,7 +339,6 @@ export default function EditarFicha() {
         telefone_cliente: formData.telefone_cliente || null,
         codigo_ficha: formData.codigo_ficha || null,
         tipo: formData.tipo || null,
-        vendedor_responsavel: formData.vendedor_responsavel || null,
         data_retirada: formatarDataParaBanco(formData.data_retirada),
         data_devolucao: formatarDataParaBanco(formData.data_devolucao),
         data_festa: formatarDataParaBanco(formData.data_festa),
@@ -470,11 +452,24 @@ export default function EditarFicha() {
     setImageLoading(false);
   };
 
-  const handleOpenImageModal = () => {
-    console.log('🔍 Tentando carregar imagem:', ficha?.url_bucket);
+  const handleOpenImageModal = async () => {
+    if (!ficha?.url_bucket) return;
     setImageLoading(true);
     setImageError(null);
+    setSignedImageUrl(null);
     setShowImageModal(true);
+
+    const { data, error } = await supabase.storage
+      .from('fichas')
+      .createSignedUrl(ficha.url_bucket, 60);
+
+    if (error || !data?.signedUrl) {
+      setImageError('Não foi possível gerar o link da imagem.');
+      setImageLoading(false);
+      return;
+    }
+
+    setSignedImageUrl(data.signedUrl);
   };
 
   if (isLoadingFicha) {
@@ -579,7 +574,7 @@ export default function EditarFicha() {
             </TooltipProvider>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 [&_.border-input]:border-foreground/30">
             {/* Observações do Cliente */}
             <div className="space-y-4">
               <h3 className="text-base font-semibold">Observações do Cliente</h3>
@@ -655,25 +650,6 @@ export default function EditarFicha() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="vendedor_responsavel">Vendedor Responsável</Label>
-                    <Select 
-                      value={formData.vendedor_responsavel} 
-                      onValueChange={(value) => setFormData({ ...formData, vendedor_responsavel: value })}
-                      disabled={isLoadingVendedores}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={isLoadingVendedores ? "Carregando..." : "Selecione um vendedor"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {vendedores.map((vendedor) => (
-                          <SelectItem key={vendedor.id} value={vendedor.nome || ""}>
-                            {vendedor.nome} {vendedor.unidade_nome ? `(${vendedor.unidade_nome})` : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -695,9 +671,9 @@ export default function EditarFicha() {
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Aluguel">Aluguel</SelectItem>
-                        <SelectItem value="Venda">Venda</SelectItem>
-                        <SelectItem value="Ajuste">Ajuste</SelectItem>
+                        <SelectItem value="aluguel">Aluguel</SelectItem>
+                        <SelectItem value="venda">Venda</SelectItem>
+                        <SelectItem value="ajuste">Ajuste</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -937,9 +913,9 @@ export default function EditarFicha() {
                 <p className="text-destructive">{imageError}</p>
               </div>
             )}
-            {ficha?.url_bucket && (
+            {signedImageUrl && (
               <img
-                src={ficha.url_bucket}
+                src={signedImageUrl}
                 alt="Ficha Original"
                 className="max-w-full max-h-[80vh] object-contain"
                 onLoad={handleImageLoad}

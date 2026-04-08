@@ -23,6 +23,8 @@ const Clients = () => {
   const {
     data,
     isLoading,
+    isError,
+    error,
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
@@ -75,6 +77,11 @@ const Clients = () => {
         {isLoading ? (
           <div className="bg-card rounded-lg p-12 text-center shadow-sm">
             <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
+          </div>
+        ) : isError ? (
+          <div className="bg-card rounded-lg p-6 text-center shadow-sm">
+            <p className="text-destructive text-sm font-medium">Erro ao carregar clientes</p>
+            <p className="text-muted-foreground text-xs mt-1 break-all">{String(error)}</p>
           </div>
         ) : clientes.length === 0 ? (
           <div className="bg-card rounded-lg p-12 text-center shadow-sm">
