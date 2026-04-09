@@ -62,7 +62,8 @@ Deno.serve(async (req) => {
         slotData = 'prova3_data'
         slotVendedor = 'prova3_vendedor_id'
       } else {
-        return json({ error: 'max_provas_atingido' }, 409)
+        slotData = 'prova3_data'
+        slotVendedor = 'prova3_vendedor_id'
       }
 
       // Atualiza ficha_original com a prova
