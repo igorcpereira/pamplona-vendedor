@@ -32,13 +32,13 @@ const Dashboard = () => {
   const fichasDoMes = fichas.filter(f => f.created_at?.startsWith(mesAtual));
 
   const totalFichas = fichasDoMes.length;
-  const totalValor = fichasDoMes.reduce((acc, f) => acc + (f.valor ?? 0), 0);
+  const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
   const totalVenda = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'venda')
-    .reduce((acc, f) => acc + (f.valor ?? 0), 0);
+    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
   const totalAluguel = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'aluguel')
-    .reduce((acc, f) => acc + (f.valor ?? 0), 0);
+    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
 
   const { data: provasDoMes = [] } = useQuery({
     queryKey: ['provas-feitas', user?.id, mesAtual],
