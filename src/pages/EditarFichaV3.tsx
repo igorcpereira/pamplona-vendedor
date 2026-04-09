@@ -403,11 +403,14 @@ export default function EditarFichaV3() {
 
       if (error) throw error;
 
-      supabase.functions.invoke('notificar-ficha-whatsapp', {
-        body: { ficha_id: id }
-      }).catch(err => {
-        console.error('Erro ao enviar notificação WhatsApp:', err);
-      });
+      const isProva = ficha?.prova1_data || ficha?.prova2_data || ficha?.prova3_data;
+      if (!isProva) {
+        supabase.functions.invoke('notificar-ficha-whatsapp', {
+          body: { ficha_id: id }
+        }).catch(err => {
+          console.error('Erro ao enviar notificação WhatsApp:', err);
+        });
+      }
 
       if (clienteId && formData.tags.length > 0) {
         console.log('Salvando tags para cliente:', clienteId);
