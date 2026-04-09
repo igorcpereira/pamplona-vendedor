@@ -1,11 +1,13 @@
-import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays } from "lucide-react";
+import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 import { useFichas } from "@/hooks/useFichas";
 import { Card } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -17,7 +19,7 @@ const formatCurrency = (value: number) =>
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { data: fichas = [] } = useFichas();
 
   const nomeVendedor = profile?.nome || 'Vendedor(a)';
@@ -37,6 +39,27 @@ const Dashboard = () => {
   const totalAluguel = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'aluguel')
     .reduce((acc, f) => acc + (f.valor ?? 0), 0);
+
+  const { data: provasDoMes = [] } = useQuery({
+    queryKey: ['provas-feitas', user?.id, mesAtual],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data } = await supabase
+        .from('fichas')
+        .select('prova1_vendedor_id, prova1_data, prova2_vendedor_id, prova2_data, prova3_vendedor_id, prova3_data')
+        .or(`prova1_vendedor_id.eq.${user.id},prova2_vendedor_id.eq.${user.id},prova3_vendedor_id.eq.${user.id}`);
+      return data || [];
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const totalProvas = provasDoMes.reduce((acc, f) => {
+    return acc
+      + (f.prova1_vendedor_id === user?.id && f.prova1_data?.startsWith(mesAtual) ? 1 : 0)
+      + (f.prova2_vendedor_id === user?.id && f.prova2_data?.startsWith(mesAtual) ? 1 : 0)
+      + (f.prova3_vendedor_id === user?.id && f.prova3_data?.startsWith(mesAtual) ? 1 : 0);
+  }, 0);
 
   return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Início" />
@@ -96,10 +119,10 @@ const Dashboard = () => {
 
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Valor total</span>
+                <Scissors className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Provas feitas</span>
               </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(totalValor)}</p>
+              <p className="text-2xl font-bold text-foreground">{totalProvas}</p>
             </Card>
 
             <Card className="p-4">
@@ -116,6 +139,14 @@ const Dashboard = () => {
                 <span className="text-xs text-muted-foreground">Aluguéis</span>
               </div>
               <p className="text-xl font-bold text-foreground">{formatCurrency(totalAluguel)}</p>
+            </Card>
+
+            <Card className="p-4 col-span-2">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Valor total</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totalValor)}</p>
             </Card>
           </div>
         </div>

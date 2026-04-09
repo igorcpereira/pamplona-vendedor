@@ -25,7 +25,7 @@ interface FichaErro {
   created_at: string;
 }
 
-const NewRegistration = () => {
+const TesteDeVersao = () => {
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -98,7 +98,7 @@ const NewRegistration = () => {
     if (!currentFichaId) return;
     setShowErrorDialog(false);
     toast.info("Reenviando imagem...");
-    navigate(`/editar-ficha-v3/${currentFichaId}`, { state: { isReprocessing: true } });
+    navigate(`/editar-ficha/${currentFichaId}`, { state: { isReprocessing: true } });
   };
 
   const handleNovaFoto = () => {
@@ -163,20 +163,23 @@ const NewRegistration = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
-      <Header title="Novo Pré-Cadastro" />
+      <Header title="Teste de Versão" />
 
-      {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
         <Logo className="w-96 h-96 object-contain" />
       </div>
 
       <main className="px-4 py-6 max-w-md mx-auto relative z-10 space-y-4">
 
-        {/* Formulário de captura */}
-        <div className="bg-card rounded-lg p-8 shadow-sm">
+        {/* Banner de identificação */}
+        <div className="flex items-center justify-center gap-2 bg-amber-500/20 border border-amber-500/40 rounded-lg px-4 py-2">
+          <span className="text-xs font-bold tracking-widest text-amber-600 dark:text-amber-400 uppercase">⚠ Ambiente de Teste</span>
+        </div>
+
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400/60 dark:border-amber-500/40 rounded-lg p-8 shadow-sm">
           <div className="flex justify-center mb-6">
-            <div className="w-32 h-32 rounded-lg border-2 border-dashed border-primary/40 dark:border-primary/70 bg-accent/30 dark:bg-primary/10 flex items-center justify-center">
-              <Camera className="w-16 h-16 text-primary/60 dark:text-primary/90" />
+            <div className="w-32 h-32 rounded-lg border-2 border-dashed border-amber-400/60 dark:border-amber-500/60 bg-amber-100/50 dark:bg-amber-900/20 flex items-center justify-center">
+              <Camera className="w-16 h-16 text-amber-500/80 dark:text-amber-400/90" />
             </div>
           </div>
 
@@ -193,7 +196,7 @@ const NewRegistration = () => {
             <Button
               onClick={() => cameraInputRef.current?.click()}
               disabled={isUploading}
-              className="w-full h-12 bg-gradient-to-r from-primary to-primary/90 hover:shadow-lg transition-all"
+              className="w-full h-12 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white hover:shadow-lg transition-all"
             >
               <Camera className="w-5 h-5 mr-2" />
               {isUploading ? "Enviando..." : "Tirar Foto"}
@@ -202,8 +205,7 @@ const NewRegistration = () => {
             <Button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              variant="secondary"
-              className="w-full h-12 bg-gradient-to-r from-secondary to-secondary/90 hover:shadow-lg transition-all"
+              className="w-full h-12 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/40 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 hover:shadow-lg transition-all"
             >
               <Upload className="w-5 h-5 mr-2" />
               Carregar Imagem
@@ -224,14 +226,13 @@ const NewRegistration = () => {
             <span className="font-medium">Cadastrar Manualmente</span>
           </button>
 
-          <input ref={cameraInputRef} id="camera-input" name="camera-input" type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
-          <input ref={fileInputRef} id="file-input" name="file-input" type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+          <input ref={cameraInputRef} id="camera-input-teste" name="camera-input-teste" type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />
+          <input ref={fileInputRef} id="file-input-teste" name="file-input-teste" type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
         </div>
 
-        {/* Últimas fichas processadas */}
-        <div className="bg-card rounded-lg p-5 shadow-sm">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-400/40 dark:border-amber-500/30 rounded-lg p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-primary" />
+            <Clock className="w-4 h-4 text-amber-500" />
             <h3 className="text-sm font-semibold text-foreground">Últimas fichas processadas</h3>
           </div>
 
@@ -246,7 +247,7 @@ const NewRegistration = () => {
                       <span className="text-foreground truncate">{labelFicha(f)}</span>
                       <span className="text-xs text-muted-foreground">{formatarData(f.created_at)}</span>
                     </div>
-                    <span className="font-mono font-medium text-primary ml-4 shrink-0">
+                    <span className="font-mono font-medium text-amber-600 dark:text-amber-400 ml-4 shrink-0">
                       {f.tempo_processamento}s
                     </span>
                   </div>
@@ -255,14 +256,13 @@ const NewRegistration = () => {
 
               <div className="border-t border-border pt-3 flex items-center justify-between">
                 <span className="text-xs text-muted-foreground">Média de processamento</span>
-                <span className="font-mono font-bold text-primary">{media}s</span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{media}s</span>
               </div>
             </>
           )}
         </div>
 
-        {/* Erros recentes */}
-        <div className="bg-card rounded-lg p-5 shadow-sm">
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-400/40 dark:border-amber-500/30 rounded-lg p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle className="w-4 h-4 text-destructive" />
             <h3 className="text-sm font-semibold text-foreground">Erros recentes</h3>
@@ -284,7 +284,7 @@ const NewRegistration = () => {
                     <span className="text-xs text-muted-foreground">{formatarData(f.created_at)}</span>
                   </div>
                   <button
-                    onClick={() => navigate(`/editar-ficha-v3/${f.id}`)}
+                    onClick={() => navigate(`/editar-ficha/${f.id}`)}
                     className="ml-4 shrink-0 text-xs text-primary hover:underline"
                   >
                     ver
@@ -297,7 +297,6 @@ const NewRegistration = () => {
 
       </main>
 
-      {/* Dialogs */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -343,4 +342,4 @@ const NewRegistration = () => {
   );
 };
 
-export default NewRegistration;
+export default TesteDeVersao;

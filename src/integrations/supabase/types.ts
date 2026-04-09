@@ -136,6 +136,13 @@ export type Database = {
           valor_paleto: number | null
           vendedor_id: string | null
           vendedor_responsavel: string | null
+          ficha_original_id: string | null
+          prova1_data: string | null
+          prova1_vendedor_id: string | null
+          prova2_data: string | null
+          prova2_vendedor_id: string | null
+          prova3_data: string | null
+          prova3_vendedor_id: string | null
         }
         Insert: {
           calca?: string | null
@@ -176,6 +183,13 @@ export type Database = {
           valor_paleto?: number | null
           vendedor_id?: string | null
           vendedor_responsavel?: string | null
+          ficha_original_id?: string | null
+          prova1_data?: string | null
+          prova1_vendedor_id?: string | null
+          prova2_data?: string | null
+          prova2_vendedor_id?: string | null
+          prova3_data?: string | null
+          prova3_vendedor_id?: string | null
         }
         Update: {
           calca?: string | null
@@ -216,6 +230,13 @@ export type Database = {
           valor_paleto?: number | null
           vendedor_id?: string | null
           vendedor_responsavel?: string | null
+          ficha_original_id?: string | null
+          prova1_data?: string | null
+          prova1_vendedor_id?: string | null
+          prova2_data?: string | null
+          prova2_vendedor_id?: string | null
+          prova3_data?: string | null
+          prova3_vendedor_id?: string | null
         }
         Relationships: [
           {
@@ -314,7 +335,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string | null
-          role: Database["public"]["Enums"]["user_role"]
+          senha_temporaria: boolean
           unidade_id: number
           updated_at: string
         }
@@ -324,7 +345,7 @@ export type Database = {
           created_at?: string
           id: string
           nome?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          senha_temporaria?: boolean
           unidade_id: number
           updated_at?: string
         }
@@ -334,7 +355,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string | null
-          role?: Database["public"]["Enums"]["user_role"]
+          senha_temporaria?: boolean
           unidade_id?: number
           updated_at?: string
         }
@@ -464,28 +485,7 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      usuarios: {
+usuarios: {
         Row: {
           created_at: string
           funcao: string | null
@@ -599,7 +599,7 @@ export type Database = {
         | "master"
         | "admin"
         | "suporte"
-      status_ficha: "erro" | "pendente" | "ativa" | "baixa"
+      status_ficha: "erro" | "pendente" | "ativa" | "baixa" | "aguardando_prova"
       tipo_de_atendimento: "Aluguel" | "Venda" | "Ajuste"
       user_role: "Gestor" | "Franqueado" | "Vendedor"
     }

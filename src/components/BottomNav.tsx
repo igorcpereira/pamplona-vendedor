@@ -1,14 +1,17 @@
-import { Home, Users, Plus, ClipboardList } from "lucide-react";
+import { Home, Users, Plus, ClipboardList, FlaskConical } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useFichas } from "@/hooks/useFichas";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { vinculos } = useAuth();
   const { data: fichas = [] } = useFichas();
 
+  const isMaster = vinculos.some(v => v.role === 'master');
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
 
   const navItems = [
@@ -16,6 +19,7 @@ const BottomNav = () => {
     { icon: Users, label: "Clientes", path: "/clientes" },
     { icon: ClipboardList, label: "Fichas", path: "/pre-cadastro" },
     { icon: Plus, label: "Novo", path: "/novo" },
+    ...(isMaster ? [{ icon: FlaskConical, label: "Teste", path: "/teste-de-versao" }] : []),
   ];
 
   return (

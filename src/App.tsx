@@ -13,7 +13,11 @@ import Clients from "./pages/Clients";
 import ClienteDetalhes from "./pages/ClienteDetalhes";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile";
+import AlterarSenha from "./pages/AlterarSenha";
+import RedefinirSenha from "./pages/RedefinirSenha";
 import TesteEnvio from "./pages/TesteEnvio";
+import TesteDeVersao from "./pages/TesteDeVersao";
+import EditarFichaV3 from "./pages/EditarFichaV3";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -34,6 +38,15 @@ const App = () => (
         <AuthProvider>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+          <Route
+            path="/alterar-senha"
+            element={
+              <ProtectedRoute>
+                <AlterarSenha />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/"
             element={
@@ -95,6 +108,22 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <TesteEnvio />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teste-de-versao"
+            element={
+              <ProtectedRoute requiredRole="master">
+                <TesteDeVersao />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/editar-ficha-v3/:id"
+            element={
+              <ProtectedRoute>
+                <EditarFichaV3 />
               </ProtectedRoute>
             }
           />
