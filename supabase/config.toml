@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.criar-cliente]
 verify_jwt = true
+
+[functions.enviar-email-auth]
+verify_jwt = false

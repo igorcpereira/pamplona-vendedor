@@ -1,4 +1,4 @@
-import { User, LogOut, Settings, Sun, Moon } from "lucide-react";
+import { User, LogOut, Settings, Sun, Moon, Building2, ChevronDown } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/hooks/useTheme";
+import logoEscuro from "@/assets/logo-jrp.png";
 
 interface HeaderProps {
   title: string;
@@ -14,7 +15,7 @@ interface HeaderProps {
 const Header = ({
   title
 }: HeaderProps) => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, activeUnidade, vinculos, selectUnidade } = useAuth();
   const navigate = useNavigate();
   const { isDark, toggle } = useTheme();
   const [nomeUsuario, setNomeUsuario] = useState<string>('Vendedor');
@@ -34,7 +35,36 @@ const Header = ({
   return <header className="bg-primary border-b border-primary-foreground/10 sticky top-0 z-50">
     <div className="flex items-center justify-between px-4 py-3">
       <div className="flex items-center gap-3">
+        <img src={logoEscuro} alt="Logo" className="h-8 w-8 object-contain shrink-0" />
         <h1 className="text-lg font-semibold text-primary-foreground">Flavio Pamplona Alfaiataria</h1>
+        {vinculos.length > 1 && activeUnidade && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/10 gap-1.5 text-xs font-normal"
+              >
+                <Building2 className="w-3.5 h-3.5 shrink-0" />
+                {activeUnidade.unidade.nome}
+                <ChevronDown className="w-3 h-3 shrink-0 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {vinculos.map((v) => (
+                <DropdownMenuItem
+                  key={v.unidade_id}
+                  onClick={() => selectUnidade(v.unidade_id)}
+                  className={v.unidade_id === activeUnidade.unidade.id ? 'font-medium' : ''}
+                >
+                  <Building2 className="w-4 h-4 mr-2 opacity-60" />
+                  <span>{v.unidades.nome}</span>
+                  <span className="ml-2 text-xs text-muted-foreground capitalize">{v.role}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
       <div className="flex items-center gap-1">

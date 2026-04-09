@@ -12,93 +12,51 @@ interface Vendedor {
 }
 
 export const useVendedores = () => {
-  const { user } = useAuth();
+  const { user, activeUnidade } = useAuth();
 
   return useQuery({
-    queryKey: ['vendedores', user?.id],
+    queryKey: ['vendedores', user?.id, activeUnidade?.unidade.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id || !activeUnidade) return [];
 
-      // Buscar informações do usuário atual
-      const { data: currentUserProfile } = await supabase
-        .from('profiles')
-        .select('unidade_id')
-        .eq('id', user.id)
-        .single();
+      const isGlobal = ['master', 'admin'].includes(activeUnidade.role);
 
-      const { data: currentUserRole } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .single();
+      let vinculosQuery = supabase
+        .from('usuario_unidade_role')
+        .select('user_id, role, unidade_id, unidades(nome)')
+        .in('role', ['vendedor', 'franqueado', 'gestor']);
 
-      const userRole = currentUserRole?.role;
-      const userUnidade = currentUserProfile?.unidade_id;
-
-      // Buscar ID da unidade "Todas"
-      const { data: todasUnidade } = await supabase
-        .from('unidades')
-        .select('id')
-        .eq('nome', 'Todas')
-        .single();
-
-      let query = supabase
-        .from('profiles')
-        .select(`
-          id,
-          nome,
-          unidade_id,
-          unidades!inner(nome),
-          user_roles!inner(role)
-        `);
-
-      // Se não for gestor, master ou admin, filtrar por unidade
-      const isGestorOrAdmin = ['gestor', 'master', 'admin'].includes(userRole as string);
-      const hasTodasUnidade = userUnidade === todasUnidade?.id;
-      
-      if (!isGestorOrAdmin && !hasTodasUnidade) {
-        query = query.eq('unidade_id', userUnidade);
+      if (!isGlobal) {
+        vinculosQuery = vinculosQuery.eq('unidade_id', activeUnidade.unidade.id);
       }
 
-      const { data: profiles, error } = await query;
-      
-      if (error) {
-        console.error('Erro ao buscar vendedores:', error);
-        throw error;
-      }
+      const { data: vinculos, error: vinculosError } = await vinculosQuery;
 
-      // Mapear e filtrar apenas vendedores e franqueados
-      // Agora suporta múltiplas roles por usuário
-      const vendedores: Vendedor[] = (profiles || [])
-        .filter((p: any) => {
-          // Verificar se o usuário tem ALGUMA role de vendedor ou franqueado
-          const userRoles = p.user_roles || [];
-          return userRoles.some((ur: any) => 
-            ur.role === 'vendedor' || ur.role === 'franqueado'
-          );
-        })
-        .map((p: any) => {
-          // Obter a role "principal" (mais alta na hierarquia) para exibição
-          const userRoles = p.user_roles || [];
-          const roleHierarchy = ['gestor', 'master', 'admin', 'franqueado', 'vendedor'];
-          const principalRole = roleHierarchy.find((role: string) =>
-            userRoles.some((ur: any) => ur.role === role)
-          ) || 'vendedor';
-          
-          return {
-            id: p.id,
-            nome: p.nome || 'Sem nome',
-            email: '',
-            unidade_id: p.unidade_id,
-            unidade_nome: p.unidades?.nome || '',
-            role: principalRole,
-          };
-        });
+      if (vinculosError) throw vinculosError;
+      if (!vinculos || vinculos.length === 0) return [];
 
-      return vendedores;
+      const userIds = vinculos.map((v: any) => v.user_id);
+
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, nome')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+
+      return vinculos.map((v: any): Vendedor => ({
+        id: v.user_id,
+        nome: profileMap.get(v.user_id)?.nome || 'Sem nome',
+        email: '',
+        unidade_id: v.unidade_id,
+        unidade_nome: (v.unidades as any)?.nome || '',
+        role: v.role,
+      }));
     },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    enabled: !!user?.id && !!activeUnidade,
+    staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
 };
