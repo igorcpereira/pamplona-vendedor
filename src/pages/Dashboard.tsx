@@ -1,4 +1,4 @@
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -7,6 +7,14 @@ import Logo from "@/components/Logo";
 import { useFichas } from "@/hooks/useFichas";
 import { Card } from "@/components/ui/card";
 
+const MESES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -14,9 +22,25 @@ const Dashboard = () => {
 
   const nomeVendedor = profile?.nome || 'Vendedor(a)';
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
+
+  const agora = new Date();
+  const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  const nomeMes = MESES[agora.getMonth()];
+
+  const fichasDoMes = fichas.filter(f => f.created_at?.startsWith(mesAtual));
+
+  const totalFichas = fichasDoMes.length;
+  const totalValor = fichasDoMes.reduce((acc, f) => acc + (f.valor ?? 0), 0);
+  const totalVenda = fichasDoMes
+    .filter(f => f.tipo?.toLowerCase() === 'venda')
+    .reduce((acc, f) => acc + (f.valor ?? 0), 0);
+  const totalAluguel = fichasDoMes
+    .filter(f => f.tipo?.toLowerCase() === 'aluguel')
+    .reduce((acc, f) => acc + (f.valor ?? 0), 0);
+
   return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Início" />
-      
+
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
         <Logo className="w-96 h-96 object-contain" />
@@ -35,7 +59,7 @@ const Dashboard = () => {
 
         {/* Fichas Pendentes Alert */}
         {fichasPendentes > 0 && (
-          <Card 
+          <Card
             className="bg-destructive/10 border-destructive/20 p-4 cursor-pointer hover:bg-destructive/15 transition-colors"
             onClick={() => navigate('/pre-cadastro')}
           >
@@ -55,6 +79,46 @@ const Dashboard = () => {
             </div>
           </Card>
         )}
+
+        {/* Resumo do mês */}
+        <div>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Resumo de {nomeMes}
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Fichas lançadas</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{totalFichas}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Valor total</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totalValor)}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <ShoppingBag className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Vendas</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totalVenda)}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Aluguéis</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totalAluguel)}</p>
+            </Card>
+          </div>
+        </div>
       </main>
 
       <BottomNav />
