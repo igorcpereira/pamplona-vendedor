@@ -124,6 +124,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         if (session?.user) {
           await loadUserData(session.user.id);
+          // Registra abertura do app (fire-and-forget)
+          supabase.from('profiles').update({ ultimo_login: new Date().toISOString() }).eq('id', session.user.id);
         }
       } finally {
         setLoading(false);
@@ -139,6 +141,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (event === 'SIGNED_IN' && session?.user) {
           await loadUserData(session.user.id);
+          // Registra abertura do app (fire-and-forget)
+          supabase.from('profiles').update({ ultimo_login: new Date().toISOString() }).eq('id', session.user.id);
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setVinculos([]);

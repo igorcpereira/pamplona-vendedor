@@ -336,6 +336,7 @@ export type Database = {
           id: string
           nome: string | null
           senha_temporaria: boolean
+          ultimo_login: string | null
           unidade_id: number
           updated_at: string
         }
@@ -346,6 +347,7 @@ export type Database = {
           id: string
           nome?: string | null
           senha_temporaria?: boolean
+          ultimo_login?: string | null
           unidade_id: number
           updated_at?: string
         }
@@ -356,6 +358,7 @@ export type Database = {
           id?: string
           nome?: string | null
           senha_temporaria?: boolean
+          ultimo_login?: string | null
           unidade_id?: number
           updated_at?: string
         }
