@@ -67,6 +67,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [activeUnidade, setActiveUnidade] = useState<SessionUnidade | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const registrarUltimoLogin = useCallback(() => {
+    supabase.rpc('atualizar_ultimo_login').then();
+  }, []);
+
   const applyUserData = useCallback((data: CachedUserData, userId: string) => {
     const { profile: p, vinculos: v } = data;
     setProfile(p);
@@ -124,8 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         if (session?.user) {
           await loadUserData(session.user.id);
-          // Registra abertura do app (fire-and-forget)
-          supabase.from('profiles').update({ ultimo_login: new Date().toISOString() }).eq('id', session.user.id);
+          registrarUltimoLogin();
         }
       } finally {
         setLoading(false);
@@ -141,8 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (event === 'SIGNED_IN' && session?.user) {
           await loadUserData(session.user.id);
-          // Registra abertura do app (fire-and-forget)
-          supabase.from('profiles').update({ ultimo_login: new Date().toISOString() }).eq('id', session.user.id);
+          registrarUltimoLogin();
         } else if (event === 'SIGNED_OUT') {
           setProfile(null);
           setVinculos([]);
@@ -152,7 +154,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => subscription.unsubscribe();
-  }, [loadUserData]);
+  }, [loadUserData, registrarUltimoLogin]);
+
+  useEffect(() => {
+    if (!user) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') registrarUltimoLogin();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [user, registrarUltimoLogin]);
 
   const selectUnidade = async (unidadeId: number) => {
     if (!user) return;
