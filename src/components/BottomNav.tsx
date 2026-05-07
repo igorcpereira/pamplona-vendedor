@@ -17,7 +17,7 @@ const BottomNav = () => {
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
     { icon: Users, label: "Clientes", path: "/clientes" },
-    { icon: ClipboardList, label: "Fichas", path: "/pre-cadastro" },
+    { icon: ClipboardList, label: "Fichas", path: "/fichas" },
     { icon: Plus, label: "Novo", path: "/novo" },
     ...(isMaster ? [{ icon: FlaskConical, label: "Teste", path: "/teste-de-versao" }] : []),
   ];
@@ -29,7 +29,7 @@ const BottomNav = () => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
 
-          const showBadge = item.path === "/pre-cadastro" && fichasPendentes > 0;
+          const showBadge = item.path === "/fichas" && fichasPendentes > 0;
 
           return (
             <button

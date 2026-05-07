@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import NewRegistration from "./pages/NewRegistration";
-import PreCadastro from "./pages/PreCadastro";
+import Fichas from "./pages/Fichas";
 import EditarFicha from "./pages/EditarFicha";
 import Clients from "./pages/Clients";
 import ClienteDetalhes from "./pages/ClienteDetalhes";
@@ -64,10 +64,10 @@ const App = () => (
             }
           />
           <Route
-            path="/pre-cadastro"
+            path="/fichas"
             element={
               <ProtectedRoute>
-                <PreCadastro />
+                <Fichas />
               </ProtectedRoute>
             }
           />

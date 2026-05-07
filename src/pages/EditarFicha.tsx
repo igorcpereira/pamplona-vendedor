@@ -66,7 +66,7 @@ export default function EditarFicha() {
   useEffect(() => {
     const loadFicha = async () => {
       if (!id) {
-        navigate("/pre-cadastro");
+        navigate("/fichas");
         return;
       }
 
@@ -80,7 +80,7 @@ export default function EditarFicha() {
 
         if (error) throw error;
         if (!fichaData) {
-          navigate("/pre-cadastro");
+          navigate("/fichas");
           return;
         }
 
@@ -133,7 +133,7 @@ export default function EditarFicha() {
         }));
       } catch (error) {
         console.error('Erro ao carregar ficha:', error);
-        navigate("/pre-cadastro");
+        navigate("/fichas");
       } finally {
         setIsLoadingFicha(false);
       }
@@ -431,7 +431,7 @@ export default function EditarFicha() {
       if (cliente_id) {
         navigate(`/cliente/${cliente_id}`);
       } else {
-        navigate("/pre-cadastro");
+        navigate("/fichas");
       }
     } catch (error) {
       console.error("Erro ao atualizar ficha:", error);
@@ -502,7 +502,7 @@ export default function EditarFicha() {
                 if (cliente_id) {
                   navigate(`/cliente/${cliente_id}`);
                 } else {
-                  navigate("/pre-cadastro");
+                  navigate("/fichas");
                 }
               }}
             >
@@ -876,7 +876,7 @@ export default function EditarFicha() {
             <div className="flex gap-3 pt-4">
               <Button
                 variant="outline"
-                onClick={() => navigate("/pre-cadastro")}
+                onClick={() => navigate("/fichas")}
                 className="flex-1"
               >
                 Cancelar

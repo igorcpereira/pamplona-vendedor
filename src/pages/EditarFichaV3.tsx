@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, Image as ImageIcon, X, User } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn, parseDataSemFuso, formatarDataParaBanco } from "@/lib/utils";
+import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -24,13 +24,17 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProvasFicha, useAdicionarProva, useDeletarProva } from "@/hooks/useProvasFicha";
+import { useVendasAvulsasFicha, useAdicionarVendaAvulsa, useDeletarVendaAvulsa } from "@/hooks/useVendasAvulsasFicha";
 
 export default function EditarFichaV3() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, profile } = useAuth();
-  const { imageFile, isNewFicha, isReprocessing, cliente_id } = location.state || {};
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  const { imageFile, isNewFicha, isReprocessing, cliente_id, duplicateAlert, duplicateCodigo, isManual } = location.state || {};
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -42,8 +46,17 @@ export default function EditarFichaV3() {
   const [wasProcessed, setWasProcessed] = useState(false);
   const [isAudioRecording, setIsAudioRecording] = useState(false);
   const [isAudioProcessing, setIsAudioProcessing] = useState(false);
-  const [showProvaDialog, setShowProvaDialog] = useState(false);
-  const [isConfirmingProva, setIsConfirmingProva] = useState(false);
+  const [showDuplicateBanner, setShowDuplicateBanner] = useState<boolean>(!!duplicateAlert);
+  const [showVendaModal, setShowVendaModal] = useState(false);
+  const [vendaForm, setVendaForm] = useState({ descricao: "", valor: "", pago: false });
+
+  const { data: provas = [] } = useProvasFicha(id);
+  const adicionarProva = useAdicionarProva(id);
+  const deletarProva = useDeletarProva(id);
+
+  const { data: vendasAvulsas = [] } = useVendasAvulsasFicha(id);
+  const adicionarVendaAvulsa = useAdicionarVendaAvulsa(id);
+  const deletarVendaAvulsa = useDeletarVendaAvulsa(id);
   const [formData, setFormData] = useState({
     nome_cliente: "",
     telefone_cliente: "",
@@ -68,7 +81,7 @@ export default function EditarFichaV3() {
   useEffect(() => {
     const loadFicha = async () => {
       if (!id) {
-        navigate("/pre-cadastro");
+        navigate("/fichas");
         return;
       }
 
@@ -82,17 +95,32 @@ export default function EditarFichaV3() {
 
         if (error) throw error;
         if (!fichaData) {
-          navigate("/pre-cadastro");
+          navigate("/fichas");
+          return;
+        }
+
+        // Detectou ficha duplicada — redireciona para a original e descarta esta
+        if (
+          fichaData.status === 'erro' &&
+          fichaData.erro_etapa === 'ficha_duplicada' &&
+          fichaData.ficha_original_id &&
+          isNewFicha
+        ) {
+          await supabase.from('fichas').delete().eq('id', fichaData.id);
+          navigate(`/editar-ficha-v3/${fichaData.ficha_original_id}`, {
+            state: {
+              isNewFicha: false,
+              duplicateAlert: true,
+              duplicateCodigo: fichaData.codigo_ficha,
+            },
+            replace: true,
+          });
           return;
         }
 
         setFicha(fichaData);
 
-        // Mostrar dialog se já chegou com aguardando_prova
-        if (fichaData.status === 'aguardando_prova' && isNewFicha) {
-          setIsProcessing(false);
-          setShowProvaDialog(true);
-        } else if (!fichaData.codigo_ficha && fichaData.status === 'pendente') {
+        if (!fichaData.codigo_ficha && fichaData.status === 'pendente' && !isManual) {
           setIsProcessing(true);
         }
 
@@ -118,7 +146,7 @@ export default function EditarFichaV3() {
         setFormData(prev => ({
           ...prev,
           nome_cliente: fichaData.nome_cliente || "",
-          telefone_cliente: fichaData.telefone_cliente || "",
+          telefone_cliente: formatarTelefoneInput(fichaData.telefone_cliente),
           codigo_ficha: fichaData.codigo_ficha || "",
           tipo: fichaData.tipo || "aluguel",
           status: fichaData.status || "pendente",
@@ -138,14 +166,14 @@ export default function EditarFichaV3() {
         }));
       } catch (error) {
         console.error('Erro ao carregar ficha:', error);
-        navigate("/pre-cadastro");
+        navigate("/fichas");
       } finally {
         setIsLoadingFicha(false);
       }
     };
 
     loadFicha();
-  }, [id, navigate, user?.id, isNewFicha]);
+  }, [id, navigate, isNewFicha, isManual]);
 
   // Subscrição Realtime para updates da ficha
   useEffect(() => {
@@ -187,10 +215,24 @@ export default function EditarFichaV3() {
             }, 5000);
           }
 
-          // Detectar aguardando_prova apenas se for nova ficha
-          if (fichaAtualizada.status === 'aguardando_prova' && isNewFicha) {
+          // Detectou ficha duplicada via realtime — redireciona para a original e descarta esta
+          if (
+            fichaAtualizada.status === 'erro' &&
+            fichaAtualizada.erro_etapa === 'ficha_duplicada' &&
+            fichaAtualizada.ficha_original_id &&
+            isNewFicha
+          ) {
             setIsProcessing(false);
-            setShowProvaDialog(true);
+            supabase.from('fichas').delete().eq('id', fichaAtualizada.id).then(() => {});
+            navigate(`/editar-ficha-v3/${fichaAtualizada.ficha_original_id}`, {
+              state: {
+                isNewFicha: false,
+                duplicateAlert: true,
+                duplicateCodigo: fichaAtualizada.codigo_ficha,
+              },
+              replace: true,
+            });
+            return;
           }
 
           setFicha(fichaAtualizada);
@@ -199,7 +241,7 @@ export default function EditarFichaV3() {
           setFormData(prev => ({
             ...prev,
             nome_cliente: fichaAtualizada.nome_cliente || prev.nome_cliente,
-            telefone_cliente: fichaAtualizada.telefone_cliente || prev.telefone_cliente,
+            telefone_cliente: fichaAtualizada.telefone_cliente ? formatarTelefoneInput(fichaAtualizada.telefone_cliente) : prev.telefone_cliente,
             codigo_ficha: fichaAtualizada.codigo_ficha || prev.codigo_ficha,
             tipo: fichaAtualizada.tipo || prev.tipo,
             status: fichaAtualizada.status || prev.status,
@@ -216,8 +258,8 @@ export default function EditarFichaV3() {
             observacoes_cliente: prev.observacoes_cliente || fichaAtualizada.transcricao_audio || "",
           }));
 
-          // Detectar erro apenas se status for explicitamente 'erro'
-          if (fichaAtualizada.status === 'erro') {
+          // Detectar erro apenas se status for explicitamente 'erro' (e não duplicada — essa já foi tratada acima)
+          if (fichaAtualizada.status === 'erro' && fichaAtualizada.erro_etapa !== 'ficha_duplicada') {
             setIsProcessing(false);
 
             toast({
@@ -234,41 +276,7 @@ export default function EditarFichaV3() {
       console.log('🔌 Desconectando subscrição realtime');
       supabase.removeChannel(channel);
     };
-  }, [id, isAudioRecording, isAudioProcessing, isNewFicha]);
-
-  const handleConfirmarProva = async (isProva: boolean) => {
-    setIsConfirmingProva(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('confirmar-prova', {
-        body: { ficha_nova_id: id, is_prova: isProva, vendedor_id: user?.id },
-      });
-
-      if (error || !data?.ficha_id) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível confirmar. Tente novamente.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setShowProvaDialog(false);
-
-      if (isProva) {
-        toast({ title: "Prova registrada!", description: "Redirecionando para a ficha original..." });
-        navigate(`/editar-ficha-v3/${data.ficha_id}`, { state: { isNewFicha: false } });
-      }
-      // Se não é prova: mantém na página — realtime atualiza status para 'erro'
-    } catch {
-      toast({
-        title: "Erro",
-        description: "Não foi possível confirmar. Tente novamente.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsConfirmingProva(false);
-    }
-  };
+  }, [id, isAudioRecording, isAudioProcessing, isNewFicha, navigate]);
 
   const handleTranscription = (text: string) => {
     console.log('Texto recebido da transcrição:', text);
@@ -297,11 +305,96 @@ export default function EditarFichaV3() {
     });
   };
 
+  const handleAdicionarProva = async () => {
+    try {
+      await adicionarProva.mutateAsync();
+      toast({ title: "Prova registrada", description: "Adicionada com sucesso." });
+    } catch (err) {
+      console.error("Erro ao adicionar prova:", err);
+      toast({
+        title: "Erro ao adicionar prova",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletarProva = async (provaId: string) => {
+    try {
+      await deletarProva.mutateAsync(provaId);
+      toast({ title: "Prova removida" });
+    } catch (err) {
+      console.error("Erro ao remover prova:", err);
+      toast({
+        title: "Erro ao remover prova",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAbrirVendaModal = () => {
+    setVendaForm({ descricao: "", valor: "", pago: false });
+    setShowVendaModal(true);
+  };
+
+  const handleSalvarVenda = async () => {
+    if (!vendaForm.descricao.trim()) {
+      toast({
+        title: "Descrição obrigatória",
+        description: "Informe o que foi vendido.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const valorNum = vendaForm.valor ? parseFloat(vendaForm.valor.replace(",", ".")) : null;
+    if (vendaForm.valor && (valorNum === null || Number.isNaN(valorNum))) {
+      toast({
+        title: "Valor inválido",
+        description: "Informe um valor numérico.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await adicionarVendaAvulsa.mutateAsync({
+        descricao: vendaForm.descricao.trim(),
+        valor: valorNum,
+        pago: vendaForm.pago,
+      });
+      setShowVendaModal(false);
+      toast({ title: "Venda avulsa adicionada" });
+    } catch (err) {
+      console.error("Erro ao adicionar venda avulsa:", err);
+      toast({
+        title: "Erro ao adicionar venda",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeletarVenda = async (vendaId: string) => {
+    try {
+      await deletarVendaAvulsa.mutateAsync(vendaId);
+      toast({ title: "Venda removida" });
+    } catch (err) {
+      console.error("Erro ao remover venda:", err);
+      toast({
+        title: "Erro ao remover venda",
+        description: err instanceof Error ? err.message : "Tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSave = async () => {
+    console.log('[handleSave] início — id:', id, 'status:', formData.status);
     setLoading(true);
     try {
       // Validar codigo_ficha único
       if (!formData.codigo_ficha) {
+        console.warn('[handleSave] abortando: codigo_ficha vazio');
         toast({
           title: "Erro",
           description: "Código da ficha é obrigatório",
@@ -311,73 +404,87 @@ export default function EditarFichaV3() {
         return;
       }
 
-      const { data: fichaExistente } = await supabase
+      console.log('[handleSave] checando duplicada para codigo_ficha:', formData.codigo_ficha);
+      const { data: fichaExistente, error: dupErr } = await supabase
         .from('fichas')
         .select('id')
         .eq('codigo_ficha', formData.codigo_ficha)
         .neq('id', id)
         .maybeSingle();
 
+      if (dupErr) {
+        console.error('[handleSave] erro na checagem de duplicada:', dupErr);
+        throw dupErr;
+      }
+
+      console.log('[handleSave] resultado duplicada:', fichaExistente);
+
       if (fichaExistente) {
-        toast({
-          title: "Erro",
-          description: "Este código de ficha já existe",
-          variant: "destructive"
+        console.log('[handleSave] duplicada encontrada — deletando ficha atual e redirecionando');
+        const { error: delErr } = await supabase.from('fichas').delete().eq('id', id);
+        if (delErr) {
+          console.error('[handleSave] erro ao deletar ficha duplicada:', delErr);
+          throw delErr;
+        }
+        navigate(`/editar-ficha-v3/${fichaExistente.id}`, {
+          state: {
+            isNewFicha: false,
+            duplicateAlert: true,
+            duplicateCodigo: formData.codigo_ficha,
+          },
+          replace: true,
         });
-        setLoading(false);
         return;
       }
 
       let clienteId: string | null = null;
+      let telefoneNormalizado: string | null = null;
 
       if (formData.telefone_cliente && formData.telefone_cliente.trim() !== '') {
-        const telefone = formData.telefone_cliente.trim();
+        telefoneNormalizado = normalizarTelefone(formData.telefone_cliente);
+        console.log('[handleSave] telefone informado:', formData.telefone_cliente, '→ normalizado:', telefoneNormalizado);
 
-        const { data: clienteExistente, error: searchError } = await supabase
-          .from('clientes')
-          .select('id')
-          .eq('telefone', telefone)
-          .maybeSingle();
-
-        if (searchError) {
-          console.error('Erro ao buscar cliente:', searchError);
-          throw searchError;
+        if (!telefoneNormalizado) {
+          console.warn('[handleSave] abortando: telefone inválido');
+          toast({
+            title: "Telefone inválido",
+            description: "Não foi possível normalizar o telefone. Confira o formato e tente novamente.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
         }
 
-        if (clienteExistente) {
-          console.log('Cliente encontrado:', clienteExistente.id);
-          clienteId = clienteExistente.id;
-        } else {
-          console.log('Cliente não encontrado. Criando novo cliente...');
+        const user = (await supabase.auth.getUser()).data.user;
+        console.log('[handleSave] chamando criar-cliente para vendedor:', user?.id);
 
-          const user = (await supabase.auth.getUser()).data.user;
+        const { data, error: criarError } = await supabase.functions.invoke('criar-cliente', {
+          body: {
+            nome: formData.nome_cliente || 'Cliente sem nome',
+            telefone: telefoneNormalizado,
+            vendedor_id: user?.id,
+            unidade_id: profile?.unidade_id ?? null,
+          },
+        });
 
-          const { data: novoCliente, error: insertError } = await supabase
-            .from('clientes')
-            .insert({
-              nome: formData.nome_cliente || 'Cliente sem nome',
-              telefone: telefone,
-              vendedor_id: user?.id,
-              unidade_id: profile?.unidade_id ?? null,
-            })
-            .select('id')
-            .single();
+        console.log('[handleSave] retorno criar-cliente:', { data, criarError });
 
-          if (insertError) {
-            console.error('Erro ao criar cliente:', insertError);
-            throw insertError;
-          }
-
-          console.log('Novo cliente criado:', novoCliente.id);
-          clienteId = novoCliente.id;
+        if (criarError || !data?.cliente_id) {
+          console.error('[handleSave] erro ao criar/buscar cliente:', criarError, data);
+          throw new Error(data?.error || criarError?.message || 'Falha ao vincular cliente');
         }
+
+        clienteId = data.cliente_id;
       }
 
-      const novoStatus = formData.status === 'pendente' ? 'ativa' : formData.status;
+      console.log('[handleSave] clienteId final:', clienteId);
+
+      // Ao salvar, transiciona para 'ativa' tanto a partir de 'pendente' quanto 'erro'
+      const novoStatus = ['pendente', 'erro'].includes(formData.status) ? 'ativa' : formData.status;
 
       const updateData: any = {
         nome_cliente: formData.nome_cliente || null,
-        telefone_cliente: formData.telefone_cliente || null,
+        telefone_cliente: telefoneNormalizado || (formData.telefone_cliente?.trim() || null),
         codigo_ficha: formData.codigo_ficha || null,
         tipo: formData.tipo || null,
         data_retirada: formatarDataParaBanco(formData.data_retirada),
@@ -396,12 +503,23 @@ export default function EditarFichaV3() {
         updated_at: new Date().toISOString(),
       };
 
+      // Se está saindo de 'erro' para 'ativa', limpa marcadores de erro
+      if (formData.status === 'erro' && novoStatus === 'ativa') {
+        updateData.erro_etapa = null;
+        updateData.ficha_original_id = null;
+      }
+
+      console.log('[handleSave] updateData:', updateData);
       const { error } = await supabase
         .from("fichas")
         .update(updateData)
         .eq("id", id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('[handleSave] erro ao atualizar ficha:', error);
+        throw error;
+      }
+      console.log('[handleSave] ficha atualizada com sucesso');
 
       const isProva = ficha?.prova1_data || ficha?.prova2_data || ficha?.prova3_data;
       if (!isProva) {
@@ -472,13 +590,22 @@ export default function EditarFichaV3() {
         }
       }
 
+      queryClient.invalidateQueries({ queryKey: ['fichas-processadas'] });
+
+      console.log('[handleSave] navegando — cliente_id state:', cliente_id);
       if (cliente_id) {
         navigate(`/cliente/${cliente_id}`);
       } else {
-        navigate("/pre-cadastro");
+        navigate("/fichas");
       }
     } catch (error) {
       console.error("Erro ao atualizar ficha:", error);
+      const message = error instanceof Error ? error.message : "Não foi possível salvar a ficha. Tente novamente.";
+      toast({
+        title: "Erro ao salvar ficha",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -544,7 +671,7 @@ export default function EditarFichaV3() {
                 if (cliente_id) {
                   navigate(`/cliente/${cliente_id}`);
                 } else {
-                  navigate("/pre-cadastro");
+                  navigate("/fichas");
                 }
               }}
             >
@@ -552,6 +679,27 @@ export default function EditarFichaV3() {
             </Button>
             <h1 className="text-xl font-semibold">Editar Ficha</h1>
           </div>
+
+          {showDuplicateBanner && (
+            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">Esta ficha já existe no sistema</p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                  {duplicateCodigo ? `A ficha #${duplicateCodigo} já estava cadastrada. ` : ''}
+                  Você foi redirecionado para a ficha original.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDuplicateBanner(false)}
+                className="text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100 flex-shrink-0"
+                aria-label="Fechar aviso"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {isProcessing && (
             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-3">
@@ -872,6 +1020,101 @@ export default function EditarFichaV3() {
               </div>
             </div>
 
+            <Separator />
+
+            {/* Provas */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <Ruler className="h-4 w-4" />
+                  Provas {provas.length > 0 && <span className="text-muted-foreground text-sm font-normal">({provas.length})</span>}
+                </h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAdicionarProva}
+                  disabled={adicionarProva.isPending || !id}
+                >
+                  {adicionarProva.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />}
+                  Adicionar Prova
+                </Button>
+              </div>
+              {provas.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma prova registrada.</p>
+              ) : (
+                <div className="space-y-1">
+                  {provas.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-sm p-2 rounded border border-border">
+                      <span>
+                        {format(new Date(p.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDeletarProva(p.id)}
+                        disabled={deletarProva.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Vendas Avulsas */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-semibold flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  Vendas Avulsas {vendasAvulsas.length > 0 && <span className="text-muted-foreground text-sm font-normal">({vendasAvulsas.length})</span>}
+                </h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAbrirVendaModal}
+                  disabled={!id}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adicionar Venda Avulsa
+                </Button>
+              </div>
+              {vendasAvulsas.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Nenhuma venda avulsa registrada.</p>
+              ) : (
+                <div className="space-y-2">
+                  {vendasAvulsas.map((v) => (
+                    <div key={v.id} className="flex items-start justify-between gap-3 text-sm p-3 rounded border border-border">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <p className="truncate">{v.descricao || "(sem descrição)"}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{v.valor != null ? Number(v.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "-"}</span>
+                          <span>{v.pago ? "Pago" : "Não pago"}</span>
+                          <span>{format(new Date(v.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                        onClick={() => handleDeletarVenda(v.id)}
+                        disabled={deletarVendaAvulsa.isPending}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
 
             {/* Pagamento */}
             <div className="space-y-4">
@@ -918,7 +1161,7 @@ export default function EditarFichaV3() {
             <div className="flex gap-3 pt-4">
               <Button
                 variant="outline"
-                onClick={() => navigate("/pre-cadastro")}
+                onClick={() => navigate("/fichas")}
                 className="flex-1"
               >
                 Cancelar
@@ -968,30 +1211,61 @@ export default function EditarFichaV3() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Prova */}
-      <Dialog open={showProvaDialog} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
-          <DialogTitle>Ficha #{ficha?.codigo_ficha} já existe</DialogTitle>
-          <DialogDescription>
-            Este atendimento é uma prova (ajuste de medidas)?
-          </DialogDescription>
-          <div className="flex flex-col gap-3 pt-2">
-            <Button
-              onClick={() => handleConfirmarProva(true)}
-              disabled={isConfirmingProva}
-              className="w-full"
-            >
-              {isConfirmingProva && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sim, é uma prova
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleConfirmarProva(false)}
-              disabled={isConfirmingProva}
-              className="w-full"
-            >
-              Não, cancelar
-            </Button>
+      {/* Modal Venda Avulsa */}
+      <Dialog open={showVendaModal} onOpenChange={setShowVendaModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Adicionar Venda Avulsa</DialogTitle>
+          <DialogDescription>Vinculada à ficha #{formData.codigo_ficha || ficha?.codigo_ficha || "—"}</DialogDescription>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="venda_descricao">Descrição</Label>
+              <Textarea
+                id="venda_descricao"
+                value={vendaForm.descricao}
+                onChange={(e) => setVendaForm({ ...vendaForm, descricao: e.target.value })}
+                placeholder="Ex: Gravata azul, lenço de seda..."
+                className="min-h-[80px]"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="venda_valor">Valor (R$)</Label>
+              <Input
+                id="venda_valor"
+                type="number"
+                step="0.01"
+                value={vendaForm.valor}
+                onChange={(e) => setVendaForm({ ...vendaForm, valor: e.target.value })}
+                placeholder="0,00"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="venda_pago"
+                checked={vendaForm.pago}
+                onCheckedChange={(checked) => setVendaForm({ ...vendaForm, pago: checked })}
+              />
+              <Label htmlFor="venda_pago">Pagamento realizado</Label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowVendaModal(false)}
+                disabled={adicionarVendaAvulsa.isPending}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSalvarVenda}
+                disabled={adicionarVendaAvulsa.isPending}
+                className="flex-1"
+              >
+                {adicionarVendaAvulsa.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Adicionar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

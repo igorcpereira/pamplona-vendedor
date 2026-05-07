@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 
 interface FichaStats {
@@ -27,7 +28,9 @@ interface FichaErro {
 
 const NewRegistration = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
+  const [isCreatingManual, setIsCreatingManual] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -129,6 +132,40 @@ const NewRegistration = () => {
     }
   };
 
+  const handleCadastrarManualmente = async () => {
+    if (isCreatingManual) return;
+    setIsCreatingManual(true);
+    try {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (!user?.id) {
+        toast.error("Usuário não autenticado.");
+        return;
+      }
+
+      const { data: ficha, error } = await supabase
+        .from('fichas')
+        .insert({
+          vendedor_id: user.id,
+          unidade_id: profile?.unidade_id ?? null,
+          status: 'pendente',
+        })
+        .select('id')
+        .single();
+
+      if (error || !ficha?.id) {
+        console.error('Erro ao criar ficha manual:', error);
+        toast.error("Não foi possível criar a ficha. Tente novamente.");
+        return;
+      }
+
+      navigate(`/editar-ficha-v3/${ficha.id}`, {
+        state: { isManual: true },
+      });
+    } finally {
+      setIsCreatingManual(false);
+    }
+  };
+
   const handleCancelSend = async () => {
     setShowConfirmDialog(false);
     if (currentFichaId) {
@@ -219,9 +256,14 @@ const NewRegistration = () => {
             </div>
           </div>
 
-          <button className="w-full py-3 text-primary hover:text-accent transition-colors flex items-center justify-center gap-2 font-semibold">
+          <button
+            type="button"
+            onClick={handleCadastrarManualmente}
+            disabled={isCreatingManual || isUploading}
+            className="w-full py-3 text-primary hover:text-accent transition-colors flex items-center justify-center gap-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Edit className="w-4 h-4" />
-            <span className="font-medium">Cadastrar Manualmente</span>
+            <span className="font-medium">{isCreatingManual ? "Criando..." : "Cadastrar Manualmente"}</span>
           </button>
 
           <input ref={cameraInputRef} id="camera-input" name="camera-input" type="file" accept="image/*" capture="environment" onChange={handleFileSelect} className="hidden" />

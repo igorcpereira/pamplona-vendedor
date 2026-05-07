@@ -236,7 +236,7 @@ export default function ClienteDetalhes() {
                 <Card 
                   key={ficha.id} 
                   className="overflow-hidden cursor-pointer hover:shadow-md transition-all"
-                  onClick={() => navigate(`/editar-ficha/${ficha.id}`, { state: { cliente_id: id } })}
+                  onClick={() => navigate(`/editar-ficha-v3/${ficha.id}`, { state: { cliente_id: id } })}
                 >
                   <CardContent className="p-4">
                     <div className="space-y-3">

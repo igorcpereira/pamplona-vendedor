@@ -2,21 +2,20 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 15;
 
-export const useClientes = (search?: string) => {
+export const useFichasProcessadas = (search?: string, enabled: boolean = true) => {
   const { user } = useAuth();
 
   return useInfiniteQuery({
-    queryKey: ['clientes', user?.id, search ?? ''],
+    queryKey: ['fichas-processadas', user?.id, search ?? ''],
     queryFn: async ({ pageParam = 0 }) => {
       if (!user?.id) return [];
 
-      const termo = search?.trim();
-      const { data, error } = await supabase.rpc('buscar_clientes', {
-        p_search: termo && termo.length >= 2 ? termo : undefined,
+      const { data, error } = await supabase.rpc('listar_fichas_processadas', {
         p_offset: pageParam,
         p_limit: PAGE_SIZE,
+        p_search: search && search.length > 0 ? search : undefined,
       });
 
       if (error) throw error;
@@ -27,8 +26,8 @@ export const useClientes = (search?: string) => {
       if (lastPage.length < PAGE_SIZE) return undefined;
       return allPages.length * PAGE_SIZE;
     },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
+    enabled: enabled && !!user?.id,
+    staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
   });
 };

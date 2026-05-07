@@ -31,35 +31,60 @@ const Dashboard = () => {
 
   const fichasDoMes = fichas.filter(f => f.created_at?.startsWith(mesAtual));
 
+  // Limites do mês atual (UTC) para queries em created_at
+  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+  const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 1).toISOString();
+
+  // Provas feitas pelo vendedor neste mês (nova tabela `provas`)
+  const { data: provasDoMes = [] } = useQuery({
+    queryKey: ['provas-vendedor-mes', user?.id, mesAtual],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('provas')
+        .select('id')
+        .eq('vendedor_id', user.id)
+        .gte('created_at', inicioMes)
+        .lt('created_at', fimMes);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user?.id,
+    staleTime: 60 * 1000,
+  });
+
+  const totalProvas = provasDoMes.length;
+
+  // Vendas avulsas feitas pelo vendedor neste mês
+  const { data: vendasAvulsasDoMes = [] } = useQuery({
+    queryKey: ['vendas-avulsas-vendedor-mes', user?.id, mesAtual],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('vendas_avulsas')
+        .select('valor')
+        .eq('vendedor_id', user.id)
+        .gte('created_at', inicioMes)
+        .lt('created_at', fimMes);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user?.id,
+    staleTime: 60 * 1000,
+  });
+
+  const totalVendasAvulsas = vendasAvulsasDoMes.reduce((acc, v) => acc + Number(v.valor ?? 0), 0);
+
   const totalFichas = fichasDoMes.length;
-  const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  const totalVenda = fichasDoMes
-    .filter(f => f.tipo?.toLowerCase() === 'venda')
-    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
   const totalAluguel = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'aluguel')
     .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-
-  const { data: provasDoMes = [] } = useQuery({
-    queryKey: ['provas-feitas', user?.id, mesAtual],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data } = await supabase
-        .from('fichas')
-        .select('prova1_vendedor_id, prova1_data, prova2_vendedor_id, prova2_data, prova3_vendedor_id, prova3_data')
-        .or(`prova1_vendedor_id.eq.${user.id},prova2_vendedor_id.eq.${user.id},prova3_vendedor_id.eq.${user.id}`);
-      return data || [];
-    },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const totalProvas = provasDoMes.reduce((acc, f) => {
-    return acc
-      + (f.prova1_vendedor_id === user?.id && f.prova1_data?.startsWith(mesAtual) ? 1 : 0)
-      + (f.prova2_vendedor_id === user?.id && f.prova2_data?.startsWith(mesAtual) ? 1 : 0)
-      + (f.prova3_vendedor_id === user?.id && f.prova3_data?.startsWith(mesAtual) ? 1 : 0);
-  }, 0);
+  const totalVendaFichas = fichasDoMes
+    .filter(f => f.tipo?.toLowerCase() === 'venda')
+    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
+  // Vendas avulsas entram na categoria "Vendas" e no total geral
+  const totalVenda = totalVendaFichas + totalVendasAvulsas;
+  const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalVendasAvulsas;
 
   return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Início" />
@@ -84,7 +109,7 @@ const Dashboard = () => {
         {fichasPendentes > 0 && (
           <Card
             className="bg-destructive/10 border-destructive/20 p-4 cursor-pointer hover:bg-destructive/15 transition-colors"
-            onClick={() => navigate('/pre-cadastro')}
+            onClick={() => navigate('/fichas')}
           >
             <div className="flex items-center gap-3">
               <div className="bg-destructive/20 p-2 rounded-full">

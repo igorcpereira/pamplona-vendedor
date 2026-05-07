@@ -260,9 +260,10 @@ async function processarBackground(
     const fichaExistente = fichasExistentes?.[0] ?? null
 
     if (fichaExistente) {
-      // Suspende processamento — aguarda decisão do usuário
+      // Ficha duplicada — sinaliza para o frontend redirecionar à original
       await supabase.from('fichas').update({
-        status: 'aguardando_prova',
+        status: 'erro',
+        erro_etapa: 'ficha_duplicada',
         ficha_original_id: fichaExistente.id,
         codigo_ficha: numeroFicha,
       }).eq('id', fichaId)
