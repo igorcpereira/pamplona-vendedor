@@ -393,22 +393,6 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
             <div className="space-y-4">
               <h3 className="text-base font-semibold">Cabeçalho</h3>
 
-              {isAdmin && (
-                <div className="space-y-2">
-                  <Label>Vendedor responsável pela ficha</Label>
-                  <Select value={fichaVendedorId ?? ''} onValueChange={setFichaVendedorId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o vendedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendedores.map(v => (
-                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -830,6 +814,22 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
                   <Label htmlFor="pago" className="cursor-pointer">Pago</Label>
                 </div>
               </div>
+
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label>Vendedor responsável pela ficha</Label>
+                  <Select value={fichaVendedorId ?? ''} onValueChange={setFichaVendedorId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => (
+                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
           </div>
 
