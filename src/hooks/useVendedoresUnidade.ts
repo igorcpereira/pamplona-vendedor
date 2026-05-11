@@ -18,10 +18,9 @@ export const useVendedoresUnidade = () => {
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, nome, usuario_unidade_role!inner(role, unidade_id)')
+        .select('id, nome')
         .eq('ativo', true)
-        .eq('usuario_unidade_role.unidade_id', unidadeId)
-        .neq('usuario_unidade_role.role', 'master')
+        .eq('unidade_id', unidadeId)
         .order('nome');
 
       if (error) throw error;

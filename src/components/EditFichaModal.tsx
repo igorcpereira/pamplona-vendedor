@@ -393,7 +393,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
             <div className="space-y-4">
               <h3 className="text-base font-semibold">Cabeçalho</h3>
 
-              {isAdmin && vendedores.length > 0 && (
+              {isAdmin && (
                 <div className="space-y-2">
                   <Label>Vendedor responsável pela ficha</Label>
                   <Select value={fichaVendedorId ?? ''} onValueChange={setFichaVendedorId}>
@@ -694,7 +694,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
                 Peças Avulsas
               </h3>
 
-              {isAdmin && vendedores.length > 0 && (
+              {isAdmin && (
                 <div className="space-y-2">
                   <Label>Vendedor das peças avulsas</Label>
                   <Select

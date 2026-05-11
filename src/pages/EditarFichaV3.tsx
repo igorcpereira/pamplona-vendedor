@@ -718,7 +718,7 @@ export default function EditarFichaV3() {
             <div className="space-y-4">
               <h3 className="text-base font-semibold">Cabeçalho</h3>
 
-              {isAdmin && vendedores.length > 0 && (
+              {isAdmin && (
                 <div className="space-y-2">
                   <Label>Vendedor responsável pela ficha</Label>
                   <Select value={fichaVendedorId ?? ''} onValueChange={setFichaVendedorId}>
@@ -1087,7 +1087,7 @@ export default function EditarFichaV3() {
                 </h3>
               </div>
 
-              {isAdmin && vendedores.length > 0 && (
+              {isAdmin && (
                 <div className="space-y-2">
                   <Label>Vendedor das peças avulsas</Label>
                   <Select
