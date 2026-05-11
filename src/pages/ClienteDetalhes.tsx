@@ -27,6 +27,7 @@ export default function ClienteDetalhes() {
   const [fichas, setFichas] = useState<any[]>([]);
   const [provasByFichaId, setProvasByFichaId] = useState<Map<string, ProvaInfo[]>>(new Map());
   const [itensByFichaId, setItensByFichaId] = useState<Map<string, ItemAvulsoAgg[]>>(new Map());
+  const [totalAvulsosByFichaId, setTotalAvulsosByFichaId] = useState<Map<string, number>>(new Map());
   const [vendedorNomes, setVendedorNomes] = useState<Map<string, string>>(new Map());
   const [formData, setFormData] = useState({ nome: "", telefone: "" });
 
@@ -57,7 +58,7 @@ export default function ClienteDetalhes() {
 
           const [provasRes, itensRes, profilesRes] = await Promise.all([
             supabase.from('provas').select('id, ficha_id, created_at').in('ficha_id', fichaIds).order('created_at'),
-            supabase.from('itens_avulsos_ficha').select('ficha_id, tipo_item, quantidade').in('ficha_id', fichaIds),
+            supabase.from('itens_avulsos_ficha').select('ficha_id, tipo_item, quantidade, valor_unitario').in('ficha_id', fichaIds),
             vendedorIds.length > 0
               ? supabase.from('profiles').select('id, nome').in('id', vendedorIds)
               : Promise.resolve({ data: [] as any[], error: null }),
@@ -72,10 +73,12 @@ export default function ClienteDetalhes() {
           setProvasByFichaId(provasMap);
 
           const itensAggMap = new Map<string, Map<string, number>>();
+          const totaisMap = new Map<string, number>();
           for (const item of (itensRes.data ?? [])) {
             const tipoMap = itensAggMap.get(item.ficha_id) ?? new Map<string, number>();
             tipoMap.set(item.tipo_item, (tipoMap.get(item.tipo_item) ?? 0) + item.quantidade);
             itensAggMap.set(item.ficha_id, tipoMap);
+            totaisMap.set(item.ficha_id, (totaisMap.get(item.ficha_id) ?? 0) + item.quantidade * (item.valor_unitario ?? 0));
           }
           const itensFinal = new Map<string, ItemAvulsoAgg[]>();
           for (const [fichaId, tipoMap] of itensAggMap.entries()) {
@@ -86,6 +89,7 @@ export default function ClienteDetalhes() {
             );
           }
           setItensByFichaId(itensFinal);
+          setTotalAvulsosByFichaId(totaisMap);
 
           const nomesMap = new Map<string, string>();
           for (const p of (profilesRes.data ?? [])) {
@@ -216,6 +220,7 @@ export default function ClienteDetalhes() {
               fichas.map((ficha) => {
                 const provas = provasByFichaId.get(ficha.id) ?? [];
                 const itens = itensByFichaId.get(ficha.id) ?? [];
+                const totalAvulsos = totalAvulsosByFichaId.get(ficha.id) ?? 0;
                 const vendedorNome = ficha.vendedor_id ? vendedorNomes.get(ficha.vendedor_id) : undefined;
                 const isNaoAtiva = ficha.status === 'pendente' || ficha.status === 'erro';
 
@@ -225,7 +230,7 @@ export default function ClienteDetalhes() {
                 const sapatoParts = joinParts(ficha.sapato ? `Sapato ${ficha.sapato}` : null, ficha.sapato_tipo);
 
                 const hasItemDetails = !!(paletoParts || calcaParts || camisaParts || sapatoParts);
-                const hasValores = !!(ficha.valor || ficha.garantia);
+                const hasValores = !!(ficha.valor || ficha.garantia || totalAvulsos > 0);
                 const hasDatas = !!(ficha.data_retirada || ficha.data_devolucao || ficha.data_festa);
 
                 return (
@@ -355,6 +360,13 @@ export default function ClienteDetalhes() {
                                   <DollarSign className="w-3 h-3 text-muted-foreground" />
                                   <span className="text-muted-foreground">Garantia:</span>
                                   <span className="font-medium">{formatValor(ficha.garantia)}</span>
+                                </div>
+                              )}
+                              {totalAvulsos > 0 && (
+                                <div className="flex items-center gap-2 text-xs">
+                                  <DollarSign className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-muted-foreground">Valor avulsos:</span>
+                                  <span className="font-medium">{formatValor(totalAvulsos)}</span>
                                 </div>
                               )}
                             </div>
