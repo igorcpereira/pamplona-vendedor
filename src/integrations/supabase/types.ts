@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -296,6 +296,8 @@ export type Database = {
         Row: {
           calca: string | null
           camisa: string | null
+          camisa_cor: string | null
+          camisa_fios: string | null
           cliente_encontrado: boolean | null
           cliente_id: string | null
           cliente_sugerido_id: string | null
@@ -316,6 +318,8 @@ export type Database = {
           ocr_tentativa: number | null
           pago: boolean
           paleto: string | null
+          paleto_cor: string | null
+          paleto_lanificio: string | null
           prova1_data: string | null
           prova1_vendedor_id: string | null
           prova2_data: string | null
@@ -323,6 +327,7 @@ export type Database = {
           prova3_data: string | null
           prova3_vendedor_id: string | null
           sapato: string | null
+          sapato_tipo: string | null
           status: Database["public"]["Enums"]["status_ficha"]
           tags: Json | null
           telefone_cliente: string | null
@@ -342,6 +347,8 @@ export type Database = {
         Insert: {
           calca?: string | null
           camisa?: string | null
+          camisa_cor?: string | null
+          camisa_fios?: string | null
           cliente_encontrado?: boolean | null
           cliente_id?: string | null
           cliente_sugerido_id?: string | null
@@ -362,6 +369,8 @@ export type Database = {
           ocr_tentativa?: number | null
           pago?: boolean
           paleto?: string | null
+          paleto_cor?: string | null
+          paleto_lanificio?: string | null
           prova1_data?: string | null
           prova1_vendedor_id?: string | null
           prova2_data?: string | null
@@ -369,6 +378,7 @@ export type Database = {
           prova3_data?: string | null
           prova3_vendedor_id?: string | null
           sapato?: string | null
+          sapato_tipo?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
           tags?: Json | null
           telefone_cliente?: string | null
@@ -388,6 +398,8 @@ export type Database = {
         Update: {
           calca?: string | null
           camisa?: string | null
+          camisa_cor?: string | null
+          camisa_fios?: string | null
           cliente_encontrado?: boolean | null
           cliente_id?: string | null
           cliente_sugerido_id?: string | null
@@ -408,6 +420,8 @@ export type Database = {
           ocr_tentativa?: number | null
           pago?: boolean
           paleto?: string | null
+          paleto_cor?: string | null
+          paleto_lanificio?: string | null
           prova1_data?: string | null
           prova1_vendedor_id?: string | null
           prova2_data?: string | null
@@ -415,6 +429,7 @@ export type Database = {
           prova3_data?: string | null
           prova3_vendedor_id?: string | null
           sapato?: string | null
+          sapato_tipo?: string | null
           status?: Database["public"]["Enums"]["status_ficha"]
           tags?: Json | null
           telefone_cliente?: string | null
@@ -620,6 +635,57 @@ export type Database = {
           },
         ]
       }
+      itens_avulsos_ficha: {
+        Row: {
+          created_at: string
+          ficha_id: string
+          id: string
+          quantidade: number
+          tipo_item: string
+          unidade_id: number
+          updated_at: string
+          valor_unitario: number | null
+          vendedor_id: string
+        }
+        Insert: {
+          created_at?: string
+          ficha_id: string
+          id?: string
+          quantidade?: number
+          tipo_item: string
+          unidade_id: number
+          updated_at?: string
+          valor_unitario?: number | null
+          vendedor_id: string
+        }
+        Update: {
+          created_at?: string
+          ficha_id?: string
+          id?: string
+          quantidade?: number
+          tipo_item?: string
+          unidade_id?: number
+          updated_at?: string
+          valor_unitario?: number | null
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itens_avulsos_ficha_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itens_avulsos_ficha_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       log_processo_ficha: {
         Row: {
           created_at: string
@@ -797,6 +863,7 @@ export type Database = {
           created_at: string
           id: string
           nome: string
+          padrao: boolean
           unidade_id: number | null
         }
         Insert: {
@@ -805,6 +872,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome: string
+          padrao?: boolean
           unidade_id?: number | null
         }
         Update: {
@@ -813,6 +881,7 @@ export type Database = {
           created_at?: string
           id?: string
           nome?: string
+          padrao?: boolean
           unidade_id?: number | null
         }
         Relationships: [
@@ -918,7 +987,9 @@ export type Database = {
           dias_ate_conversao: number
           disparo_em: string
           disparo_id: string
-          ficha_id: string
+          ficha_id: string | null
+          id: string
+          venda_avulsa_id: string | null
           venda_em: string
         }
         Insert: {
@@ -927,7 +998,9 @@ export type Database = {
           dias_ate_conversao: number
           disparo_em: string
           disparo_id: string
-          ficha_id: string
+          ficha_id?: string | null
+          id?: string
+          venda_avulsa_id?: string | null
           venda_em: string
         }
         Update: {
@@ -936,7 +1009,9 @@ export type Database = {
           dias_ate_conversao?: number
           disparo_em?: string
           disparo_id?: string
-          ficha_id?: string
+          ficha_id?: string | null
+          id?: string
+          venda_avulsa_id?: string | null
           venda_em?: string
         }
         Relationships: [
@@ -959,6 +1034,13 @@ export type Database = {
             columns: ["ficha_id"]
             isOneToOne: false
             referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_atribuidas_venda_avulsa_id_fkey"
+            columns: ["venda_avulsa_id"]
+            isOneToOne: false
+            referencedRelation: "vendas_avulsas"
             referencedColumns: ["id"]
           },
         ]
@@ -1196,6 +1278,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      atribuir_avulsa_campanhas: {
+        Args: { _avulsa_id: string }
+        Returns: undefined
+      }
       atribuir_venda_campanhas: {
         Args: { _ficha_id: string }
         Returns: undefined
@@ -1285,6 +1371,8 @@ export type Database = {
           ajuste_valor: number
           aluguel_qtd: number
           aluguel_valor: number
+          avulsa_qtd: number
+          avulsa_valor: number
           total_fichas: number
           total_provas: number
           total_valor: number
@@ -1304,6 +1392,10 @@ export type Database = {
           aluguel_mes_passado: number
           aluguel_semestre: number
           aluguel_trimestre: number
+          avulsa_mes_atual: number
+          avulsa_mes_passado: number
+          avulsa_semestre: number
+          avulsa_trimestre: number
           total_mes_atual: number
           total_mes_passado: number
           total_semestre: number
@@ -1419,6 +1511,8 @@ export type Database = {
         Returns: {
           calca: string | null
           camisa: string | null
+          camisa_cor: string | null
+          camisa_fios: string | null
           cliente_encontrado: boolean | null
           cliente_id: string | null
           cliente_sugerido_id: string | null
@@ -1439,6 +1533,8 @@ export type Database = {
           ocr_tentativa: number | null
           pago: boolean
           paleto: string | null
+          paleto_cor: string | null
+          paleto_lanificio: string | null
           prova1_data: string | null
           prova1_vendedor_id: string | null
           prova2_data: string | null
@@ -1446,6 +1542,7 @@ export type Database = {
           prova3_data: string | null
           prova3_vendedor_id: string | null
           sapato: string | null
+          sapato_tipo: string | null
           status: Database["public"]["Enums"]["status_ficha"]
           tags: Json | null
           telefone_cliente: string | null
@@ -1510,7 +1607,7 @@ export type Database = {
         | "vendedor"
         | "master"
         | "admin"
-        | "suporte"
+        | "administrativo"
       campanha_midia_tipo: "nenhum" | "imagem" | "video"
       campanha_status: "rascunho" | "em_andamento" | "finalizada" | "cancelada"
       campanha_tags_modo: "any" | "all"
@@ -1658,7 +1755,7 @@ export const Constants = {
         "vendedor",
         "master",
         "admin",
-        "suporte",
+        "administrativo",
       ],
       campanha_midia_tipo: ["nenhum", "imagem", "video"],
       campanha_status: ["rascunho", "em_andamento", "finalizada", "cancelada"],

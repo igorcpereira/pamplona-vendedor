@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag, Minus } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,24 +16,33 @@ import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, format
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { AudioRecorder } from "@/components/AudioRecorder";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProvasFicha, useAdicionarProva, useDeletarProva } from "@/hooks/useProvasFicha";
-import { useVendasAvulsasFicha, useAdicionarVendaAvulsa, useDeletarVendaAvulsa } from "@/hooks/useVendasAvulsasFicha";
+import { useItensAvulsosFicha, useSalvarItensAvulsos, TIPOS_ITEM_AVULSO, type ItemAvulso } from "@/hooks/useItensAvulsosFicha";
+import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
+
+const TIPO_LABEL: Record<string, string> = {
+  camiseta: 'Camiseta',
+  gravata: 'Gravata',
+  sapato: 'Sapato',
+  meia: 'Meia',
+  cinto: 'Cinto',
+};
 
 export default function EditarFichaV3() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile } = useAuth();
+  const { user, profile, activeUnidade } = useAuth();
   const queryClient = useQueryClient();
+  const isAdmin = activeUnidade?.role === 'administrativo';
   const { imageFile, isNewFicha, isReprocessing, cliente_id, duplicateAlert, duplicateCodigo, isManual } = location.state || {};
+
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -44,19 +52,22 @@ export default function EditarFichaV3() {
   const [ficha, setFicha] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [wasProcessed, setWasProcessed] = useState(false);
-  const [isAudioRecording, setIsAudioRecording] = useState(false);
-  const [isAudioProcessing, setIsAudioProcessing] = useState(false);
   const [showDuplicateBanner, setShowDuplicateBanner] = useState<boolean>(!!duplicateAlert);
-  const [showVendaModal, setShowVendaModal] = useState(false);
-  const [vendaForm, setVendaForm] = useState({ descricao: "", valor: "", pago: false });
+  const [tagsPadrao, setTagsPadrao] = useState<{ id: string; nome: string }[]>([]);
+  const [fichaVendedorId, setFichaVendedorId] = useState<string | undefined>(undefined);
+  const [avulsosVendedorId, setAvulsosVendedorId] = useState<string | undefined>(undefined);
+  const [itens, setItens] = useState<ItemAvulso[]>([]);
+
+  const { data: vendedores = [] } = useVendedoresUnidade();
+
+  const resolvedAvulsosVendedorId = avulsosVendedorId ?? user?.id;
+  const { data: itensDB = [] } = useItensAvulsosFicha(id, resolvedAvulsosVendedorId);
+  const salvarItens = useSalvarItensAvulsos(id, resolvedAvulsosVendedorId);
 
   const { data: provas = [] } = useProvasFicha(id);
   const adicionarProva = useAdicionarProva(id);
   const deletarProva = useDeletarProva(id);
 
-  const { data: vendasAvulsas = [] } = useVendasAvulsasFicha(id);
-  const adicionarVendaAvulsa = useAdicionarVendaAvulsa(id);
-  const deletarVendaAvulsa = useDeletarVendaAvulsa(id);
   const [formData, setFormData] = useState({
     nome_cliente: "",
     telefone_cliente: "",
@@ -72,11 +83,30 @@ export default function EditarFichaV3() {
     calca: "",
     camisa: "",
     sapato: "",
+    paleto_cor: null as string | null,
+    paleto_lanificio: null as string | null,
+    camisa_fios: null as string | null,
+    camisa_cor: null as string | null,
+    sapato_tipo: null as string | null,
     pago: false,
-    observacoes_cliente: "",
     tags: [] as string[],
   });
 
+  useEffect(() => {
+    setItens(itensDB);
+  }, [itensDB]);
+
+  // Fetch padrao tags once
+  useEffect(() => {
+    supabase
+      .from('tags')
+      .select('id, nome')
+      .eq('padrao', true)
+      .order('nome')
+      .then(({ data }) => {
+        if (data) setTagsPadrao(data as { id: string; nome: string }[]);
+      });
+  }, []);
 
   useEffect(() => {
     const loadFicha = async () => {
@@ -99,7 +129,6 @@ export default function EditarFichaV3() {
           return;
         }
 
-        // Detectou ficha duplicada — redireciona para a original e descarta esta
         if (
           fichaData.status === 'erro' &&
           fichaData.erro_etapa === 'ficha_duplicada' &&
@@ -119,12 +148,12 @@ export default function EditarFichaV3() {
         }
 
         setFicha(fichaData);
+        setFichaVendedorId(fichaData.vendedor_id ?? user?.id);
 
         if (!fichaData.codigo_ficha && fichaData.status === 'pendente' && !isManual) {
           setIsProcessing(true);
         }
 
-        // Buscar tags do cliente se houver cliente_id
         let clienteTags: string[] = [];
         if (fichaData.cliente_id) {
           try {
@@ -159,9 +188,12 @@ export default function EditarFichaV3() {
           calca: fichaData.calca || "",
           camisa: fichaData.camisa || "",
           sapato: fichaData.sapato || "",
+          paleto_cor: fichaData.paleto_cor || null,
+          paleto_lanificio: fichaData.paleto_lanificio || null,
+          camisa_fios: fichaData.camisa_fios || null,
+          camisa_cor: fichaData.camisa_cor || null,
+          sapato_tipo: fichaData.sapato_tipo || null,
           pago: fichaData.pago || false,
-          // Preserva observações_cliente se já existir
-          observacoes_cliente: prev.observacoes_cliente || fichaData.transcricao_audio || "",
           tags: clienteTags,
         }));
       } catch (error) {
@@ -175,11 +207,8 @@ export default function EditarFichaV3() {
     loadFicha();
   }, [id, navigate, isNewFicha, isManual]);
 
-  // Subscrição Realtime para updates da ficha
   useEffect(() => {
     if (!id) return;
-
-    console.log('📡 Iniciando subscrição realtime para ficha:', id);
 
     const channel = supabase
       .channel(`ficha-v3-${id}`)
@@ -192,30 +221,16 @@ export default function EditarFichaV3() {
           filter: `id=eq.${id}`
         },
         (payload) => {
-          console.log('🔄 Ficha atualizada via realtime:', payload.new);
-
-          // BLOQUEIO: Não atualizar se estiver gravando ou processando áudio
-          if (isAudioRecording || isAudioProcessing) {
-            console.log('🔒 Update bloqueado: áudio em uso');
-            return;
-          }
-
           const fichaAtualizada = payload.new;
           const codigoAnterior = ficha?.codigo_ficha;
           const codigoNovo = fichaAtualizada.codigo_ficha;
 
-          // Detectar processamento concluído: codigo_ficha mudou de null para um valor
           if (!codigoAnterior && codigoNovo) {
-            console.log('✅ Processamento detectado: codigo_ficha preenchido');
             setIsProcessing(false);
             setWasProcessed(true);
-
-            setTimeout(() => {
-              setWasProcessed(false);
-            }, 5000);
+            setTimeout(() => setWasProcessed(false), 5000);
           }
 
-          // Detectou ficha duplicada via realtime — redireciona para a original e descarta esta
           if (
             fichaAtualizada.status === 'erro' &&
             fichaAtualizada.erro_etapa === 'ficha_duplicada' &&
@@ -237,7 +252,6 @@ export default function EditarFichaV3() {
 
           setFicha(fichaAtualizada);
 
-          // Atualizar formData apenas com campos do webhook
           setFormData(prev => ({
             ...prev,
             nome_cliente: fichaAtualizada.nome_cliente || prev.nome_cliente,
@@ -254,14 +268,16 @@ export default function EditarFichaV3() {
             calca: fichaAtualizada.calca || prev.calca,
             camisa: fichaAtualizada.camisa || prev.camisa,
             sapato: fichaAtualizada.sapato || prev.sapato,
+            paleto_cor: fichaAtualizada.paleto_cor ?? prev.paleto_cor,
+            paleto_lanificio: fichaAtualizada.paleto_lanificio ?? prev.paleto_lanificio,
+            camisa_fios: fichaAtualizada.camisa_fios ?? prev.camisa_fios,
+            camisa_cor: fichaAtualizada.camisa_cor ?? prev.camisa_cor,
+            sapato_tipo: fichaAtualizada.sapato_tipo ?? prev.sapato_tipo,
             pago: fichaAtualizada.pago ?? prev.pago,
-            observacoes_cliente: prev.observacoes_cliente || fichaAtualizada.transcricao_audio || "",
           }));
 
-          // Detectar erro apenas se status for explicitamente 'erro' (e não duplicada — essa já foi tratada acima)
           if (fichaAtualizada.status === 'erro' && fichaAtualizada.erro_etapa !== 'ficha_duplicada') {
             setIsProcessing(false);
-
             toast({
               title: "Erro ao processar",
               description: "Não foi possível processar a imagem. Você pode preencher manualmente.",
@@ -273,36 +289,17 @@ export default function EditarFichaV3() {
       .subscribe();
 
     return () => {
-      console.log('🔌 Desconectando subscrição realtime');
       supabase.removeChannel(channel);
     };
-  }, [id, isAudioRecording, isAudioProcessing, isNewFicha, navigate]);
+  }, [id, isNewFicha, navigate]);
 
-  const handleTranscription = (text: string) => {
-    console.log('Texto recebido da transcrição:', text);
-    setFormData(prev => ({ ...prev, observacoes_cliente: text }));
-  };
-
-  const handleTagsExtracted = (tags: string[]) => {
-    const normalizedTags = tags.map(tag => tag.toLowerCase().trim());
-
-    setFormData(prev => {
-      const existingTags = prev.tags.map(tag => tag.toLowerCase());
-      const newTags = normalizedTags.filter(tag => !existingTags.includes(tag));
-
-      if (newTags.length > 0) {
-        console.log('Adicionando tags:', newTags);
-        return { ...prev, tags: [...prev.tags, ...newTags] };
-      }
-      return prev;
-    });
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setFormData({
-      ...formData,
-      tags: formData.tags.filter(tag => tag !== tagToRemove)
-    });
+  const handleToggleTag = (tagNome: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tagNome)
+        ? prev.tags.filter(t => t !== tagNome)
+        : [...prev.tags, tagNome],
+    }));
   };
 
   const handleAdicionarProva = async () => {
@@ -310,7 +307,6 @@ export default function EditarFichaV3() {
       await adicionarProva.mutateAsync();
       toast({ title: "Prova registrada", description: "Adicionada com sucesso." });
     } catch (err) {
-      console.error("Erro ao adicionar prova:", err);
       toast({
         title: "Erro ao adicionar prova",
         description: err instanceof Error ? err.message : "Tente novamente.",
@@ -324,7 +320,6 @@ export default function EditarFichaV3() {
       await deletarProva.mutateAsync(provaId);
       toast({ title: "Prova removida" });
     } catch (err) {
-      console.error("Erro ao remover prova:", err);
       toast({
         title: "Erro ao remover prova",
         description: err instanceof Error ? err.message : "Tente novamente.",
@@ -333,55 +328,34 @@ export default function EditarFichaV3() {
     }
   };
 
-  const handleAbrirVendaModal = () => {
-    setVendaForm({ descricao: "", valor: "", pago: false });
-    setShowVendaModal(true);
+  const handleQuantChange = (tipo: string, delta: number) => {
+    setItens(prev =>
+      prev.map(item =>
+        item.tipo_item === tipo
+          ? { ...item, quantidade: Math.max(0, item.quantidade + delta) }
+          : item
+      )
+    );
   };
 
-  const handleSalvarVenda = async () => {
-    if (!vendaForm.descricao.trim()) {
-      toast({
-        title: "Descrição obrigatória",
-        description: "Informe o que foi vendido.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const valorNum = vendaForm.valor ? parseFloat(vendaForm.valor.replace(",", ".")) : null;
-    if (vendaForm.valor && (valorNum === null || Number.isNaN(valorNum))) {
-      toast({
-        title: "Valor inválido",
-        description: "Informe um valor numérico.",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      await adicionarVendaAvulsa.mutateAsync({
-        descricao: vendaForm.descricao.trim(),
-        valor: valorNum,
-        pago: vendaForm.pago,
-      });
-      setShowVendaModal(false);
-      toast({ title: "Venda avulsa adicionada" });
-    } catch (err) {
-      console.error("Erro ao adicionar venda avulsa:", err);
-      toast({
-        title: "Erro ao adicionar venda",
-        description: err instanceof Error ? err.message : "Tente novamente.",
-        variant: "destructive",
-      });
-    }
+  const handleValorUnitarioChange = (tipo: string, valor: string) => {
+    const num = valor ? parseFloat(valor.replace(',', '.')) : null;
+    setItens(prev =>
+      prev.map(item =>
+        item.tipo_item === tipo
+          ? { ...item, valor_unitario: num !== null && !isNaN(num) ? num : null }
+          : item
+      )
+    );
   };
 
-  const handleDeletarVenda = async (vendaId: string) => {
+  const handleSalvarItens = async () => {
     try {
-      await deletarVendaAvulsa.mutateAsync(vendaId);
-      toast({ title: "Venda removida" });
+      await salvarItens.mutateAsync(itens);
+      toast({ title: "Peças avulsas salvas" });
     } catch (err) {
-      console.error("Erro ao remover venda:", err);
       toast({
-        title: "Erro ao remover venda",
+        title: "Erro ao salvar peças avulsas",
         description: err instanceof Error ? err.message : "Tente novamente.",
         variant: "destructive",
       });
@@ -389,12 +363,9 @@ export default function EditarFichaV3() {
   };
 
   const handleSave = async () => {
-    console.log('[handleSave] início — id:', id, 'status:', formData.status);
     setLoading(true);
     try {
-      // Validar codigo_ficha único
       if (!formData.codigo_ficha) {
-        console.warn('[handleSave] abortando: codigo_ficha vazio');
         toast({
           title: "Erro",
           description: "Código da ficha é obrigatório",
@@ -404,7 +375,6 @@ export default function EditarFichaV3() {
         return;
       }
 
-      console.log('[handleSave] checando duplicada para codigo_ficha:', formData.codigo_ficha);
       const { data: fichaExistente, error: dupErr } = await supabase
         .from('fichas')
         .select('id')
@@ -412,20 +382,11 @@ export default function EditarFichaV3() {
         .neq('id', id)
         .maybeSingle();
 
-      if (dupErr) {
-        console.error('[handleSave] erro na checagem de duplicada:', dupErr);
-        throw dupErr;
-      }
-
-      console.log('[handleSave] resultado duplicada:', fichaExistente);
+      if (dupErr) throw dupErr;
 
       if (fichaExistente) {
-        console.log('[handleSave] duplicada encontrada — deletando ficha atual e redirecionando');
         const { error: delErr } = await supabase.from('fichas').delete().eq('id', id);
-        if (delErr) {
-          console.error('[handleSave] erro ao deletar ficha duplicada:', delErr);
-          throw delErr;
-        }
+        if (delErr) throw delErr;
         navigate(`/editar-ficha-v3/${fichaExistente.id}`, {
           state: {
             isNewFicha: false,
@@ -442,10 +403,8 @@ export default function EditarFichaV3() {
 
       if (formData.telefone_cliente && formData.telefone_cliente.trim() !== '') {
         telefoneNormalizado = normalizarTelefone(formData.telefone_cliente);
-        console.log('[handleSave] telefone informado:', formData.telefone_cliente, '→ normalizado:', telefoneNormalizado);
 
         if (!telefoneNormalizado) {
-          console.warn('[handleSave] abortando: telefone inválido');
           toast({
             title: "Telefone inválido",
             description: "Não foi possível normalizar o telefone. Confira o formato e tente novamente.",
@@ -455,31 +414,24 @@ export default function EditarFichaV3() {
           return;
         }
 
-        const user = (await supabase.auth.getUser()).data.user;
-        console.log('[handleSave] chamando criar-cliente para vendedor:', user?.id);
+        const authUser = (await supabase.auth.getUser()).data.user;
 
         const { data, error: criarError } = await supabase.functions.invoke('criar-cliente', {
           body: {
             nome: formData.nome_cliente || 'Cliente sem nome',
             telefone: telefoneNormalizado,
-            vendedor_id: user?.id,
+            vendedor_id: authUser?.id,
             unidade_id: profile?.unidade_id ?? null,
           },
         });
 
-        console.log('[handleSave] retorno criar-cliente:', { data, criarError });
-
         if (criarError || !data?.cliente_id) {
-          console.error('[handleSave] erro ao criar/buscar cliente:', criarError, data);
           throw new Error(data?.error || criarError?.message || 'Falha ao vincular cliente');
         }
 
         clienteId = data.cliente_id;
       }
 
-      console.log('[handleSave] clienteId final:', clienteId);
-
-      // Ao salvar, transiciona para 'ativa' tanto a partir de 'pendente' quanto 'erro'
       const novoStatus = ['pendente', 'erro'].includes(formData.status) ? 'ativa' : formData.status;
 
       const updateData: any = {
@@ -496,30 +448,32 @@ export default function EditarFichaV3() {
         calca: formData.calca || null,
         camisa: formData.camisa || null,
         sapato: formData.sapato || null,
+        paleto_cor: formData.paleto_cor || null,
+        paleto_lanificio: formData.paleto_lanificio || null,
+        camisa_fios: formData.camisa_fios || null,
+        camisa_cor: formData.camisa_cor || null,
+        sapato_tipo: formData.sapato_tipo || null,
         pago: formData.pago,
-        transcricao_audio: formData.observacoes_cliente || null,
         cliente_id: clienteId,
         status: novoStatus,
         updated_at: new Date().toISOString(),
       };
 
-      // Se está saindo de 'erro' para 'ativa', limpa marcadores de erro
       if (formData.status === 'erro' && novoStatus === 'ativa') {
         updateData.erro_etapa = null;
         updateData.ficha_original_id = null;
       }
 
-      console.log('[handleSave] updateData:', updateData);
+      if (isAdmin && fichaVendedorId) {
+        updateData.vendedor_id = fichaVendedorId;
+      }
+
       const { error } = await supabase
         .from("fichas")
         .update(updateData)
         .eq("id", id);
 
-      if (error) {
-        console.error('[handleSave] erro ao atualizar ficha:', error);
-        throw error;
-      }
-      console.log('[handleSave] ficha atualizada com sucesso');
+      if (error) throw error;
 
       const isProva = ficha?.prova1_data || ficha?.prova2_data || ficha?.prova3_data;
       if (!isProva) {
@@ -530,69 +484,37 @@ export default function EditarFichaV3() {
         });
       }
 
-      if (clienteId && formData.tags.length > 0) {
-        console.log('Salvando tags para cliente:', clienteId);
-
-        const tagIds: string[] = [];
-
-        for (const tagNome of formData.tags) {
-          const tagNomeLower = tagNome.toLowerCase().trim();
-
-          const { data: tagExistente, error: searchTagError } = await supabase
-            .from('tags')
-            .select('id')
-            .eq('nome', tagNomeLower)
-            .maybeSingle();
-
-          if (searchTagError) {
-            console.error('Erro ao buscar tag:', searchTagError);
-            continue;
-          }
-
-          if (tagExistente) {
-            tagIds.push(tagExistente.id);
-          } else {
-            const { data: novaTag, error: insertTagError } = await supabase
-              .from('tags')
-              .insert({ nome: tagNomeLower })
-              .select('id')
-              .single();
-
-            if (insertTagError) {
-              console.error('Erro ao criar tag:', insertTagError);
-              continue;
-            }
-
-            if (novaTag) {
-              tagIds.push(novaTag.id);
-            }
-          }
-        }
-
-        await supabase
+      // Surgical tag save: only update padrao tags, never touch non-padrao relations
+      if (clienteId && tagsPadrao.length > 0) {
+        const padraoIds = tagsPadrao.map(t => t.id);
+        const { data: existingRelacoes } = await supabase
           .from('relacao_cliente_tag')
-          .delete()
-          .eq('id_cliente', clienteId);
+          .select('id_tag')
+          .eq('id_cliente', clienteId)
+          .in('id_tag', padraoIds);
 
-        if (tagIds.length > 0) {
-          const relacoes = tagIds.map(tagId => ({
-            id_cliente: clienteId,
-            id_tag: tagId
-          }));
+        const existingTagIds = new Set((existingRelacoes ?? []).map(r => r.id_tag));
 
-          const { error: insertRelacoesError } = await supabase
-            .from('relacao_cliente_tag')
-            .insert(relacoes);
+        for (const padraoTag of tagsPadrao) {
+          const isSelected = formData.tags.some(t => t.toLowerCase() === padraoTag.nome.toLowerCase());
+          const exists = existingTagIds.has(padraoTag.id);
 
-          if (insertRelacoesError) {
-            console.error('Erro ao criar relações:', insertRelacoesError);
+          if (isSelected && !exists) {
+            await supabase
+              .from('relacao_cliente_tag')
+              .insert({ id_cliente: clienteId, id_tag: padraoTag.id });
+          } else if (!isSelected && exists) {
+            await supabase
+              .from('relacao_cliente_tag')
+              .delete()
+              .eq('id_cliente', clienteId)
+              .eq('id_tag', padraoTag.id);
           }
         }
       }
 
       queryClient.invalidateQueries({ queryKey: ['fichas-processadas'] });
 
-      console.log('[handleSave] navegando — cliente_id state:', cliente_id);
       if (cliente_id) {
         navigate(`/cliente/${cliente_id}`);
       } else {
@@ -765,57 +687,53 @@ export default function EditarFichaV3() {
           </div>
 
           <div className="space-y-6 [&_.border-input]:border-foreground/30">
-            {/* Observações do Cliente */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">Observações do Cliente</h3>
-              <AudioRecorder
-                onTranscriptionComplete={handleTranscription}
-                onTagsExtracted={handleTagsExtracted}
-                onRecordingStart={() => setIsAudioRecording(true)}
-                onRecordingStop={() => setIsAudioRecording(false)}
-                onProcessingStart={() => setIsAudioProcessing(true)}
-                onProcessingEnd={() => setIsAudioProcessing(false)}
-              />
-              <Textarea
-                id="observacoes_cliente"
-                name="observacoes_cliente"
-                value={formData.observacoes_cliente}
-                onChange={(e) => setFormData({ ...formData, observacoes_cliente: e.target.value })}
-                placeholder="Observações gerais sobre o atendimento..."
-                className="min-h-[100px]"
-              />
-            </div>
-
-            <Separator />
 
             {/* Tags */}
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">Tags</h3>
-              <div className="flex flex-wrap gap-2">
-                {formData.tags.length > 0 ? (
-                  formData.tags.map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="ml-1 hover:text-destructive"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))
-                ) : (
-                  <span className="text-sm text-muted-foreground">-</span>
-                )}
-              </div>
-            </div>
-
-            <Separator />
+            {tagsPadrao.length > 0 && (
+              <>
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold">Tags</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {tagsPadrao.map((tag) => {
+                      const selected = formData.tags.some(t => t.toLowerCase() === tag.nome.toLowerCase());
+                      return (
+                        <Button
+                          key={tag.id}
+                          type="button"
+                          size="sm"
+                          variant={selected ? 'default' : 'outline'}
+                          onClick={() => handleToggleTag(tag.nome)}
+                        >
+                          {tag.nome}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Separator />
+              </>
+            )}
 
             {/* Cabeçalho */}
             <div className="space-y-4">
               <h3 className="text-base font-semibold">Cabeçalho</h3>
+
+              {isAdmin && vendedores.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Vendedor responsável pela ficha</Label>
+                  <Select value={fichaVendedorId ?? ''} onValueChange={setFichaVendedorId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => (
+                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -839,7 +757,6 @@ export default function EditarFichaV3() {
                       placeholder="(00) 00000-0000"
                     />
                   </div>
-
                 </div>
 
                 <div className="space-y-4">
@@ -971,51 +888,145 @@ export default function EditarFichaV3() {
             <Separator />
 
             {/* Detalhes do Item */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="text-base font-semibold">Detalhes do Item</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="paleto">Paletó</Label>
-                  <Input
-                    id="paleto"
-                    name="paleto"
-                    value={formData.paleto}
-                    onChange={(e) => setFormData({ ...formData, paleto: e.target.value })}
-                    placeholder="Número"
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="calca">Calça</Label>
-                  <Input
-                    id="calca"
-                    name="calca"
-                    value={formData.calca}
-                    onChange={(e) => setFormData({ ...formData, calca: e.target.value })}
-                    placeholder="Número"
-                  />
+              {/* Paletó / Calça */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Paletó / Calça</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="paleto">Paletó</Label>
+                    <Input
+                      id="paleto"
+                      value={formData.paleto}
+                      onChange={(e) => setFormData({ ...formData, paleto: e.target.value })}
+                      placeholder="Número"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="calca">Calça</Label>
+                    <Input
+                      id="calca"
+                      value={formData.calca}
+                      onChange={(e) => setFormData({ ...formData, calca: e.target.value })}
+                      placeholder="Número"
+                    />
+                  </div>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="camisa">Camisa</Label>
+                  <Label>Cor</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Azul', 'Preto', 'Cinza', 'Outros'].map(cor => (
+                      <Button
+                        key={cor}
+                        type="button"
+                        size="sm"
+                        variant={formData.paleto_cor === cor ? 'default' : 'outline'}
+                        onClick={() => setFormData({ ...formData, paleto_cor: formData.paleto_cor === cor ? null : cor })}
+                      >
+                        {cor}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Lanifício</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Reda', 'Paramount', 'Canonico', 'Pietro di Mosso'].map(lan => (
+                      <Button
+                        key={lan}
+                        type="button"
+                        size="sm"
+                        variant={formData.paleto_lanificio === lan ? 'default' : 'outline'}
+                        onClick={() => setFormData({ ...formData, paleto_lanificio: formData.paleto_lanificio === lan ? null : lan })}
+                      >
+                        {lan}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="opacity-50" />
+
+              {/* Camisa */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Camisa</h4>
+                <div className="space-y-2">
+                  <Label htmlFor="camisa">Número</Label>
                   <Input
                     id="camisa"
-                    name="camisa"
                     value={formData.camisa}
                     onChange={(e) => setFormData({ ...formData, camisa: e.target.value })}
                     placeholder="Número"
+                    className="max-w-[160px]"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="sapato">Sapato</Label>
+                  <Label>Fios</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['140', '120', '100'].map(fio => (
+                      <Button
+                        key={fio}
+                        type="button"
+                        size="sm"
+                        variant={formData.camisa_fios === fio ? 'default' : 'outline'}
+                        onClick={() => setFormData({ ...formData, camisa_fios: formData.camisa_fios === fio ? null : fio })}
+                      >
+                        {fio}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Cor</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Branco', 'Outros'].map(cor => (
+                      <Button
+                        key={cor}
+                        type="button"
+                        size="sm"
+                        variant={formData.camisa_cor === cor ? 'default' : 'outline'}
+                        onClick={() => setFormData({ ...formData, camisa_cor: formData.camisa_cor === cor ? null : cor })}
+                      >
+                        {cor}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="opacity-50" />
+
+              {/* Sapato */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-medium text-muted-foreground">Sapato</h4>
+                <div className="space-y-2">
+                  <Label htmlFor="sapato">Número</Label>
                   <Input
                     id="sapato"
-                    name="sapato"
                     value={formData.sapato}
                     onChange={(e) => setFormData({ ...formData, sapato: e.target.value })}
                     placeholder="Número"
+                    className="max-w-[160px]"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {['Casual', 'Social'].map(tipo => (
+                      <Button
+                        key={tipo}
+                        type="button"
+                        size="sm"
+                        variant={formData.sapato_tipo === tipo ? 'default' : 'outline'}
+                        onClick={() => setFormData({ ...formData, sapato_tipo: formData.sapato_tipo === tipo ? null : tipo })}
+                      >
+                        {tipo}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1067,54 +1078,111 @@ export default function EditarFichaV3() {
 
             <Separator />
 
-            {/* Vendas Avulsas */}
-            <div className="space-y-3">
+            {/* Peças Avulsas */}
+            <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-semibold flex items-center gap-2">
                   <ShoppingBag className="h-4 w-4" />
-                  Vendas Avulsas {vendasAvulsas.length > 0 && <span className="text-muted-foreground text-sm font-normal">({vendasAvulsas.length})</span>}
+                  Peças Avulsas
                 </h3>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleAbrirVendaModal}
-                  disabled={!id}
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar Venda Avulsa
-                </Button>
               </div>
-              {vendasAvulsas.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Nenhuma venda avulsa registrada.</p>
-              ) : (
+
+              {isAdmin && vendedores.length > 0 && (
                 <div className="space-y-2">
-                  {vendasAvulsas.map((v) => (
-                    <div key={v.id} className="flex items-start justify-between gap-3 text-sm p-3 rounded border border-border">
-                      <div className="flex-1 min-w-0 space-y-1">
-                        <p className="truncate">{v.descricao || "(sem descrição)"}</p>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          <span>{v.valor != null ? Number(v.valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "-"}</span>
-                          <span>{v.pago ? "Pago" : "Não pago"}</span>
-                          <span>{format(new Date(v.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                        onClick={() => handleDeletarVenda(v.id)}
-                        disabled={deletarVendaAvulsa.isPending}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
+                  <Label>Vendedor das peças avulsas</Label>
+                  <Select
+                    value={resolvedAvulsosVendedorId ?? ''}
+                    onValueChange={setAvulsosVendedorId}
+                  >
+                    <SelectTrigger className="max-w-xs">
+                      <SelectValue placeholder="Selecione o vendedor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {vendedores.map(v => (
+                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
-            </div>
 
+              <div className="space-y-2">
+                {TIPOS_ITEM_AVULSO.map(tipo => {
+                  const item = itens.find(i => i.tipo_item === tipo) ?? { tipo_item: tipo, quantidade: 0, valor_unitario: null };
+                  const total = item.quantidade * (item.valor_unitario ?? 0);
+                  return (
+                    <div key={tipo} className="flex items-center gap-3 p-3 rounded border border-border">
+                      <span className="w-20 text-sm font-medium">{TIPO_LABEL[tipo]}</span>
+
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={() => handleQuantChange(tipo, -1)}
+                          disabled={item.quantidade === 0}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm tabular-nums">{item.quantidade}</span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-7 w-7"
+                          onClick={() => handleQuantChange(tipo, 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+
+                      <div className="flex items-center gap-1 flex-1">
+                        <span className="text-xs text-muted-foreground">R$</span>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.valor_unitario ?? ''}
+                          onChange={(e) => handleValorUnitarioChange(tipo, e.target.value)}
+                          placeholder="0,00"
+                          className="h-7 text-sm w-24"
+                        />
+                      </div>
+
+                      <div className="text-sm text-muted-foreground text-right min-w-[64px] tabular-nums">
+                        {total > 0
+                          ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                          : '—'
+                        }
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {itens.some(i => i.quantidade > 0) && (
+                <div className="flex justify-between items-center pt-1 text-sm font-medium">
+                  <span>Total avulsos</span>
+                  <span className="tabular-nums">
+                    {itens
+                      .reduce((acc, i) => acc + i.quantidade * (i.valor_unitario ?? 0), 0)
+                      .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+              )}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleSalvarItens}
+                disabled={salvarItens.isPending || !id}
+              >
+                {salvarItens.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar peças avulsas
+              </Button>
+            </div>
 
             {/* Pagamento */}
             <div className="space-y-4">
@@ -1207,65 +1275,6 @@ export default function EditarFichaV3() {
                 onError={handleImageError}
               />
             )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Venda Avulsa */}
-      <Dialog open={showVendaModal} onOpenChange={setShowVendaModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogTitle>Adicionar Venda Avulsa</DialogTitle>
-          <DialogDescription>Vinculada à ficha #{formData.codigo_ficha || ficha?.codigo_ficha || "—"}</DialogDescription>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label htmlFor="venda_descricao">Descrição</Label>
-              <Textarea
-                id="venda_descricao"
-                value={vendaForm.descricao}
-                onChange={(e) => setVendaForm({ ...vendaForm, descricao: e.target.value })}
-                placeholder="Ex: Gravata azul, lenço de seda..."
-                className="min-h-[80px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="venda_valor">Valor (R$)</Label>
-              <Input
-                id="venda_valor"
-                type="number"
-                step="0.01"
-                value={vendaForm.valor}
-                onChange={(e) => setVendaForm({ ...vendaForm, valor: e.target.value })}
-                placeholder="0,00"
-              />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="venda_pago"
-                checked={vendaForm.pago}
-                onCheckedChange={(checked) => setVendaForm({ ...vendaForm, pago: checked })}
-              />
-              <Label htmlFor="venda_pago">Pagamento realizado</Label>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowVendaModal(false)}
-                disabled={adicionarVendaAvulsa.isPending}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSalvarVenda}
-                disabled={adicionarVendaAvulsa.isPending}
-                className="flex-1"
-              >
-                {adicionarVendaAvulsa.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Adicionar
-              </Button>
-            </div>
           </div>
         </DialogContent>
       </Dialog>

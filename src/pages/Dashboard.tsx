@@ -1,4 +1,4 @@
-import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors } from "lucide-react";
+import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -8,6 +8,7 @@ import Logo from "@/components/Logo";
 import { useFichas } from "@/hooks/useFichas";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { useItensAvulsosDoMes } from "@/hooks/useItensAvulsosDoMes";
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -75,6 +76,11 @@ const Dashboard = () => {
 
   const totalVendasAvulsas = vendasAvulsasDoMes.reduce((acc, v) => acc + Number(v.valor ?? 0), 0);
 
+  const { data: totalItensAvulsos = 0 } = useItensAvulsosDoMes();
+
+  // Combined: vendas_avulsas table + itens_avulsos_ficha table
+  const totalAvulsasCombinado = totalVendasAvulsas + totalItensAvulsos;
+
   const totalFichas = fichasDoMes.length;
   const totalAluguel = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'aluguel')
@@ -82,9 +88,8 @@ const Dashboard = () => {
   const totalVendaFichas = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'venda')
     .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  // Vendas avulsas entram na categoria "Vendas" e no total geral
-  const totalVenda = totalVendaFichas + totalVendasAvulsas;
-  const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalVendasAvulsas;
+  const totalVenda = totalVendaFichas + totalAvulsasCombinado;
+  const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalAvulsasCombinado;
 
   return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Início" />
@@ -148,6 +153,14 @@ const Dashboard = () => {
                 <span className="text-xs text-muted-foreground">Provas feitas</span>
               </div>
               <p className="text-2xl font-bold text-foreground">{totalProvas}</p>
+            </Card>
+
+            <Card className="p-4 col-span-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Package className="w-4 h-4 text-primary" />
+                <span className="text-xs text-muted-foreground">Vendas avulsas</span>
+              </div>
+              <p className="text-xl font-bold text-foreground">{formatCurrency(totalAvulsasCombinado)}</p>
             </Card>
 
             <Card className="p-4">
