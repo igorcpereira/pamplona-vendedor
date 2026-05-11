@@ -11,6 +11,7 @@ import { capitalizarNome } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
 import { useFichasProcessadas } from "@/hooks/useFichasProcessadas";
+import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
 
 interface ProcessingCard {
   id: string;
@@ -21,6 +22,7 @@ interface ProcessingCard {
   nome_cliente?: string;
   codigo_ficha?: string;
   tipo?: string;
+  vendedor_id?: string;
 }
 
 const Fichas = () => {
@@ -31,6 +33,9 @@ const Fichas = () => {
   const [searchText, setSearchText] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const { data: vendedores = [] } = useVendedoresUnidade();
+  const vendedorNomes = new Map(vendedores.map(v => [v.id, v.nome]));
 
   // Debounce do input de busca (usado pela aba "processada")
   useEffect(() => {
@@ -107,7 +112,6 @@ const Fichas = () => {
         const { data, error } = await supabase
           .from('fichas')
           .select('*')
-          .eq('vendedor_id', user?.id)
           .in('status', ['pendente', 'erro'])
           .order('created_at', { ascending: false })
           .range(0, 99);
@@ -134,6 +138,7 @@ const Fichas = () => {
             nome_cliente: item.nome_cliente || undefined,
             codigo_ficha: item.codigo_ficha || undefined,
             tipo: item.tipo || undefined,
+            vendedor_id: item.vendedor_id || undefined,
           };
         });
         setCards(mappedCards);
@@ -170,6 +175,7 @@ const Fichas = () => {
               nome_cliente: newItem.nome_cliente || undefined,
               codigo_ficha: newItem.codigo_ficha || undefined,
               tipo: newItem.tipo || undefined,
+              vendedor_id: newItem.vendedor_id || undefined,
             };
             setCards(prev => [newCard, ...prev]);
           } else if (payload.eventType === 'UPDATE') {
@@ -204,6 +210,7 @@ const Fichas = () => {
                   nome_cliente: updatedItem.nome_cliente || undefined,
                   codigo_ficha: updatedItem.codigo_ficha || undefined,
                   tipo: updatedItem.tipo || undefined,
+                  vendedor_id: updatedItem.vendedor_id || undefined,
                 }, ...prev];
               }
             });
@@ -354,6 +361,11 @@ const Fichas = () => {
                             <p className="text-xs text-muted-foreground truncate">
                               Código: {ficha.codigo_ficha || "-"}
                             </p>
+                            {ficha.vendedor_id && vendedorNomes.get(ficha.vendedor_id) && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                Vendedor: {vendedorNomes.get(ficha.vendedor_id)}
+                              </p>
+                            )}
                           </div>
                           <div className="flex-shrink-0 space-y-1 text-center">
                             <p className="text-xs text-muted-foreground">
@@ -394,6 +406,11 @@ const Fichas = () => {
                           <p className="text-xs text-muted-foreground">
                             Data: {formatDate(card.timestamp)}
                           </p>
+                          {card.vendedor_id && vendedorNomes.get(card.vendedor_id) && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              Vendedor: {vendedorNomes.get(card.vendedor_id)}
+                            </p>
+                          )}
                           <p className={`text-xs ${getStatusColor(card.status)}`}>
                             Status: {getStatusText(card.status)}
                           </p>
