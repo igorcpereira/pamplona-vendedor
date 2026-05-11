@@ -17,15 +17,11 @@ export const useVendedoresUnidade = () => {
       if (!unidadeId) return [];
 
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, nome')
-        .eq('ativo', true)
-        .eq('unidade_id', unidadeId)
-        .order('nome');
+        .rpc('listar_vendedores_unidade', { p_unidade_id: unidadeId });
 
       if (error) throw error;
 
-      return (data ?? []).map((p) => ({
+      return (data ?? []).map((p: { id: string; nome: string }) => ({
         id: p.id,
         nome: p.nome ?? '',
       }));
