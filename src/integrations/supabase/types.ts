@@ -638,50 +638,37 @@ export type Database = {
       itens_avulsos_ficha: {
         Row: {
           created_at: string
-          ficha_id: string
           id: string
+          pedido_id: string
           quantidade: number
           tipo_item: string
-          unidade_id: number
           updated_at: string
           valor_unitario: number | null
-          vendedor_id: string
         }
         Insert: {
           created_at?: string
-          ficha_id: string
           id?: string
+          pedido_id: string
           quantidade?: number
           tipo_item: string
-          unidade_id: number
           updated_at?: string
           valor_unitario?: number | null
-          vendedor_id: string
         }
         Update: {
           created_at?: string
-          ficha_id?: string
           id?: string
+          pedido_id?: string
           quantidade?: number
           tipo_item?: string
-          unidade_id?: number
           updated_at?: string
           valor_unitario?: number | null
-          vendedor_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "itens_avulsos_ficha_ficha_id_fkey"
-            columns: ["ficha_id"]
+            foreignKeyName: "itens_avulsos_ficha_pedido_id_fkey"
+            columns: ["pedido_id"]
             isOneToOne: false
-            referencedRelation: "fichas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "itens_avulsos_ficha_unidade_id_fkey"
-            columns: ["unidade_id"]
-            isOneToOne: false
-            referencedRelation: "unidades"
+            referencedRelation: "pedidos"
             referencedColumns: ["id"]
           },
         ]
@@ -736,6 +723,57 @@ export type Database = {
           webhook_resposta?: string | null
         }
         Relationships: []
+      }
+      pedidos: {
+        Row: {
+          created_at: string
+          ficha_id: string
+          garantia: number | null
+          id: string
+          pago: boolean
+          unidade_id: number
+          updated_at: string
+          valor_total: number
+          vendedor_id: string
+        }
+        Insert: {
+          created_at?: string
+          ficha_id: string
+          garantia?: number | null
+          id?: string
+          pago?: boolean
+          unidade_id: number
+          updated_at?: string
+          valor_total?: number
+          vendedor_id: string
+        }
+        Update: {
+          created_at?: string
+          ficha_id?: string
+          garantia?: number | null
+          id?: string
+          pago?: boolean
+          unidade_id?: number
+          updated_at?: string
+          valor_total?: number
+          vendedor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pedidos_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pedidos_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

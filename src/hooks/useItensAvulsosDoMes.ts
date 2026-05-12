@@ -6,7 +6,7 @@ export const useItensAvulsosDoMes = () => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['itens-avulsos-mes', user?.id],
+    queryKey: ['pedidos-mes', user?.id],
     queryFn: async (): Promise<number> => {
       if (!user?.id) return 0;
 
@@ -15,18 +15,15 @@ export const useItensAvulsosDoMes = () => {
       const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 1).toISOString();
 
       const { data, error } = await supabase
-        .from('itens_avulsos_ficha')
-        .select('quantidade, valor_unitario')
+        .from('pedidos')
+        .select('valor_total')
         .eq('vendedor_id', user.id)
         .gte('created_at', inicioMes)
         .lt('created_at', fimMes);
 
       if (error) throw error;
 
-      return (data ?? []).reduce(
-        (acc, item) => acc + item.quantidade * (item.valor_unitario ?? 0),
-        0,
-      );
+      return (data ?? []).reduce((acc, p) => acc + Number(p.valor_total ?? 0), 0);
     },
     enabled: !!user?.id,
     staleTime: 60 * 1000,
