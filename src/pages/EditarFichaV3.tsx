@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag, Minus } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag, Pencil, ChevronDown, DollarSign } from "lucide-react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,16 +25,10 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProvasFicha, useAdicionarProva, useDeletarProva } from "@/hooks/useProvasFicha";
-import { useItensAvulsosFicha, useSalvarItensAvulsos, TIPOS_ITEM_AVULSO, type ItemAvulso } from "@/hooks/useItensAvulsosFicha";
+import { usePedidosFicha, type Pedido } from "@/hooks/usePedidosFicha";
 import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
+import PedidoModal from "@/components/PedidoModal";
 
-const TIPO_LABEL: Record<string, string> = {
-  camiseta: 'Camiseta',
-  gravata: 'Gravata',
-  sapato: 'Sapato',
-  meia: 'Meia',
-  cinto: 'Cinto',
-};
 
 export default function EditarFichaV3() {
   const { id } = useParams<{ id: string }>();
@@ -55,16 +51,13 @@ export default function EditarFichaV3() {
   const [showDuplicateBanner, setShowDuplicateBanner] = useState<boolean>(!!duplicateAlert);
   const [tagsPadrao, setTagsPadrao] = useState<{ id: string; nome: string }[]>([]);
   const [fichaVendedorId, setFichaVendedorId] = useState<string | undefined>(undefined);
-  const [avulsosVendedorId, setAvulsosVendedorId] = useState<string | undefined>(undefined);
-  const [itens, setItens] = useState<ItemAvulso[]>([]);
+  const [pedidoModalOpen, setPedidoModalOpen] = useState(false);
+  const [pedidoEditando, setPedidoEditando] = useState<Pedido | undefined>();
+
+  const { data: pedidos = [] } = usePedidosFicha(id);
+  const { data: provas = [] } = useProvasFicha(id);
 
   const { data: vendedores = [] } = useVendedoresUnidade();
-
-  const resolvedAvulsosVendedorId = avulsosVendedorId ?? user?.id;
-  const { data: itensDB = [] } = useItensAvulsosFicha(id, resolvedAvulsosVendedorId);
-  const salvarItens = useSalvarItensAvulsos(id, resolvedAvulsosVendedorId);
-
-  const { data: provas = [] } = useProvasFicha(id);
   const adicionarProva = useAdicionarProva(id);
   const deletarProva = useDeletarProva(id);
 
@@ -91,10 +84,6 @@ export default function EditarFichaV3() {
     pago: false,
     tags: [] as string[],
   });
-
-  useEffect(() => {
-    setItens(itensDB);
-  }, [itensDB]);
 
   // Fetch padrao tags once
   useEffect(() => {
@@ -322,40 +311,6 @@ export default function EditarFichaV3() {
     } catch (err) {
       toast({
         title: "Erro ao remover prova",
-        description: err instanceof Error ? err.message : "Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleQuantChange = (tipo: string, delta: number) => {
-    setItens(prev =>
-      prev.map(item =>
-        item.tipo_item === tipo
-          ? { ...item, quantidade: Math.max(0, item.quantidade + delta) }
-          : item
-      )
-    );
-  };
-
-  const handleValorUnitarioChange = (tipo: string, valor: string) => {
-    const num = valor ? parseFloat(valor.replace(',', '.')) : null;
-    setItens(prev =>
-      prev.map(item =>
-        item.tipo_item === tipo
-          ? { ...item, valor_unitario: num !== null && !isNaN(num) ? num : null }
-          : item
-      )
-    );
-  };
-
-  const handleSalvarItens = async () => {
-    try {
-      await salvarItens.mutateAsync(itens);
-      toast({ title: "Peças avulsas salvas" });
-    } catch (err) {
-      toast({
-        title: "Erro ao salvar peças avulsas",
         description: err instanceof Error ? err.message : "Tente novamente.",
         variant: "destructive",
       });
@@ -1062,110 +1017,93 @@ export default function EditarFichaV3() {
 
             <Separator />
 
-            {/* Peças Avulsas */}
+            {/* Pedidos Avulsos */}
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-base font-semibold flex items-center gap-2">
                   <ShoppingBag className="h-4 w-4" />
-                  Peças Avulsas
+                  Pedidos Avulsos
                 </h3>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={!id}
+                  onClick={() => { setPedidoEditando(undefined); setPedidoModalOpen(true); }}
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Adicionar Pedido
+                </Button>
               </div>
 
-              {isAdmin && (
-                <div className="space-y-2">
-                  <Label>Vendedor das peças avulsas</Label>
-                  <Select
-                    value={resolvedAvulsosVendedorId ?? ''}
-                    onValueChange={setAvulsosVendedorId}
-                  >
-                    <SelectTrigger className="max-w-xs">
-                      <SelectValue placeholder="Selecione o vendedor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendedores.map(v => (
-                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {pedidos.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum pedido avulso cadastrado.</p>
+              ) : (
+                <Accordion type="multiple" className="space-y-2">
+                  {pedidos.map((pedido) => (
+                    <AccordionItem
+                      key={pedido.id}
+                      value={pedido.id}
+                      className="border rounded-md px-3"
+                    >
+                      <AccordionTrigger className="hover:no-underline py-3">
+                        <div className="flex items-center gap-3 flex-1 text-left">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium">{pedido.vendedor_nome}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(pedido.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm font-medium tabular-nums">
+                              {pedido.valor_total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                            <Badge variant={pedido.pago ? 'default' : 'secondary'} className="text-xs">
+                              {pedido.pago ? 'Pago' : 'Pendente'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pb-3">
+                        <div className="space-y-2">
+                          {pedido.itens.filter((i) => i.quantidade > 0).map((item) => (
+                            <div key={item.tipo_item} className="flex justify-between text-sm">
+                              <span className="capitalize">{item.tipo_item} × {item.quantidade}</span>
+                              <span className="tabular-nums text-muted-foreground">
+                                {(item.quantidade * (item.valor_unitario ?? 0))
+                                  .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                              </span>
+                            </div>
+                          ))}
+                          {pedido.garantia != null && pedido.garantia > 0 && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground pt-1">
+                              <DollarSign className="h-3 w-3" />
+                              Entrada: {pedido.garantia.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </div>
+                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="mt-2"
+                            onClick={() => { setPedidoEditando(pedido); setPedidoModalOpen(true); }}
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1" />
+                            Editar
+                          </Button>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
               )}
 
-              <div className="space-y-2">
-                {TIPOS_ITEM_AVULSO.map(tipo => {
-                  const item = itens.find(i => i.tipo_item === tipo) ?? { tipo_item: tipo, quantidade: 0, valor_unitario: null };
-                  const total = item.quantidade * (item.valor_unitario ?? 0);
-                  return (
-                    <div key={tipo} className="flex items-center gap-3 p-3 rounded border border-border">
-                      <span className="w-20 text-sm font-medium">{TIPO_LABEL[tipo]}</span>
-
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => handleQuantChange(tipo, -1)}
-                          disabled={item.quantidade === 0}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center text-sm tabular-nums">{item.quantidade}</span>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="outline"
-                          className="h-7 w-7"
-                          onClick={() => handleQuantChange(tipo, 1)}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-
-                      <div className="flex items-center gap-1 flex-1">
-                        <span className="text-xs text-muted-foreground">R$</span>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={item.valor_unitario ?? ''}
-                          onChange={(e) => handleValorUnitarioChange(tipo, e.target.value)}
-                          placeholder="0,00"
-                          className="h-7 text-sm w-24"
-                        />
-                      </div>
-
-                      <div className="text-sm text-muted-foreground text-right min-w-[64px] tabular-nums">
-                        {total > 0
-                          ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                          : '—'
-                        }
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {itens.some(i => i.quantidade > 0) && (
-                <div className="flex justify-between items-center pt-1 text-sm font-medium">
-                  <span>Total avulsos</span>
-                  <span className="tabular-nums">
-                    {itens
-                      .reduce((acc, i) => acc + i.quantidade * (i.valor_unitario ?? 0), 0)
-                      .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </span>
-                </div>
-              )}
-
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleSalvarItens}
-                disabled={salvarItens.isPending || !id}
-              >
-                {salvarItens.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Salvar peças avulsas
-              </Button>
+              <PedidoModal
+                fichaId={id}
+                pedido={pedidoEditando}
+                open={pedidoModalOpen}
+                onClose={() => setPedidoModalOpen(false)}
+              />
             </div>
 
             {/* Pagamento */}
