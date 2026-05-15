@@ -25,6 +25,7 @@ export interface NovoPedido {
   vendedor_id?: string;
   pago: boolean;
   garantia: number | null;
+  valor_total: number;
   itens: ItemPedido[];
 }
 
@@ -124,7 +125,7 @@ export const useCriarPedido = (fichaId?: string) => {
           pedido_id: pedido.id,
           tipo_item: item.tipo_item,
           quantidade: item.quantidade,
-          valor_unitario: item.valor_unitario,
+          valor_unitario: null,
         }));
 
         const { error: itensError } = await supabase
@@ -133,6 +134,12 @@ export const useCriarPedido = (fichaId?: string) => {
 
         if (itensError) throw itensError;
       }
+
+      // Atualiza valor_total após os itens para sobrescrever o trigger de sync
+      await supabase
+        .from('pedidos')
+        .update({ valor_total: novoPedido.valor_total })
+        .eq('id', pedido.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pedidos-ficha', fichaId] });
@@ -149,11 +156,13 @@ export const useAtualizarPedido = (fichaId?: string) => {
       pedidoId,
       pago,
       garantia,
+      valor_total,
       itens,
     }: {
       pedidoId: string;
       pago: boolean;
       garantia: number | null;
+      valor_total: number;
       itens: ItemPedido[];
     }) => {
       const { error: pedidoError } = await supabase
@@ -171,7 +180,7 @@ export const useAtualizarPedido = (fichaId?: string) => {
           pedido_id: pedidoId,
           tipo_item: item.tipo_item,
           quantidade: item.quantidade,
-          valor_unitario: item.valor_unitario,
+          valor_unitario: null,
         }));
 
         const { error } = await supabase
@@ -189,6 +198,12 @@ export const useAtualizarPedido = (fichaId?: string) => {
           .eq('pedido_id', pedidoId)
           .in('tipo_item', tipos);
       }
+
+      // Atualiza valor_total após os itens para sobrescrever o trigger de sync
+      await supabase
+        .from('pedidos')
+        .update({ valor_total })
+        .eq('id', pedidoId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pedidos-ficha', fichaId] });

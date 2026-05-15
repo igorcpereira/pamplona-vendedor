@@ -88,7 +88,7 @@ const Dashboard = () => {
   const totalVendaFichas = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'venda')
     .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  const totalVenda = totalVendaFichas + totalAvulsasCombinado;
+  const totalVenda = totalVendaFichas;
   const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalAvulsasCombinado;
 
   return <div className="min-h-screen bg-background pb-20 relative">

@@ -44,6 +44,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
   const [vendedorId, setVendedorId] = useState<string>('');
   const [pago, setPago] = useState(false);
   const [garantia, setGarantia] = useState('');
+  const [valorTotal, setValorTotal] = useState('');
   const [itens, setItens] = useState<ItemPedido[]>(TIPOS_ITEM_AVULSO.map(itemZerado));
 
   useEffect(() => {
@@ -52,12 +53,14 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
       setVendedorId(pedido.vendedor_id);
       setPago(pedido.pago);
       setGarantia(pedido.garantia != null ? String(pedido.garantia) : '');
+      setValorTotal(pedido.valor_total > 0 ? String(pedido.valor_total) : '');
       const mapa = new Map(pedido.itens.map((i) => [i.tipo_item, i]));
       setItens(TIPOS_ITEM_AVULSO.map((t) => mapa.get(t) ?? itemZerado(t)));
     } else {
       setVendedorId(user?.id ?? '');
       setPago(false);
       setGarantia('');
+      setValorTotal('');
       setItens(TIPOS_ITEM_AVULSO.map(itemZerado));
     }
   }, [open, pedido, user?.id]);
@@ -72,19 +75,9 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
     );
   };
 
-  const handleValorChange = (tipo: TipoItemAvulso, valor: string) => {
-    const num = valor ? parseFloat(valor.replace(',', '.')) : null;
-    setItens((prev) =>
-      prev.map((item) =>
-        item.tipo_item === tipo
-          ? { ...item, valor_unitario: num !== null && !isNaN(num) ? num : null }
-          : item,
-      ),
-    );
-  };
-
   const handleSalvar = async () => {
     const garantiaNum = garantia ? parseFloat(garantia.replace(',', '.')) : null;
+    const valorTotalNum = valorTotal ? parseFloat(valorTotal.replace(',', '.')) : 0;
 
     try {
       if (pedido) {
@@ -92,6 +85,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
           pedidoId: pedido.id,
           pago,
           garantia: garantiaNum,
+          valor_total: valorTotalNum,
           itens,
         });
         toast({ title: 'Pedido atualizado' });
@@ -100,6 +94,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
           vendedor_id: isAdmin ? vendedorId : undefined,
           pago,
           garantia: garantiaNum,
+          valor_total: valorTotalNum,
           itens,
         });
         toast({ title: 'Pedido criado' });
@@ -115,11 +110,6 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
   };
 
   const isPending = criarPedido.isPending || atualizarPedido.isPending;
-
-  const valorTotal = itens.reduce(
-    (acc, i) => acc + i.quantidade * (i.valor_unitario ?? 0),
-    0,
-  );
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -145,21 +135,12 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
             </div>
           )}
 
-          {/* Cabeçalho da tabela de itens */}
-          <div className="flex items-center gap-3 px-3 pb-1 text-xs text-muted-foreground">
-            <span className="w-20" />
-            <span className="w-[88px] text-center">Quantidade</span>
-            <span className="flex-1 pl-5">Valor unitário</span>
-            <span className="min-w-[64px] text-right">Valor total</span>
-          </div>
-
           <div className="space-y-2">
             {TIPOS_ITEM_AVULSO.map((tipo) => {
               const item = itens.find((i) => i.tipo_item === tipo) ?? itemZerado(tipo);
-              const total = item.quantidade * (item.valor_unitario ?? 0);
               return (
                 <div key={tipo} className="flex items-center gap-3 p-3 rounded border border-border">
-                  <span className="w-20 text-sm font-medium">{TIPO_LABEL[tipo]}</span>
+                  <span className="flex-1 text-sm font-medium">{TIPO_LABEL[tipo]}</span>
 
                   <div className="flex items-center gap-1">
                     <Button
@@ -183,36 +164,23 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
-
-                  <div className="flex items-center gap-1 flex-1">
-                    <span className="text-xs text-muted-foreground">R$</span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={item.valor_unitario ?? ''}
-                      onChange={(e) => handleValorChange(tipo, e.target.value)}
-                      placeholder="0,00"
-                      className="h-7 text-sm w-24"
-                    />
-                  </div>
-
-                  <div className="text-sm text-muted-foreground text-right min-w-[64px] tabular-nums">
-                    {total > 0 ? total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-                  </div>
                 </div>
               );
             })}
           </div>
 
-          {valorTotal > 0 && (
-            <div className="flex justify-between items-center pt-1 text-sm font-medium border-t">
-              <span>Total</span>
-              <span className="tabular-nums">
-                {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </span>
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label htmlFor="valorTotal">Valor Total (R$)</Label>
+            <Input
+              id="valorTotal"
+              type="number"
+              step="0.01"
+              min="0"
+              value={valorTotal}
+              onChange={(e) => setValorTotal(e.target.value)}
+              placeholder="0,00"
+            />
+          </div>
 
           <div className="space-y-2">
             <Label htmlFor="garantia">Garantia / Entrada (R$)</Label>
