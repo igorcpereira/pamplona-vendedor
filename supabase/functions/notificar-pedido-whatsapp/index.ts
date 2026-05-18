@@ -63,6 +63,9 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
+    // Aguarda itens serem inseridos (request separado do frontend)
+    await new Promise(resolve => setTimeout(resolve, 3000))
+
     const { data: pedido, error: pedidoError } = await supabase
       .from('pedidos')
       .select('id, vendedor_id, fichas(nome_cliente, telefone_cliente)')

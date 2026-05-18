@@ -15,6 +15,7 @@ export const useFichas = (limit?: number) => {
         .from('fichas')
         .select('*')
         .eq('vendedor_id', user.id)
+        .neq('status', 'avulso')
         .order('created_at', { ascending: false });
 
       if (limit) {
