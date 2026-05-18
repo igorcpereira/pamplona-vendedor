@@ -27,6 +27,26 @@ interface EditFichaModalProps {
   onSuccess: () => void;
 }
 
+const formatPhone = (digits: string): string => {
+  const d = digits.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
+const toPhone13 = (digits: string): string => {
+  const d = digits.replace(/\D/g, '');
+  if (d.length === 13) return d;
+  if (d.length === 11) return `55${d}`;
+  return d;
+};
+
+const toPhone11 = (value: string): string => {
+  const d = value.replace(/\D/g, '');
+  if (d.length === 13 && d.startsWith('55')) return d.slice(2);
+  return d.slice(0, 11);
+};
+
 const TIPO_LABEL: Record<string, string> = {
   camiseta: 'Camiseta',
   gravata: 'Gravata',
@@ -120,7 +140,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
 
       setFormData({
         nome_cliente: ficha.nome_cliente || "",
-        telefone_cliente: ficha.telefone_cliente || "",
+        telefone_cliente: toPhone11(ficha.telefone_cliente || ""),
         codigo_ficha: ficha.codigo_ficha || "",
         tipo: ficha.tipo || "Aluguel",
         status: ficha.status || "pendente",
@@ -195,7 +215,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
       let clienteId: string | null = null;
 
       if (formData.telefone_cliente && formData.telefone_cliente.trim() !== '') {
-        const telefone = formData.telefone_cliente.trim();
+        const telefone = toPhone13(formData.telefone_cliente);
 
         const { data: clienteExistente, error: searchError } = await supabase
           .from('clientes')
@@ -228,7 +248,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
 
       const updateData: any = {
         nome_cliente: formData.nome_cliente || null,
-        telefone_cliente: formData.telefone_cliente || null,
+        telefone_cliente: formData.telefone_cliente ? toPhone13(formData.telefone_cliente) : null,
         codigo_ficha: formData.codigo_ficha || null,
         tipo: formData.tipo || null,
         data_retirada: formatarDataParaBanco(formData.data_retirada),
@@ -416,8 +436,9 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
                     ) : (
                       <Input
                         id="telefone_cliente"
-                        value={formData.telefone_cliente}
-                        onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value })}
+                        type="tel"
+                        value={formatPhone(formData.telefone_cliente)}
+                        onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value.replace(/\D/g, '').slice(0, 11) })}
                         placeholder="(00) 00000-0000"
                       />
                     )}
