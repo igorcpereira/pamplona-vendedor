@@ -93,7 +93,8 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
     setIsPending(true);
     try {
       const vid = isAdmin ? vendedorId : (user?.id ?? '');
-      const codigoFicha = Math.floor(1000 + Math.random() * 9000).toString();
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const codigoFicha = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       const valorTotalNum = valorTotal ? parseFloat(valorTotal.replace(',', '.')) : 0;
       const garantiaNum = garantia ? parseFloat(garantia.replace(',', '.')) : null;
 
