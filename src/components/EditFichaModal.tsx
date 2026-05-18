@@ -330,7 +330,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[calc(100dvh-5rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar Ficha</DialogTitle>
             <DialogDescription>
@@ -847,7 +847,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
 
       {/* Modal para visualizar a imagem */}
       <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
-        <DialogContent className="max-w-5xl max-h-[90vh] p-0">
+        <DialogContent className="max-w-5xl max-h-[calc(100dvh-5rem)] p-0">
           <DialogHeader className="p-6 pb-4">
             <DialogTitle>Ficha Original</DialogTitle>
             <DialogDescription>Imagem capturada da ficha</DialogDescription>

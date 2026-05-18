@@ -113,7 +113,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[calc(100dvh-5rem)] overflow-y-auto">
         <DialogTitle>{pedido ? 'Editar Pedido' : 'Novo Pedido'}</DialogTitle>
 
         <div className="space-y-4 mt-2">
