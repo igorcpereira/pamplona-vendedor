@@ -16,7 +16,8 @@ import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 
 type ProvaInfo = { id: string; created_at: string };
-type PedidoResumo = { valor_total: number; pago: boolean };
+type ItemResumo = { tipo_item: string; quantidade: number };
+type PedidoResumo = { valor_total: number; pago: boolean; itens: ItemResumo[] };
 
 export default function ClienteDetalhes() {
   const { id } = useParams<{ id: string }>();
@@ -57,7 +58,7 @@ export default function ClienteDetalhes() {
 
           const [provasRes, pedidosRes, profilesRes] = await Promise.all([
             supabase.from('provas').select('id, ficha_id, created_at').in('ficha_id', fichaIds).order('created_at'),
-            supabase.from('pedidos').select('ficha_id, valor_total, pago').in('ficha_id', fichaIds),
+            supabase.from('pedidos').select('id, ficha_id, valor_total, pago, itens_avulsos_ficha(tipo_item, quantidade)').in('ficha_id', fichaIds),
             vendedorIds.length > 0
               ? supabase.from('profiles').select('id, nome').in('id', vendedorIds)
               : Promise.resolve({ data: [] as any[], error: null }),
@@ -74,7 +75,11 @@ export default function ClienteDetalhes() {
           const pedidosMap = new Map<string, PedidoResumo[]>();
           for (const p of (pedidosRes.data ?? [])) {
             const arr = pedidosMap.get(p.ficha_id) ?? [];
-            arr.push({ valor_total: p.valor_total, pago: p.pago });
+            arr.push({
+              valor_total: p.valor_total,
+              pago: p.pago,
+              itens: ((p as any).itens_avulsos_ficha ?? []).filter((i: ItemResumo) => i.quantidade > 0),
+            });
             pedidosMap.set(p.ficha_id, arr);
           }
           setPedidosByFichaId(pedidosMap);
@@ -118,8 +123,17 @@ export default function ClienteDetalhes() {
       case "aluguel": return "bg-blue-500/10 text-blue-700 dark:text-blue-400";
       case "venda": return "bg-green-500/10 text-green-700 dark:text-green-400";
       case "ajuste": return "bg-purple-500/10 text-purple-700 dark:text-purple-400";
+      case "avulso": return "bg-amber-500/10 text-amber-700 dark:text-amber-400";
       default: return "bg-muted text-muted-foreground";
     }
+  };
+
+  const TIPO_LABEL_AVULSO: Record<string, string> = {
+    camiseta: 'Camiseta',
+    gravata: 'Gravata',
+    sapato: 'Sapato',
+    meia: 'Meia',
+    cinto: 'Cinto',
   };
 
   const formatValor = (v?: any) => {
@@ -220,6 +234,80 @@ export default function ClienteDetalhes() {
                 const hasItemDetails = !!(paletoParts || calcaParts || camisaParts || sapatoParts);
                 const hasValores = !!(ficha.valor || ficha.garantia || totalAvulsos > 0);
                 const hasDatas = !!(ficha.data_retirada || ficha.data_devolucao || ficha.data_festa);
+
+                const isAvulso = ficha.status === 'avulso';
+
+                if (isAvulso) {
+                  const pedido = pedidosFicha[0];
+                  const itensAvulso = pedido?.itens ?? [];
+                  const itensTexto = itensAvulso
+                    .map((i) => `${TIPO_LABEL_AVULSO[i.tipo_item] ?? i.tipo_item} × ${i.quantidade}`)
+                    .join(' · ');
+
+                  return (
+                    <Card key={ficha.id} className="overflow-hidden border-l-4 border-l-amber-500">
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          {/* Header */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm">
+                                #{ficha.codigo_ficha || "Sem código"}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Criado em {format(new Date(ficha.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                              </p>
+                              {vendedorNome && (
+                                <div className="flex items-center gap-1 mt-1">
+                                  <User className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-xs text-muted-foreground">{vendedorNome}</span>
+                                </div>
+                              )}
+                            </div>
+                            <Badge className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                              Pedido Avulso
+                            </Badge>
+                          </div>
+
+                          {/* Itens do pedido */}
+                          {itensTexto && (
+                            <>
+                              <Separator />
+                              <div className="flex items-start gap-1.5">
+                                <Package className="w-3 h-3 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                <p className="text-xs">{itensTexto}</p>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Valores */}
+                          {(totalAvulsos > 0 || pedido?.valor_total > 0) && (
+                            <>
+                              <Separator />
+                              <div className="space-y-1.5">
+                                {(pedido?.valor_total ?? 0) > 0 && (
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <DollarSign className="w-3 h-3 text-muted-foreground" />
+                                    <span className="text-muted-foreground">Valor total:</span>
+                                    <span className="font-medium">{formatValor(pedido.valor_total)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {/* Pagamento */}
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-xs text-muted-foreground">Pagamento:</span>
+                            <Badge variant={pedido?.pago ? "default" : "secondary"}>
+                              {pedido?.pago ? "Pago" : "Pendente"}
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }
 
                 return (
                   <Card

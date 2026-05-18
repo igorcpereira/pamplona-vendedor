@@ -34,6 +34,20 @@ interface Props {
 const itensZerados = (): ItemLocal[] =>
   TIPOS_ITEM_AVULSO.map((tipo) => ({ tipo_item: tipo, quantidade: 0 }));
 
+const formatPhone = (digits: string): string => {
+  const d = digits.slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+
+const toPhone13 = (digits: string): string => {
+  const d = digits.replace(/\D/g, '');
+  if (d.length === 13) return d;
+  if (d.length === 11) return `55${d}`;
+  return d;
+};
+
 export default function PedidoAvulsoModal({ open, onClose }: Props) {
   const { user, profile, activeUnidade } = useAuth();
   const isAdmin = activeUnidade?.role === 'administrativo';
@@ -79,9 +93,12 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
     setIsPending(true);
     try {
       const vid = isAdmin ? vendedorId : (user?.id ?? '');
-      const codigoFicha = Math.floor(1000 + Math.random() * 9000).toString();
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      const codigoFicha = Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       const valorTotalNum = valorTotal ? parseFloat(valorTotal.replace(',', '.')) : 0;
       const garantiaNum = garantia ? parseFloat(garantia.replace(',', '.')) : null;
+
+      const telefone13 = telefoneCliente ? toPhone13(telefoneCliente) : null;
 
       // 1. Cria ficha em branco (invisível ao sistema)
       const { data: ficha, error: fichaError } = await supabase
@@ -92,13 +109,38 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
           status: 'avulso',
           tipo: 'venda',
           nome_cliente: nomeCliente.trim(),
-          telefone_cliente: telefoneCliente.trim() || null,
+          telefone_cliente: telefone13,
           codigo_ficha: codigoFicha,
         })
         .select('id')
         .single();
 
       if (fichaError || !ficha?.id) throw fichaError ?? new Error('Erro ao criar ficha');
+
+      // 1b. Busca/cria cliente e vincula à ficha
+      if (telefone13) {
+        const { data: clienteExistente } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('telefone', telefone13)
+          .maybeSingle();
+
+        let clienteId: string | null = null;
+        if (clienteExistente) {
+          clienteId = clienteExistente.id;
+        } else {
+          const { data: novoCliente } = await supabase
+            .from('clientes')
+            .insert({ nome: nomeCliente.trim(), telefone: telefone13, vendedor_id: vid })
+            .select('id')
+            .single();
+          clienteId = novoCliente?.id ?? null;
+        }
+
+        if (clienteId) {
+          await supabase.from('fichas').update({ cliente_id: clienteId }).eq('id', ficha.id);
+        }
+      }
 
       // 2. Cria pedido
       const { data: pedido, error: pedidoError } = await supabase
@@ -192,8 +234,8 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
             <Input
               id="telefoneCliente"
               type="tel"
-              value={telefoneCliente}
-              onChange={(e) => setTelefoneCliente(e.target.value)}
+              value={formatPhone(telefoneCliente)}
+              onChange={(e) => setTelefoneCliente(e.target.value.replace(/\D/g, '').slice(0, 11))}
               placeholder="(00) 00000-0000"
             />
           </div>
