@@ -100,6 +100,32 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
 
       if (fichaError || !ficha?.id) throw fichaError ?? new Error('Erro ao criar ficha');
 
+      // 1b. Busca/cria cliente e vincula à ficha
+      if (telefoneCliente.trim()) {
+        const telefone = telefoneCliente.trim();
+        const { data: clienteExistente } = await supabase
+          .from('clientes')
+          .select('id')
+          .eq('telefone', telefone)
+          .maybeSingle();
+
+        let clienteId: string | null = null;
+        if (clienteExistente) {
+          clienteId = clienteExistente.id;
+        } else {
+          const { data: novoCliente } = await supabase
+            .from('clientes')
+            .insert({ nome: nomeCliente.trim(), telefone, vendedor_id: vid })
+            .select('id')
+            .single();
+          clienteId = novoCliente?.id ?? null;
+        }
+
+        if (clienteId) {
+          await supabase.from('fichas').update({ cliente_id: clienteId }).eq('id', ficha.id);
+        }
+      }
+
       // 2. Cria pedido
       const { data: pedido, error: pedidoError } = await supabase
         .from('pedidos')
