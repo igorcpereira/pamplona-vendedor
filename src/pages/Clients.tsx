@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { Users, Phone, ChevronRight, Search, Loader2, UserCheck } from "lucide-react";
+import { Users, Phone, ChevronRight, Search, Loader2, UserCheck, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
 import { useClientes } from "@/hooks/useClientes";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatarTelefone } from "@/lib/utils";
+import { formatarTelefone, normalizarTelefone } from "@/lib/utils";
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -35,6 +35,12 @@ const Clients = () => {
   } = useClientes(debouncedTermo, apenasMeus ? user?.id : undefined);
 
   const clientes = data?.pages.flat() ?? [];
+
+  const abrirWhatsApp = (telefone: string) => {
+    const numero = normalizarTelefone(telefone) ?? telefone.replace(/\D/g, "");
+    if (!numero) return;
+    window.open(`https://wa.me/${numero}`, "_blank", "noopener,noreferrer");
+  };
 
   // IntersectionObserver: carrega próxima página quando o sentinel entra na tela
   const handleObserver = useCallback(
@@ -139,7 +145,24 @@ const Clients = () => {
                         Cadastrado em {new Date(cliente.created_at).toLocaleDateString('pt-BR')}
                       </p>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {cliente.telefone && (
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-9 w-9 rounded-full text-green-600 hover:text-green-700 hover:bg-green-600/10"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            abrirWhatsApp(cliente.telefone!);
+                          }}
+                          aria-label={`Abrir WhatsApp de ${cliente.nome}`}
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </Button>
+                      )}
+                      <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
                   </div>
                 </CardContent>
               </Card>
