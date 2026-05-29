@@ -822,22 +822,28 @@ export type Database = {
       provas: {
         Row: {
           created_at: string
-          ficha_id: string
+          ficha_id: string | null
           id: string
+          nome_cliente: string | null
+          telefone_cliente: string | null
           unidade_id: number | null
           vendedor_id: string
         }
         Insert: {
           created_at?: string
-          ficha_id: string
+          ficha_id?: string | null
           id?: string
+          nome_cliente?: string | null
+          telefone_cliente?: string | null
           unidade_id?: number | null
           vendedor_id: string
         }
         Update: {
           created_at?: string
-          ficha_id?: string
+          ficha_id?: string | null
           id?: string
+          nome_cliente?: string | null
+          telefone_cliente?: string | null
           unidade_id?: number | null
           vendedor_id?: string
         }
@@ -1326,7 +1332,12 @@ export type Database = {
       }
       atualizar_ultimo_login: { Args: never; Returns: undefined }
       buscar_clientes: {
-        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_vendedor_id?: string
+        }
         Returns: {
           alterar_nome: boolean | null
           created_at: string

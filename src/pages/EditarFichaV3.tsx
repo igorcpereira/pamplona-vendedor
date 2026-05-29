@@ -53,6 +53,7 @@ export default function EditarFichaV3() {
   const [fichaVendedorId, setFichaVendedorId] = useState<string | undefined>(undefined);
   const [pedidoModalOpen, setPedidoModalOpen] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState<Pedido | undefined>();
+  const [novaTag, setNovaTag] = useState("");
 
   const { data: pedidos = [] } = usePedidosFicha(id);
   const { data: provas = [] } = useProvasFicha(id);
@@ -285,11 +286,34 @@ export default function EditarFichaV3() {
   const handleToggleTag = (tagNome: string) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.includes(tagNome)
-        ? prev.tags.filter(t => t !== tagNome)
+      tags: prev.tags.some(t => t.toLowerCase() === tagNome.toLowerCase())
+        ? prev.tags.filter(t => t.toLowerCase() !== tagNome.toLowerCase())
         : [...prev.tags, tagNome],
     }));
   };
+
+  const handleAdicionarTag = () => {
+    const nome = novaTag.trim();
+    if (!nome) return;
+    setFormData(prev =>
+      prev.tags.some(t => t.toLowerCase() === nome.toLowerCase())
+        ? prev
+        : { ...prev, tags: [...prev.tags, nome] }
+    );
+    setNovaTag("");
+  };
+
+  const handleRemoverTag = (tagNome: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(t => t.toLowerCase() !== tagNome.toLowerCase()),
+    }));
+  };
+
+  // Tags selecionadas que não fazem parte das 8 principais (exibidas como chips removíveis)
+  const tagsExtras = formData.tags.filter(
+    t => !tagsPadrao.some(p => p.nome.toLowerCase() === t.toLowerCase())
+  );
 
   const handleAdicionarProva = async () => {
     try {
@@ -439,32 +463,54 @@ export default function EditarFichaV3() {
         });
       }
 
-      // Surgical tag save: only update padrao tags, never touch non-padrao relations
-      if (clienteId && tagsPadrao.length > 0) {
-        const padraoIds = tagsPadrao.map(t => t.id);
-        const { data: existingRelacoes } = await supabase
-          .from('relacao_cliente_tag')
-          .select('id_tag')
-          .eq('id_cliente', clienteId)
-          .in('id_tag', padraoIds);
+      // Sincroniza tags do cliente (principais + personalizadas).
+      // Cria tags inexistentes e ajusta as relações conforme a seleção atual.
+      if (clienteId) {
+        const nomesSelecionados = Array.from(
+          new Set(formData.tags.map(t => t.trim()).filter(Boolean))
+        );
 
-        const existingTagIds = new Set((existingRelacoes ?? []).map(r => r.id_tag));
+        const { data: todasTags } = await supabase.from('tags').select('id, nome');
+        const idPorNome = new Map(
+          (todasTags ?? []).map(t => [t.nome.trim().toLowerCase(), t.id])
+        );
 
-        for (const padraoTag of tagsPadrao) {
-          const isSelected = formData.tags.some(t => t.toLowerCase() === padraoTag.nome.toLowerCase());
-          const exists = existingTagIds.has(padraoTag.id);
-
-          if (isSelected && !exists) {
-            await supabase
-              .from('relacao_cliente_tag')
-              .insert({ id_cliente: clienteId, id_tag: padraoTag.id });
-          } else if (!isSelected && exists) {
-            await supabase
-              .from('relacao_cliente_tag')
-              .delete()
-              .eq('id_cliente', clienteId)
-              .eq('id_tag', padraoTag.id);
+        const idsDesejados: string[] = [];
+        for (const nome of nomesSelecionados) {
+          const chave = nome.toLowerCase();
+          let tagId = idPorNome.get(chave);
+          if (!tagId) {
+            const { data: novaTagRow } = await supabase
+              .from('tags')
+              .insert({ nome })
+              .select('id')
+              .single();
+            tagId = novaTagRow?.id;
+            if (tagId) idPorNome.set(chave, tagId);
           }
+          if (tagId) idsDesejados.push(tagId);
+        }
+
+        const { data: relacoesAtuais } = await supabase
+          .from('relacao_cliente_tag')
+          .select('id, id_tag')
+          .eq('id_cliente', clienteId);
+
+        const idsAtuais = new Set((relacoesAtuais ?? []).map(r => r.id_tag));
+        const idsDesejadosSet = new Set(idsDesejados);
+
+        const inserir = idsDesejados.filter(id => !idsAtuais.has(id));
+        if (inserir.length > 0) {
+          await supabase
+            .from('relacao_cliente_tag')
+            .insert(inserir.map(id_tag => ({ id_cliente: clienteId, id_tag })));
+        }
+
+        const remover = (relacoesAtuais ?? []).filter(
+          r => r.id_tag && !idsDesejadosSet.has(r.id_tag)
+        );
+        for (const rel of remover) {
+          await supabase.from('relacao_cliente_tag').delete().eq('id', rel.id);
         }
       }
 
@@ -642,32 +688,6 @@ export default function EditarFichaV3() {
           </div>
 
           <div className="space-y-6 [&_.border-input]:border-foreground/30">
-
-            {/* Tags */}
-            {tagsPadrao.length > 0 && (
-              <>
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold">Tags</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {tagsPadrao.map((tag) => {
-                      const selected = formData.tags.some(t => t.toLowerCase() === tag.nome.toLowerCase());
-                      return (
-                        <Button
-                          key={tag.id}
-                          type="button"
-                          size="sm"
-                          variant={selected ? 'default' : 'outline'}
-                          onClick={() => handleToggleTag(tag.nome)}
-                        >
-                          {tag.nome}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                </div>
-                <Separator />
-              </>
-            )}
 
             {/* Cabeçalho */}
             <div className="space-y-4">
@@ -1161,6 +1181,72 @@ export default function EditarFichaV3() {
                   </Select>
                 </div>
               )}
+            </div>
+
+            <Separator />
+
+            {/* Tags */}
+            <div className="space-y-3">
+              <h3 className="text-base font-semibold">Tags</h3>
+
+              {/* 8 tags principais — botões on/off */}
+              {tagsPadrao.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {tagsPadrao.map((tag) => {
+                    const selected = formData.tags.some(t => t.toLowerCase() === tag.nome.toLowerCase());
+                    return (
+                      <Button
+                        key={tag.id}
+                        type="button"
+                        size="sm"
+                        variant={selected ? 'default' : 'outline'}
+                        onClick={() => handleToggleTag(tag.nome)}
+                      >
+                        {tag.nome}
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Tags adicionais selecionadas */}
+              {tagsExtras.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {tagsExtras.map((nome) => (
+                    <Badge key={nome} variant="secondary" className="gap-1 pr-1">
+                      {nome}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoverTag(nome)}
+                        className="rounded-full hover:bg-foreground/10 p-0.5"
+                        aria-label={`Remover tag ${nome}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Adicionar outra tag */}
+              <div className="flex gap-2">
+                <Input
+                  value={novaTag}
+                  onChange={(e) => setNovaTag(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAdicionarTag();
+                    }
+                  }}
+                  placeholder="Adicionar outra tag"
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={handleAdicionarTag} disabled={!novaTag.trim()}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  Adicionar
+                </Button>
+              </div>
             </div>
 
             {/* Botões de ação */}

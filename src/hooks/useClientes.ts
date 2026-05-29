@@ -4,11 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const PAGE_SIZE = 20;
 
-export const useClientes = (search?: string) => {
+export const useClientes = (search?: string, vendedorId?: string) => {
   const { user } = useAuth();
 
   return useInfiniteQuery({
-    queryKey: ['clientes', user?.id, search ?? ''],
+    queryKey: ['clientes', user?.id, search ?? '', vendedorId ?? ''],
     queryFn: async ({ pageParam = 0 }) => {
       if (!user?.id) return [];
 
@@ -17,6 +17,7 @@ export const useClientes = (search?: string) => {
         p_search: termo && termo.length >= 2 ? termo : undefined,
         p_offset: pageParam,
         p_limit: PAGE_SIZE,
+        p_vendedor_id: vendedorId || undefined,
       });
 
       if (error) throw error;
