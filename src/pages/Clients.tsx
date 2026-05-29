@@ -2,17 +2,21 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { Users, Phone, ChevronRight, Search, Loader2 } from "lucide-react";
+import { Users, Phone, ChevronRight, Search, Loader2, UserCheck } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
 import { useClientes } from "@/hooks/useClientes";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatarTelefone } from "@/lib/utils";
 
 const Clients = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [termoBusca, setTermoBusca] = useState("");
   const [debouncedTermo, setDebouncedTermo] = useState("");
+  const [apenasMeus, setApenasMeus] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,7 +32,7 @@ const Clients = () => {
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useClientes(debouncedTermo);
+  } = useClientes(debouncedTermo, apenasMeus ? user?.id : undefined);
 
   const clientes = data?.pages.flat() ?? [];
 
@@ -72,6 +76,18 @@ const Clients = () => {
             className="pl-9"
           />
         </div>
+
+        {/* Filtro: apenas clientes do vendedor ativo */}
+        <Button
+          type="button"
+          variant={apenasMeus ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+          onClick={() => setApenasMeus((v) => !v)}
+        >
+          <UserCheck className="w-4 h-4" />
+          {apenasMeus ? "Mostrando apenas meus clientes" : "Apenas meus clientes"}
+        </Button>
 
         {/* Estados */}
         {isLoading ? (

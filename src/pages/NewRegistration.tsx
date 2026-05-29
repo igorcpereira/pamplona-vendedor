@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Edit, X, Check, RefreshCw, Clock, AlertTriangle, ShoppingBag } from "lucide-react";
+import { Camera, Upload, Edit, X, Check, RefreshCw, Clock, AlertTriangle, ShoppingBag, Ruler } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 import PedidoAvulsoModal from "@/components/PedidoAvulsoModal";
+import ProvaAvulsaModal from "@/components/ProvaAvulsaModal";
 
 interface FichaStats {
   id: string;
@@ -40,6 +41,7 @@ const NewRegistration = () => {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [currentFichaId, setCurrentFichaId] = useState<string | null>(null);
   const [showPedidoAvulso, setShowPedidoAvulso] = useState(false);
+  const [showProvaAvulsa, setShowProvaAvulsa] = useState(false);
   const [ultimasFichas, setUltimasFichas] = useState<FichaStats[]>([]);
   const [errosRecentes, setErrosRecentes] = useState<FichaErro[]>([]);
 
@@ -269,6 +271,17 @@ const NewRegistration = () => {
             Lançar Pedido Avulso
           </Button>
 
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full h-12 mt-3"
+            onClick={() => setShowProvaAvulsa(true)}
+            disabled={isUploading || isCreatingManual}
+          >
+            <Ruler className="w-5 h-5 mr-2" />
+            Lançar Prova Avulsa
+          </Button>
+
           <button
             type="button"
             onClick={handleCadastrarManualmente}
@@ -394,6 +407,8 @@ const NewRegistration = () => {
       </AlertDialog>
 
       <PedidoAvulsoModal open={showPedidoAvulso} onClose={() => setShowPedidoAvulso(false)} />
+
+      <ProvaAvulsaModal open={showProvaAvulsa} onClose={() => setShowProvaAvulsa(false)} />
 
       <BottomNav />
     </div>
