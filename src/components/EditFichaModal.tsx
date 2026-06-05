@@ -235,6 +235,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
               nome: formData.nome_cliente || 'Cliente sem nome',
               telefone: telefone,
               vendedor_id: authUser?.id,
+              unidade_id: profile?.unidade_id ?? null,
             })
             .select('id')
             .single();

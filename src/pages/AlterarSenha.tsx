@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const SENHA_PADRAO = 'Mudar@123';
 
 const AlterarSenha = () => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,7 +34,7 @@ const AlterarSenha = () => {
         .eq('id', user!.id);
       if (profileError) throw profileError;
 
-      navigate('/');
+      await signOut();
     } catch (error: any) {
       console.error('Erro ao alterar senha:', error);
     } finally {

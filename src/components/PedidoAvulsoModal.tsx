@@ -131,7 +131,7 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
         } else {
           const { data: novoCliente } = await supabase
             .from('clientes')
-            .insert({ nome: nomeCliente.trim(), telefone: telefone13, vendedor_id: vid })
+            .insert({ nome: nomeCliente.trim(), telefone: telefone13, vendedor_id: vid, unidade_id: profile?.unidade_id ?? null })
             .select('id')
             .single();
           clienteId = novoCliente?.id ?? null;
