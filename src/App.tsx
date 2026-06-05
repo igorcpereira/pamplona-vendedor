@@ -5,7 +5,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Dashboard from "./pages/Dashboard";
+import Atividades from "./pages/Atividades";
+import ResumoMes from "./pages/ResumoMes";
 import NewRegistration from "./pages/NewRegistration";
 import Fichas from "./pages/Fichas";
 import EditarFicha from "./pages/EditarFicha";
@@ -51,7 +52,15 @@ const App = () => (
             path="/"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Atividades />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/resumo"
+            element={
+              <ProtectedRoute>
+                <ResumoMes />
               </ProtectedRoute>
             }
           />

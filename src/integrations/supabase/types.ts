@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -314,6 +314,7 @@ export type Database = {
           ficha_original_id: string | null
           garantia: string | null
           id: string
+          is_noivo: boolean
           nome_cliente: string | null
           ocr_tentativa: number | null
           pago: boolean
@@ -365,6 +366,7 @@ export type Database = {
           ficha_original_id?: string | null
           garantia?: string | null
           id?: string
+          is_noivo?: boolean
           nome_cliente?: string | null
           ocr_tentativa?: number | null
           pago?: boolean
@@ -416,6 +418,7 @@ export type Database = {
           ficha_original_id?: string | null
           garantia?: string | null
           id?: string
+          is_noivo?: boolean
           nome_cliente?: string | null
           ocr_tentativa?: number | null
           pago?: boolean
@@ -672,6 +675,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      log_alteracoes_ficha: {
+        Row: {
+          acao: string
+          alterado_em: string
+          alterado_por: string | null
+          diff: Json
+          ficha_id: string | null
+          id: string
+          origem: string
+          registro_id: string
+        }
+        Insert: {
+          acao: string
+          alterado_em?: string
+          alterado_por?: string | null
+          diff?: Json
+          ficha_id?: string | null
+          id?: string
+          origem: string
+          registro_id: string
+        }
+        Update: {
+          acao?: string
+          alterado_em?: string
+          alterado_por?: string | null
+          diff?: Json
+          ficha_id?: string | null
+          id?: string
+          origem?: string
+          registro_id?: string
+        }
+        Relationships: []
       }
       log_processo_ficha: {
         Row: {
@@ -1315,6 +1351,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _ficha_log_diff: {
+        Args: { p_ignore: string[]; p_new: Json; p_old: Json }
+        Returns: Json
+      }
       add_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1322,12 +1362,79 @@ export type Database = {
         }
         Returns: undefined
       }
+      atividades_atualizar_status: {
+        Args: { p_id: string; p_status: string }
+        Returns: undefined
+      }
+      atividades_criar: {
+        Args: {
+          p_cliente_id?: string
+          p_data: string
+          p_descricao?: string
+          p_nome_contato?: string
+          p_responsaveis: string[]
+          p_telefone_contato?: string
+          p_titulo: string
+          p_unidade_id?: number
+        }
+        Returns: string
+      }
+      atividades_gerar: {
+        Args: never
+        Returns: {
+          inseridas: number
+          tipo: string
+        }[]
+      }
+      atividades_listar: {
+        Args: {
+          p_ate?: string
+          p_de?: string
+          p_responsavel_id?: string
+          p_status?: string
+          p_unidade_id?: number
+        }
+        Returns: {
+          cliente_id: string
+          cliente_nome: string
+          created_at: string
+          data: string
+          descricao: string
+          gatilho_id: string
+          gatilho_tipo: string
+          grupo_id: string
+          id: string
+          nome_contato: string
+          origem: string
+          responsavel_id: string
+          responsavel_nome: string
+          status: string
+          telefone_contato: string
+          titulo: string
+          unidade_id: number
+          unidade_nome: string
+        }[]
+      }
       atribuir_avulsa_campanhas: {
         Args: { _avulsa_id: string }
         Returns: undefined
       }
       atribuir_venda_campanhas: {
         Args: { _ficha_id: string }
+        Returns: undefined
+      }
+      atualizar_ficha: {
+        Args: {
+          p_data_devolucao?: string
+          p_data_festa?: string
+          p_data_retirada?: string
+          p_ficha_id: string
+          p_itens?: Json
+          p_pago?: boolean
+          p_pedidos?: Json
+          p_valor: string
+          p_vendedor_id?: string
+        }
         Returns: undefined
       }
       atualizar_ultimo_login: { Args: never; Returns: undefined }
@@ -1369,46 +1476,48 @@ export type Database = {
         }
         Returns: number
       }
-      get_clientes:
-        | {
-            Args: { _page?: number; _search?: string; _unidade_id?: number }
-            Returns: {
-              created_at: string
-              id: string
-              ltv: number
-              nome: string
-              nome_vendedor: string
-              telefone: string
-              total_count: number
-              unidade_id: number
-              unidade_nome: string
-              updated_at: string
-              vendedor_id: string
-            }[]
-          }
-        | {
-            Args: {
-              _page?: number
-              _search?: string
-              _unidade_id?: number
-              _vendedor_id?: string
-            }
-            Returns: {
-              created_at: string
-              id: string
-              ltv: number
-              nome: string
-              nome_vendedor: string
-              tags: Json
-              telefone: string
-              tipo_atendimento: string
-              total_count: number
-              unidade_id: number
-              unidade_nome: string
-              updated_at: string
-              vendedor_id: string
-            }[]
-          }
+      gatilhos_listar: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          id: string
+          parametros: Json
+          tipo: string
+          unidade_id: number
+        }[]
+      }
+      gatilhos_salvar: {
+        Args: {
+          p_ativo: boolean
+          p_parametros: Json
+          p_tipo: string
+          p_unidade_id?: number
+        }
+        Returns: undefined
+      }
+      get_clientes: {
+        Args: {
+          _page?: number
+          _search?: string
+          _unidade_id?: number
+          _vendedor_id?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          ltv: number
+          nome: string
+          nome_vendedor: string
+          tags: Json
+          telefone: string
+          tipo_atendimento: string
+          total_count: number
+          unidade_id: number
+          unidade_nome: string
+          updated_at: string
+          vendedor_id: string
+        }[]
+      }
       get_dashboard_por_vendedor: {
         Args: {
           _data_fim?: string
@@ -1453,6 +1562,49 @@ export type Database = {
           venda_mes_passado: number
           venda_semestre: number
           venda_trimestre: number
+        }[]
+      }
+      get_ficha_log: {
+        Args: { p_ficha_id: string }
+        Returns: {
+          acao: string
+          alterado_em: string
+          alterado_por: string
+          alterado_por_nome: string
+          diff: Json
+          id: string
+          origem: string
+        }[]
+      }
+      get_fichas_cliente: {
+        Args: { p_cliente_id: string }
+        Returns: {
+          avulsos: Json
+          calca: string
+          camisa: string
+          camisa_cor: string
+          camisa_fios: string
+          codigo_ficha: string
+          created_at: string
+          data_devolucao: string
+          data_festa: string
+          data_retirada: string
+          id: string
+          pago: boolean
+          paleto: string
+          paleto_cor: string
+          paleto_lanificio: string
+          pedidos: Json
+          provas_count: number
+          provas_datas: string[]
+          sapato: string
+          sapato_tipo: string
+          tipo: string
+          unidade_id: number
+          valor: string
+          valor_avulsos: number
+          vendedor_id: string
+          vendedor_nome: string
         }[]
       }
       get_tags: {
@@ -1578,6 +1730,7 @@ export type Database = {
           ficha_original_id: string | null
           garantia: string | null
           id: string
+          is_noivo: boolean
           nome_cliente: string | null
           ocr_tentativa: number | null
           pago: boolean
@@ -1615,6 +1768,14 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      listar_vendedores_unidade: {
+        Args: { p_unidade_id: number }
+        Returns: {
+          id: string
+          nome: string
+        }[]
+      }
+      next_business_time: { Args: { p_ts: string }; Returns: string }
       normalize_phone: { Args: { input: string }; Returns: string }
       parse_valor_to_numeric: { Args: { v: string }; Returns: number }
       reagendar_disparos_campanha: {
@@ -1668,7 +1829,13 @@ export type Database = {
         | "pausada"
         | "concluida"
         | "cancelada"
-      status_ficha: "erro" | "pendente" | "ativa" | "baixa" | "aguardando_prova"
+      status_ficha:
+        | "erro"
+        | "pendente"
+        | "ativa"
+        | "baixa"
+        | "aguardando_prova"
+        | "avulso"
       tipo_de_atendimento: "Aluguel" | "Venda" | "Ajuste"
       user_role: "Gestor" | "Franqueado" | "Vendedor"
     }
@@ -1818,7 +1985,14 @@ export const Constants = {
         "concluida",
         "cancelada",
       ],
-      status_ficha: ["erro", "pendente", "ativa", "baixa", "aguardando_prova"],
+      status_ficha: [
+        "erro",
+        "pendente",
+        "ativa",
+        "baixa",
+        "aguardando_prova",
+        "avulso",
+      ],
       tipo_de_atendimento: ["Aluguel", "Venda", "Ajuste"],
       user_role: ["Gestor", "Franqueado", "Vendedor"],
     },

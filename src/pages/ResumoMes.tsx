@@ -18,7 +18,7 @@ const MESES = [
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-const Dashboard = () => {
+const ResumoMes = () => {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const { data: fichas = [] } = useFichas();
@@ -92,7 +92,7 @@ const Dashboard = () => {
   const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalAvulsasCombinado;
 
   return <div className="min-h-screen bg-background pb-20 relative">
-      <Header title="Início" />
+      <Header title="Resumo do mês" />
 
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
@@ -193,4 +193,4 @@ const Dashboard = () => {
       <BottomNav />
     </div>;
 };
-export default Dashboard;
+export default ResumoMes;
