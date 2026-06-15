@@ -57,6 +57,23 @@ export function useAtualizarStatusAtividade() {
   });
 }
 
+/** Reagenda a atividade para uma nova data (e marca status = 'adiada'). */
+export function useAdiarAtividade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, novaData }: { id: string; novaData: string }) => {
+      const { error } = await supabase.rpc("atividades_adiar", {
+        p_id: id,
+        p_nova_data: novaData,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
+    },
+  });
+}
+
 interface CriarAtividadeInput {
   titulo: string;
   data: string; // YYYY-MM-DD

@@ -7,7 +7,7 @@ import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { useAtividades, useAtualizarStatusAtividade, type Atividade, type AtividadeStatus } from "@/hooks/useAtividades";
+import { useAtividades, useAtualizarStatusAtividade, useAdiarAtividade, type Atividade, type AtividadeStatus } from "@/hooks/useAtividades";
 import AtividadeCard from "@/components/atividades/AtividadeCard";
 import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
 
@@ -31,17 +31,25 @@ const Atividades = () => {
 
   const { data: atividades = [], isLoading } = useAtividades();
   const atualizarStatus = useAtualizarStatusAtividade();
+  const adiar = useAdiarAtividade();
+
+  const onError = (err: unknown) =>
+    toast({
+      title: "Erro ao atualizar",
+      description: err instanceof Error ? err.message : "Tente novamente.",
+      variant: "destructive",
+    });
 
   const handleStatus = (id: string, status: AtividadeStatus) => {
-    atualizarStatus.mutate(
-      { id, status },
+    atualizarStatus.mutate({ id, status }, { onError });
+  };
+
+  const handleAdiar = (id: string, novaData: string) => {
+    adiar.mutate(
+      { id, novaData },
       {
-        onError: (err) =>
-          toast({
-            title: "Erro ao atualizar",
-            description: err instanceof Error ? err.message : "Tente novamente.",
-            variant: "destructive",
-          }),
+        onError,
+        onSuccess: () => toast({ title: "Atividade adiada!" }),
       },
     );
   };
@@ -127,7 +135,8 @@ const Atividades = () => {
                     key={a.id}
                     atividade={a}
                     onStatus={(status) => handleStatus(a.id, status)}
-                    isUpdating={atualizarStatus.isPending}
+                    onAdiar={(novaData) => handleAdiar(a.id, novaData)}
+                    isUpdating={atualizarStatus.isPending || adiar.isPending}
                   />
                 ))}
               </div>

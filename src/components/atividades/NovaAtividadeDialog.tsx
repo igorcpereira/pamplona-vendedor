@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useClientes } from "@/hooks/useClientes";
 import { useCriarAtividade } from "@/hooks/useAtividades";
@@ -41,6 +40,7 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
   const [data, setData] = useState<Date>(new Date());
+  const [calAberto, setCalAberto] = useState(false);
 
   const [contatoModo, setContatoModo] = useState<ContatoModo>("nenhum");
   // cliente cadastrado
@@ -61,6 +61,7 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
     setTitulo("");
     setDescricao("");
     setData(new Date());
+    setCalAberto(false);
     setContatoModo("nenhum");
     setBusca("");
     setClienteSel(null);
@@ -151,23 +152,29 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
           {/* Data */}
           <div className="space-y-2">
             <Label>Data *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal")}>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {format(data, "PPP", { locale: ptBR })}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+            <Button
+              type="button"
+              variant="outline"
+              className={cn("w-full justify-start text-left font-normal")}
+              onClick={() => setCalAberto((v) => !v)}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {format(data, "PPP", { locale: ptBR })}
+            </Button>
+            {calAberto && (
+              <div className="flex justify-center rounded-md border border-border">
                 <Calendar
                   mode="single"
                   selected={data}
-                  onSelect={(d) => d && setData(d)}
+                  onSelect={(d) => {
+                    if (d) setData(d);
+                    setCalAberto(false);
+                  }}
                   initialFocus
                   locale={ptBR}
                 />
-              </PopoverContent>
-            </Popover>
+              </div>
+            )}
           </div>
 
           {/* Contato */}

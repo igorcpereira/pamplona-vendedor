@@ -1,13 +1,20 @@
-import { Check, Phone, User, Clock, Sparkles, X } from "lucide-react";
+import { useState } from "react";
+import { Check, Phone, User, Clock, Sparkles, X, Loader2, MessageCircle } from "lucide-react";
+import { parseISO } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { Atividade, AtividadeStatus } from "@/hooks/useAtividades";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Props {
   atividade: Atividade;
   onStatus: (status: AtividadeStatus) => void;
+  onAdiar: (novaData: string) => void;
   isUpdating?: boolean;
 }
 
@@ -26,11 +33,26 @@ const statusBadge: Record<string, { label: string; className: string }> = {
   cancelada: { label: "Cancelada", className: "bg-muted text-muted-foreground" },
 };
 
-const AtividadeCard = ({ atividade, onStatus, isUpdating }: Props) => {
+const AtividadeCard = ({ atividade, onStatus, onAdiar, isUpdating }: Props) => {
   const contatoNome = atividade.cliente_nome || atividade.nome_contato;
-  const telefone = formatTelefone(atividade.telefone_contato);
+  const telefoneRaw = (atividade.telefone_contato || atividade.cliente_telefone || "").replace(/\D/g, "");
+  const telefone = telefoneRaw ? formatTelefone(telefoneRaw) : null;
   const concluida = atividade.status === "feita" || atividade.status === "cancelada";
   const badge = statusBadge[atividade.status] ?? statusBadge.pendente;
+
+  const [adiarOpen, setAdiarOpen] = useState(false);
+  const [novaData, setNovaData] = useState<Date | undefined>();
+
+  const abrirAdiar = () => {
+    setNovaData(atividade.data ? parseISO(atividade.data) : new Date());
+    setAdiarOpen(true);
+  };
+
+  const confirmarAdiar = () => {
+    if (!novaData) return;
+    onAdiar(format(novaData, "yyyy-MM-dd"));
+    setAdiarOpen(false);
+  };
 
   return (
     <Card className={cn("p-4", concluida && "opacity-60")}>
@@ -62,13 +84,25 @@ const AtividadeCard = ({ atividade, onStatus, isUpdating }: Props) => {
             </div>
           )}
           {telefone && (
-            <a
-              href={`tel:${(atividade.telefone_contato ?? "").replace(/\D/g, "")}`}
-              className="flex items-center gap-1.5 text-sm text-primary mt-1 hover:underline w-fit"
-            >
-              <Phone className="h-3.5 w-3.5 shrink-0" />
-              {telefone}
-            </a>
+            <div className="flex items-center gap-2 mt-2">
+              <a
+                href={`tel:${telefoneRaw}`}
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary hover:underline"
+              >
+                <Phone className="h-3.5 w-3.5 shrink-0" />
+                {telefone}
+              </a>
+              <a
+                href={`https://wa.me/${telefoneRaw}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
+                title="Abrir no WhatsApp"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                WhatsApp
+              </a>
+            </div>
           )}
         </div>
 
@@ -92,7 +126,7 @@ const AtividadeCard = ({ atividade, onStatus, isUpdating }: Props) => {
               variant="outline"
               className="h-9 w-9 rounded-full text-blue-600 dark:text-blue-400 border-blue-500/40 hover:bg-blue-500/10"
               disabled={isUpdating}
-              onClick={() => onStatus("adiada")}
+              onClick={abrirAdiar}
               title="Adiar"
               aria-label="Adiar"
             >
@@ -113,6 +147,32 @@ const AtividadeCard = ({ atividade, onStatus, isUpdating }: Props) => {
           </div>
         )}
       </div>
+
+      {/* Mini-modal para reagendar */}
+      <Dialog open={adiarOpen} onOpenChange={setAdiarOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogTitle>Adiar atividade</DialogTitle>
+          <DialogDescription>Escolha a nova data para “{atividade.titulo}”.</DialogDescription>
+          <div className="flex justify-center">
+            <Calendar
+              mode="single"
+              selected={novaData}
+              onSelect={setNovaData}
+              initialFocus
+              locale={ptBR}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setAdiarOpen(false)} disabled={isUpdating}>
+              Cancelar
+            </Button>
+            <Button className="flex-1" onClick={confirmarAdiar} disabled={!novaData || isUpdating}>
+              {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Adiar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

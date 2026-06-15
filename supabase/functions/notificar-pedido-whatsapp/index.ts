@@ -1,5 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Apenas pedidos da unidade de Maringá são notificados no WhatsApp
+const UNIDADE_MARINGA = 1
+
 async function enviarTexto(grupoId: string, texto: string): Promise<void> {
   const baseUrl  = Deno.env.get('EVOLUTION_BASE_URL')!
   const instance = Deno.env.get('EVOLUTION_INSTANCE')!
@@ -68,12 +71,17 @@ Deno.serve(async (req) => {
 
     const { data: pedido, error: pedidoError } = await supabase
       .from('pedidos')
-      .select('id, vendedor_id, fichas(nome_cliente, telefone_cliente)')
+      .select('id, vendedor_id, unidade_id, fichas(nome_cliente, telefone_cliente)')
       .eq('id', pedido_id)
       .single()
 
     if (pedidoError || !pedido) {
       return new Response(JSON.stringify({ error: 'Pedido não encontrado' }), { status: 400 })
+    }
+
+    // Filtro de unidade — só Maringá envia para o WhatsApp
+    if (pedido.unidade_id !== UNIDADE_MARINGA) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'unidade_nao_notificada' }), { status: 200 })
     }
 
     const [perfilRes, itensRes] = await Promise.all([

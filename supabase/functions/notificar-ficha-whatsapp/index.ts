@@ -19,6 +19,9 @@ function json(body: unknown, status = 200) {
 // --------------------------------------------------------
 const CONECTORES = new Set(['de', 'da', 'do', 'dos', 'das', 'e'])
 
+// Apenas fichas da unidade de Maringá são notificadas no WhatsApp
+const UNIDADE_MARINGA = 1
+
 function titleCaseNome(nome: string | null | undefined): string {
   if (!nome) return ''
   return nome
@@ -78,11 +81,23 @@ Deno.serve(async (req) => {
     // --------------------------------------------------------
     const { data: ficha, error: fichaError } = await supabase
       .from('fichas')
-      .select('id, tipo, url_bucket, nome_cliente, telefone_cliente, enviada_whatsapp_geral, enviada_whatsapp_venda')
+      .select('id, tipo, url_bucket, nome_cliente, telefone_cliente, unidade_id, enviada_whatsapp_geral, enviada_whatsapp_venda')
       .eq('id', ficha_id)
       .single()
 
     if (fichaError || !ficha) return json({ error: 'Ficha não encontrada' }, 400)
+
+    // --------------------------------------------------------
+    // Filtro de unidade — só Maringá envia para o WhatsApp
+    // --------------------------------------------------------
+    if (ficha.unidade_id !== UNIDADE_MARINGA) {
+      return json({
+        ficha_id,
+        skipped: 'unidade_nao_notificada',
+        enviada_whatsapp_geral: ficha.enviada_whatsapp_geral,
+        enviada_whatsapp_venda: ficha.enviada_whatsapp_venda,
+      })
+    }
 
     // --------------------------------------------------------
     // Etapa 2 — URL assinada (TTL: 1 hora)

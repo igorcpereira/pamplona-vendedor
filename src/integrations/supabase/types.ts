@@ -1362,6 +1362,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      atividades_adiar: {
+        Args: { p_id: string; p_nova_data: string }
+        Returns: undefined
+      }
       atividades_atualizar_status: {
         Args: { p_id: string; p_status: string }
         Returns: undefined
@@ -1397,6 +1401,7 @@ export type Database = {
         Returns: {
           cliente_id: string
           cliente_nome: string
+          cliente_telefone: string
           created_at: string
           data: string
           descricao: string
