@@ -15,11 +15,11 @@ const BottomNav = () => {
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
 
   const navItems = [
-    { icon: Home, label: "Início", path: "/" },
+    { icon: BarChart3, label: "Resumo", path: "/resumo" },
+    ...(isMaster ? [{ icon: Home, label: "Início", path: "/" }] : []),
     { icon: Users, label: "Clientes", path: "/clientes" },
     { icon: ClipboardList, label: "Fichas", path: "/fichas" },
     { icon: Plus, label: "Novo", path: "/novo" },
-    { icon: BarChart3, label: "Resumo", path: "/resumo" },
     ...(isMaster ? [{ icon: FlaskConical, label: "Teste", path: "/teste-de-versao" }] : []),
   ];
 
