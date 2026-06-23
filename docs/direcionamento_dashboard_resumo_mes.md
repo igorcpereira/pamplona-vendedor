@@ -2,7 +2,12 @@
 
 **Branch:** `desenvolvimento`  
 **Data:** 2026-05-11  
-**Status:** Aguardando implementação
+**Status:** Implementado
+
+> 🗑️ **Atualização (2026-06-23):** a tabela `vendas_avulsas` foi **removida** (migration
+> `20260623000001_drop_vendas_avulsas`), substituída por `pedidos` + `itens_avulsos_ficha`.
+> Onde este documento soma `vendas_avulsas` + `itens_avulsos_ficha`, **hoje é apenas
+> `itens_avulsos_ficha`**. As fórmulas e queries de `vendas_avulsas` abaixo são históricas.
 
 ---
 

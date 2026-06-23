@@ -2,7 +2,12 @@
 
 **Branch:** `desenvolvimento`  
 **Data:** 2026-05-11  
-**Status:** Aguardando implementação
+**Status:** Implementado
+
+> 🗑️ **Atualização (2026-06-23):** a tabela `vendas_avulsas` foi **removida** (migration
+> `20260623000001_drop_vendas_avulsas`). Os avulsos vivem hoje em `pedidos` +
+> `itens_avulsos_ficha` (o hook `useVendasAvulsasFicha` também foi excluído). As menções a
+> `vendas_avulsas` abaixo descrevem o estado **anterior** à reestruturação.
 
 ---
 

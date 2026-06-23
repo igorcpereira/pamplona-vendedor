@@ -56,30 +56,10 @@ const ResumoMes = () => {
 
   const totalProvas = provasDoMes.length;
 
-  // Vendas avulsas feitas pelo vendedor neste mês
-  const { data: vendasAvulsasDoMes = [] } = useQuery({
-    queryKey: ['vendas-avulsas-vendedor-mes', user?.id, mesAtual],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from('vendas_avulsas')
-        .select('valor')
-        .eq('vendedor_id', user.id)
-        .gte('created_at', inicioMes)
-        .lt('created_at', fimMes);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user?.id,
-    staleTime: 60 * 1000,
-  });
-
-  const totalVendasAvulsas = vendasAvulsasDoMes.reduce((acc, v) => acc + Number(v.valor ?? 0), 0);
-
   const { data: totalItensAvulsos = 0 } = useItensAvulsosDoMes();
 
-  // Combined: vendas_avulsas table + itens_avulsos_ficha table
-  const totalAvulsasCombinado = totalVendasAvulsas + totalItensAvulsos;
+  // Total de itens avulsos do mês (tabela itens_avulsos_ficha)
+  const totalAvulsasCombinado = totalItensAvulsos;
 
   const totalFichas = fichasDoMes.length;
   const totalAluguel = fichasDoMes

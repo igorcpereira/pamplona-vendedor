@@ -175,8 +175,9 @@ parâmetro). Candidatos que **não exigem dado novo** (além da mudança da fich
    Reativação geral. *(Definir âncora de data: `created_at` da ficha vs. data do evento.)*
 5. 🛒 **"X tempo após a última compra (ficha)"** — última ficha com `tipo = 'venda'`.
    Winback de venda.
-6. 🧾 **"X tempo após a última compra (avulsa)"** — último registro em `vendas_avulsas`.
-   Winback de avulso.
+6. 🧾 **"X tempo após a última compra (avulsa)"** — último registro de avulso em
+   `itens_avulsos_ficha` (via `pedidos`→`fichas`). Winback de avulso.
+   *(Antes apontava para `vendas_avulsas`, removida em 2026-06-23.)*
 
 > Gatilhos #4, #5 e #6 são variações de "faz X tempo desde a última vez" (reativação).
 > Cada um é **parametrizável** (quanto tempo) e tem **dedupe** por cliente.

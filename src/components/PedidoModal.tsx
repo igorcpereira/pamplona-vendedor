@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 
 const TIPO_LABEL: Record<TipoItemAvulso, string> = {
   camiseta: 'Camiseta',
+  camisa: 'Camisa',
   gravata: 'Gravata',
   sapato: 'Sapato',
   meia: 'Meia',

@@ -130,6 +130,7 @@ export default function ClienteDetalhes() {
 
   const TIPO_LABEL_AVULSO: Record<string, string> = {
     camiseta: 'Camiseta',
+    camisa: 'Camisa',
     gravata: 'Gravata',
     sapato: 'Sapato',
     meia: 'Meia',

@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type TipoItemAvulso = 'camiseta' | 'gravata' | 'sapato' | 'meia' | 'cinto';
+export type TipoItemAvulso = 'camiseta' | 'camisa' | 'gravata' | 'sapato' | 'meia' | 'cinto';
 
 export const TIPOS_ITEM_AVULSO: TipoItemAvulso[] = [
   'camiseta',
+  'camisa',
   'gravata',
   'sapato',
   'meia',

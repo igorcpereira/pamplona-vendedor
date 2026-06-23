@@ -49,6 +49,7 @@ const toPhone11 = (value: string): string => {
 
 const TIPO_LABEL: Record<string, string> = {
   camiseta: 'Camiseta',
+  camisa: 'Camisa',
   gravata: 'Gravata',
   sapato: 'Sapato',
   meia: 'Meia',

@@ -339,7 +339,7 @@ export type Database = {
           updated_at: string
           url_audio: string | null
           url_bucket: string | null
-          valor: string | null
+          valor: number | null
           valor_calca: string | null
           valor_camisa: string | null
           valor_paleto: string | null
@@ -391,7 +391,7 @@ export type Database = {
           updated_at?: string
           url_audio?: string | null
           url_bucket?: string | null
-          valor?: string | null
+          valor?: number | null
           valor_calca?: string | null
           valor_camisa?: string | null
           valor_paleto?: string | null
@@ -443,7 +443,7 @@ export type Database = {
           updated_at?: string
           url_audio?: string | null
           url_bucket?: string | null
-          valor?: string | null
+          valor?: number | null
           valor_calca?: string | null
           valor_camisa?: string | null
           valor_paleto?: string | null
@@ -817,8 +817,10 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           id: string
+          is_teste: boolean
           nome: string | null
           senha_temporaria: boolean
+          ultimo_acesso: string | null
           ultimo_login: string | null
           unidade_id: number
           updated_at: string
@@ -828,8 +830,10 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           id: string
+          is_teste?: boolean
           nome?: string | null
           senha_temporaria?: boolean
+          ultimo_acesso?: string | null
           ultimo_login?: string | null
           unidade_id: number
           updated_at?: string
@@ -839,8 +843,10 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           id?: string
+          is_teste?: boolean
           nome?: string | null
           senha_temporaria?: boolean
+          ultimo_acesso?: string | null
           ultimo_login?: string | null
           unidade_id?: number
           updated_at?: string
@@ -1069,7 +1075,6 @@ export type Database = {
           disparo_id: string
           ficha_id: string | null
           id: string
-          venda_avulsa_id: string | null
           venda_em: string
         }
         Insert: {
@@ -1080,7 +1085,6 @@ export type Database = {
           disparo_id: string
           ficha_id?: string | null
           id?: string
-          venda_avulsa_id?: string | null
           venda_em: string
         }
         Update: {
@@ -1091,7 +1095,6 @@ export type Database = {
           disparo_id?: string
           ficha_id?: string | null
           id?: string
-          venda_avulsa_id?: string | null
           venda_em?: string
         }
         Relationships: [
@@ -1114,61 +1117,6 @@ export type Database = {
             columns: ["ficha_id"]
             isOneToOne: false
             referencedRelation: "fichas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendas_atribuidas_venda_avulsa_id_fkey"
-            columns: ["venda_avulsa_id"]
-            isOneToOne: false
-            referencedRelation: "vendas_avulsas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendas_avulsas: {
-        Row: {
-          created_at: string
-          descricao: string | null
-          ficha_id: string
-          id: string
-          pago: boolean
-          unidade_id: number | null
-          valor: number | null
-          vendedor_id: string
-        }
-        Insert: {
-          created_at?: string
-          descricao?: string | null
-          ficha_id: string
-          id?: string
-          pago?: boolean
-          unidade_id?: number | null
-          valor?: number | null
-          vendedor_id: string
-        }
-        Update: {
-          created_at?: string
-          descricao?: string | null
-          ficha_id?: string
-          id?: string
-          pago?: boolean
-          unidade_id?: number | null
-          valor?: number | null
-          vendedor_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendas_avulsas_ficha_id_fkey"
-            columns: ["ficha_id"]
-            isOneToOne: false
-            referencedRelation: "fichas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendas_avulsas_unidade_id_fkey"
-            columns: ["unidade_id"]
-            isOneToOne: false
-            referencedRelation: "unidades"
             referencedColumns: ["id"]
           },
         ]
@@ -1420,10 +1368,6 @@ export type Database = {
           unidade_nome: string
         }[]
       }
-      atribuir_avulsa_campanhas: {
-        Args: { _avulsa_id: string }
-        Returns: undefined
-      }
       atribuir_venda_campanhas: {
         Args: { _ficha_id: string }
         Returns: undefined
@@ -1521,6 +1465,24 @@ export type Database = {
           unidade_nome: string
           updated_at: string
           vendedor_id: string
+        }[]
+      }
+      get_dashboard_por_unidade: {
+        Args: { _data_fim?: string; _data_inicio?: string }
+        Returns: {
+          ajuste_qtd: number
+          ajuste_valor: number
+          aluguel_qtd: number
+          aluguel_valor: number
+          avulsa_qtd: number
+          avulsa_valor: number
+          total_fichas: number
+          total_provas: number
+          total_valor: number
+          unidade_id: number
+          unidade_nome: string
+          venda_qtd: number
+          venda_valor: number
         }[]
       }
       get_dashboard_por_vendedor: {
@@ -1630,6 +1592,10 @@ export type Database = {
           unidade_nome: string
         }[]
       }
+      get_ultimo_dia_lancamento: {
+        Args: { _unidade_id?: number; _vendedor_nome?: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1643,9 +1609,11 @@ export type Database = {
           created_at: string
           email: string
           id: string
+          is_teste: boolean
           is_vendedor_adicional: boolean
           nome: string
           role: string
+          ultimo_acesso: string
           unidade_id: number
           unidade_nome: string
         }[]
@@ -1760,7 +1728,7 @@ export type Database = {
           updated_at: string
           url_audio: string | null
           url_bucket: string | null
-          valor: string | null
+          valor: number | null
           valor_calca: string | null
           valor_camisa: string | null
           valor_paleto: string | null
@@ -1787,6 +1755,28 @@ export type Database = {
         Args: { p_campanha_id: string }
         Returns: number
       }
+      relatorio_diario_maringa: {
+        Args: never
+        Returns: {
+          aluguel: number
+          avulsas_qtd: number
+          avulsas_valor: number
+          fichas: number
+          nome: string
+          provas: number
+          total: number
+          ultimo_login: string
+          venda: number
+        }[]
+      }
+      relatorio_fichas_dia_anterior: {
+        Args: never
+        Returns: {
+          nome: string
+          total_fichas: number
+          ultimo_login: string
+        }[]
+      }
       remove_user_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1798,6 +1788,12 @@ export type Database = {
         Args: { _ativo: boolean; _user_id: string }
         Returns: undefined
       }
+      set_user_teste: {
+        Args: { _is_teste: boolean; _user_id: string }
+        Returns: undefined
+      }
+      title_case_nome: { Args: { p_nome: string }; Returns: string }
+      touch_ultimo_acesso: { Args: never; Returns: undefined }
       update_user_role:
         | {
             Args: {

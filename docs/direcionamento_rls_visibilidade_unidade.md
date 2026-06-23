@@ -2,7 +2,11 @@
 
 **Branch:** `desenvolvimento`  
 **Data:** 2026-05-11  
-**Status:** Aguardando implementação
+**Status:** Implementado
+
+> 🗑️ **Atualização (2026-06-23):** a tabela `vendas_avulsas` foi **removida** (migration
+> `20260623000001_drop_vendas_avulsas`). A linha de `vendas_avulsas` na tabela de revisão de
+> RLS abaixo é **obsoleta** — não há mais policies a manter para essa tabela.
 
 ---
 

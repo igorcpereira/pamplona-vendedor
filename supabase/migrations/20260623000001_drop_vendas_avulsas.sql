@@ -1,0 +1,24 @@
+-- ============================================================
+-- DROP da tabela legada `vendas_avulsas`
+-- ============================================================
+-- Contexto: `vendas_avulsas` foi substituida por `itens_avulsos_ficha`.
+-- Na data deste drop a tabela continha apenas 2 linhas de teste e nenhum
+-- codigo de aplicacao a consumia (o hook useVendasAvulsasFicha era codigo
+-- morto). A unica dependencia era a FK vendas_atribuidas.venda_avulsa_id,
+-- e a tabela vendas_atribuidas estava vazia (0 linhas).
+--
+-- CASCADE remove automaticamente: a FK vendas_atribuidas_venda_avulsa_id_fkey,
+-- os indices e as policies de RLS associadas a vendas_avulsas.
+--
+-- ------------------------------------------------------------
+-- ROLLBACK (recriar tabela + dados): ver migrations
+--   20260507130000_provas_vendas_avulsas.sql (estrutura + RLS) e, para os
+--   dados de teste:
+--   INSERT INTO public.vendas_avulsas
+--     (id, ficha_id, vendedor_id, unidade_id, descricao, valor, pago, created_at)
+--   VALUES
+--     ('f6951fde-30b5-4c25-9dc5-c0491a57e53d','fb8dc882-136e-4954-895b-91136356e74e','b578c592-83dc-4c5c-b183-4c2aa3af2eec',1,'Gravata Azul',500,true,'2026-05-07 13:24:59.640513+00'),
+--     ('646668b2-dbe6-4d69-9e4f-1df5ab96cb88','e111de00-b3f8-4c98-b711-a95f2dd27d90','b8968a4d-66a1-41c2-be16-eedf49f84767',1,'Camisa',850,true,'2026-05-07 17:32:25.459744+00');
+-- ------------------------------------------------------------
+
+DROP TABLE IF EXISTS public.vendas_avulsas CASCADE;

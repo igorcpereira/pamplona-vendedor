@@ -2,7 +2,11 @@
 
 **Branch:** `desenvolvimento`  
 **Data:** 2026-05-11  
-**Status:** Aguardando execução
+**Status:** Executado
+
+> 🗑️ **Atualização (2026-06-23):** a tabela `vendas_avulsas` foi **removida** (migration
+> `20260623000001_drop_vendas_avulsas`), substituída por `pedidos` + `itens_avulsos_ficha`.
+> Os blocos de SQL/RLS que referenciam `vendas_avulsas` abaixo são **históricos**.
 
 **Direcionamentos base:**
 - `direcionamento_editar_ficha.md`

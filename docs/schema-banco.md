@@ -23,8 +23,8 @@
 
 > ⚠️ **`vendedor_id` aponta para `auth.users(id)`, não para `profiles`.** Para exibir o nome
 > do vendedor, junte `profiles ON profiles.id = vendedor_id`. Vale para
-> `clientes.vendedor_id`, `fichas.vendedor_id`, `pedidos.vendedor_id`, `provas.vendedor_id`,
-> `vendas_avulsas.vendedor_id` e os `prova{1,2,3}_vendedor_id`.
+> `clientes.vendedor_id`, `fichas.vendedor_id`, `pedidos.vendedor_id`, `provas.vendedor_id`
+> e os `prova{1,2,3}_vendedor_id`.
 
 ---
 
@@ -47,7 +47,7 @@ em `usuario_unidade_role`.
 
 ### Como o VENDEDOR enxerga os dados (resumo prático)
 - **Via RLS de tabela** (`can_access_unidade`): o vendedor enxerga as linhas da **própria
-  unidade** (clientes, fichas, pedidos, provas, vendas_avulsas dessa unidade).
+  unidade** (clientes, fichas, pedidos, provas dessa unidade).
 - **Via RPC `get_clientes`**: é mais restrito — o ramo do vendedor filtra
   `clientes.vendedor_id = auth.uid()`, ou seja, **só os clientes dele**. (master/admin/gestor
   veem tudo; franqueado vê a unidade.) ⚠️ Há essa diferença de granularidade entre "ler a
@@ -77,8 +77,11 @@ Convenção: 🔑 PK, → FK. Datas `created_at/updated_at` (timestamptz) onde e
 | **pedidos** | 🔑`id`, `ficha_id`→fichas, `vendedor_id`→auth.users, `unidade_id`, `pago`, `garantia`, `valor_total` (numeric) | Cabeçalho dos **itens avulsos** de uma ficha. `valor_total` é a fonte do "valor avulsos". |
 | **itens_avulsos_ficha** | 🔑`id`, `pedido_id`→pedidos, `tipo_item` (CHECK: camiseta/gravata/sapato/meia/cinto), `quantidade`, `valor_unitario` | Itens do pedido avulso. `valor_unitario` quase sempre nulo (o valor real vive em `pedidos.valor_total`). |
 | **provas** | 🔑`id`, `ficha_id`→fichas, `vendedor_id`→auth.users, `unidade_id`, `nome_cliente`, `telefone_cliente` | Cada registro = uma prova feita. |
-| **vendas_avulsas** | 🔑`id`, `ficha_id`→fichas, `vendedor_id`→auth.users, `unidade_id`, `descricao`, `valor` (numeric), `pago` | Venda avulsa atrelada a uma ficha. |
 | **fichas_temporarias** | espelha fichas (staging do pipeline de OCR) | Pré-criação de ficha. |
+
+> 🗑️ A tabela **`vendas_avulsas`** foi **removida em 2026-06-23** (migration
+> `20260623000001_drop_vendas_avulsas`). Foi substituída por
+> **`pedidos` + `itens_avulsos_ficha`**, que é onde vivem os avulsos hoje.
 
 ### 3.3 Tags
 | Tabela | Colunas | Notas |
@@ -92,7 +95,7 @@ Convenção: 🔑 PK, → FK. Datas `created_at/updated_at` (timestamptz) onde e
 | **campanhas** | 🔑`id`, `nome`, `texto`, `midia_tipo`/`midia_url`, `tags_modo`, `intervalo_envio_minutos`, `janela_atribuicao_dias`, `status` (enum campanha_status), `data_inicio`/`data_fim`, `publico_estimado`, `unidade_id`, `criado_por`→profiles | Disparo automático de mensagem para clientes. |
 | **campanha_tags** | `campanha_id`→campanhas, `tag_id`→tags | Segmentação da campanha. |
 | **disparos** | 🔑`id`, `campanha_id`, `cliente_id`, `agendado_para`, `status` (enum disparo_status), `enviado_em`, `erro`, `wpp_msg_id` | 1 por (campanha,cliente). Gerido por cron/edge. |
-| **vendas_atribuidas** | 🔑`id`, `ficha_id`/`venda_avulsa_id` (XOR), `campanha_id`, `disparo_id`, `disparo_em`, `venda_em`, `dias_ate_conversao` | Conversão atribuída a campanha. Índices únicos parciais por (ficha,campanha) e (avulsa,campanha). |
+| **vendas_atribuidas** | 🔑`id`, `ficha_id`, `campanha_id`, `disparo_id`, `disparo_em`, `venda_em`, `dias_ate_conversao` | Conversão atribuída a campanha. (A coluna `venda_avulsa_id` foi removida em 2026-06-23 junto com `vendas_avulsas` — migration `20260623000002`.) |
 
 ### 3.5 WhatsApp (conversas)
 | Tabela | Colunas | Notas |
@@ -149,11 +152,10 @@ auth.users ──1:1── profiles ──→ unidades
 unidades ──< clientes ──< fichas ──< pedidos ──< itens_avulsos_ficha
                  │           │          
                  │           ├──< provas
-                 │           ├──< vendas_avulsas
                  │           └──< log_alteracoes_ficha (sem FK; append-only)
                  └──< relacao_cliente_tag >── tags
 
-campanhas ──< disparos ;  campanhas ──< vendas_atribuidas >── (fichas | vendas_avulsas)
+campanhas ──< disparos ;  campanhas ──< vendas_atribuidas >── fichas
 campanhas ──< campanha_tags >── tags
 
 clientes ──< historico_whatsapp        (client_id; setado por trigger)
@@ -163,7 +165,7 @@ dev.gatilhos ──< dev.atividades ──→ (clientes | profiles | unidades)
 
 Quem aponta para quem (FKs principais): `fichas.cliente_id→clientes`,
 `pedidos.ficha_id→fichas`, `itens_avulsos_ficha.pedido_id→pedidos`, `provas.ficha_id→fichas`,
-`vendas_avulsas.ficha_id→fichas`, `*.unidade_id→unidades`, `*.vendedor_id→auth.users`,
+`*.unidade_id→unidades`, `*.vendedor_id→auth.users`,
 `profiles.id→auth.users`.
 
 ---
@@ -193,7 +195,10 @@ Quem aponta para quem (FKs principais): `fichas.cliente_id→clientes`,
 ### Tags / Campanhas
 `get_tags` `SD`, `estimar_publico_campanha` `SD`, `iniciar_campanha` `SD`,
 `cancelar_campanha` `SD`, `reagendar_disparos_campanha` `SD`,
-`atribuir_venda_campanhas` `SD`, `atribuir_avulsa_campanhas` `SD`.
+`atribuir_venda_campanhas` `SD`.
+
+> ℹ️ A RPC `atribuir_avulsa_campanhas` foi **removida em 2026-06-23** (migration
+> `20260623000002`) junto com os demais órfãos do drop de `vendas_avulsas`.
 
 ### WhatsApp
 `get_whatsapp_conversations_by_phone` `SD`, `get_whatsapp_messages_by_phone` `SD`,
@@ -218,7 +223,7 @@ master/admin).
 | **fichas** | `can_access_unidade` | insert: `unidade=get_user_unidade`; update: `can_access_unidade`; delete: dono(vendedor) ou cargos acima |
 | **pedidos** | `can_access_unidade` | update: `can_access_unidade` + (dono **ou** cargos) |
 | **itens_avulsos_ficha** | via pedido (`can_access_unidade`) | dono do pedido **ou** gestor/franqueado/master/admin/administrativo |
-| **provas / vendas_avulsas** | `can_access_unidade` | insert `unidade=get_user_unidade`; demais `can_access_unidade` |
+| **provas** | `can_access_unidade` | insert `unidade=get_user_unidade`; demais `can_access_unidade` |
 | **profiles** | self, ou gestor/admin/master (global), ou franqueado/administrativo da mesma unidade | self atualiza; master/admin/gestor atualizam |
 | **usuario_unidade_role** | só o próprio (`user_id=auth.uid()`) | só admin/master |
 | **tags / relacao_cliente_tag** | aberto a authenticated | aberto a authenticated |
@@ -267,7 +272,8 @@ master/admin).
 ## 10. Triggers relevantes
 - `trigger_set_timestamp` / `set_updated_at` — mantêm `updated_at`.
 - `tg_log_fichas`, `tg_log_itens_avulsos`, `tg_log_pedidos` — auditoria → `log_alteracoes_ficha`.
-- `trg_fichas_atribuir` / `trg_avulsas_atribuir` — ao marcar `pago=true`, atribui venda a campanhas.
+- `trg_fichas_atribuir` — ao marcar `fichas.pago=true`, atribui venda a campanhas.
+  (O par `trg_avulsas_atribuir` foi removido junto com `vendas_avulsas` em 2026-06-23.)
 - `set_historico_whatsapp_client_id` — casa telefone→`client_id` em `historico_whatsapp`.
 - `sync_pedido_valor_total` — mantém `pedidos.valor_total`.
 - `handle_new_user` — cria `profiles` ao criar usuário no auth.
