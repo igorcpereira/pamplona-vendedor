@@ -1303,13 +1303,6 @@ export type Database = {
         Args: { p_ignore: string[]; p_new: Json; p_old: Json }
         Returns: Json
       }
-      add_user_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: undefined
-      }
       atividades_adiar: {
         Args: { p_id: string; p_nova_data: string }
         Returns: undefined
@@ -1777,13 +1770,6 @@ export type Database = {
           ultimo_login: string
         }[]
       }
-      remove_user_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: undefined
-      }
       set_user_ativo: {
         Args: { _ativo: boolean; _user_id: string }
         Returns: undefined
@@ -1794,22 +1780,14 @@ export type Database = {
       }
       title_case_nome: { Args: { p_nome: string }; Returns: string }
       touch_ultimo_acesso: { Args: never; Returns: undefined }
-      update_user_role:
-        | {
-            Args: {
-              _new_role: Database["public"]["Enums"]["app_role"]
-              _user_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              _new_role: Database["public"]["Enums"]["app_role"]
-              _unidade_id: number
-              _user_id: string
-            }
-            Returns: undefined
-          }
+      update_user_role: {
+        Args: {
+          _new_role: Database["public"]["Enums"]["app_role"]
+          _unidade_id: number
+          _user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
