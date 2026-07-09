@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 const ACCEPTED_FORMATS = new Set(['image/jpeg', 'image/png', 'image/heic', 'image/heif'])
-const MAX_SIZE = 15 * 1024 * 1024 // 15MB
+const MAX_SIZE = 25 * 1024 * 1024 // 25MB (alinhado ao file_size_limit do bucket)
 const DEFAULT_DDD = '44'
 
 // ============================================================
@@ -312,10 +312,16 @@ async function processarBackground(
 
   const tempoProcessamento = Math.round((Date.now() - startTime) / 1000)
 
-  // Etapa 6 — Atualiza ficha com todos os dados OCR
+  // Etapa 6 — Atualiza ficha com todos os dados OCR.
+  // Se o upload da imagem falhou (ex.: erro de Storage), sinaliza erro_etapa='upload'
+  // MANTENDO status='pendente' — o OCR funcionou e os dados são válidos; a ficha
+  // não é bloqueada, apenas avisada no cabeçalho (front). Em caso de sucesso,
+  // limpa erro_etapa (importante no reprocessamento).
   await supabase.from('fichas').update({
     ...dbFields,
-    ...(uploadOk ? { url_bucket: `${fichaId}.jpg` } : {}),
+    ...(uploadOk
+      ? { url_bucket: `${fichaId}.jpg`, erro_etapa: null }
+      : { erro_etapa: 'upload' }),
     cliente_encontrado: clienteEncontrado,
     cliente_sugerido_id: clienteSugeridoId,
     cliente_sugerido_nome: clienteSugeridoNome,

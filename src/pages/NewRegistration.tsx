@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 import PedidoAvulsoModal from "@/components/PedidoAvulsoModal";
 import ProvaAvulsaModal from "@/components/ProvaAvulsaModal";
+import { garantirJpeg } from "@/lib/imagem";
 
 interface FichaStats {
   id: string;
@@ -116,17 +117,33 @@ const NewRegistration = () => {
     cameraInputRef.current?.click();
   };
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      if (file.type.startsWith("image/")) {
-        setSelectedFile(file);
-        setPreviewUrl(URL.createObjectURL(file));
-        setShowConfirmDialog(true);
-      } else {
-        toast.error("Por favor, selecione uma imagem válida.");
-      }
+    if (!file) return;
+
+    // Aceita por mime OU por extensão (iOS às vezes manda type vazio em HEIC).
+    const nome = (file.name ?? "").toLowerCase();
+    const ehImagem =
+      file.type.startsWith("image/") || /\.(jpe?g|png|webp|heic|heif)$/i.test(nome);
+    if (!ehImagem) {
+      toast.error("Por favor, selecione uma imagem válida.");
+      return;
     }
+
+    // Converte HEIC/HEIF para JPEG no navegador antes do envio. Se falhar,
+    // segue com o arquivo original (nunca bloqueia o upload).
+    let arquivo = file;
+    try {
+      arquivo = await garantirJpeg(file);
+    } catch (err) {
+      console.error("Falha ao converter HEIC para JPEG:", err);
+      toast.warning("Não foi possível otimizar a foto. Enviando no formato original.");
+      arquivo = file;
+    }
+
+    setSelectedFile(arquivo);
+    setPreviewUrl(URL.createObjectURL(arquivo));
+    setShowConfirmDialog(true);
   };
 
   const handleConfirmSend = () => {

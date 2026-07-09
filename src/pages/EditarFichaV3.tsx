@@ -354,26 +354,28 @@ export default function EditarFichaV3() {
         return;
       }
 
-      const { data: fichaExistente, error: dupErr } = await supabase
+      // Impede salvar com um código já usado por outra ficha.
+      // IMPORTANTE: nunca deletamos a ficha atual aqui. O comportamento antigo
+      // (deletar a ficha em edição e redirecionar para a outra) apagava a ficha
+      // com os dados bons e, quando uma duplicata apontava para esta via
+      // ficha_original_id, batia na FK NO ACTION e quebrava tanto o salvar
+      // quanto o excluir. Agora apenas bloqueamos e avisamos.
+      const { data: duplicadas, error: dupErr } = await supabase
         .from('fichas')
-        .select('id')
+        .select('id, status')
         .eq('codigo_ficha', formData.codigo_ficha)
         .neq('id', id)
-        .maybeSingle();
+        .limit(1);
 
       if (dupErr) throw dupErr;
 
-      if (fichaExistente) {
-        const { error: delErr } = await supabase.from('fichas').delete().eq('id', id);
-        if (delErr) throw delErr;
-        navigate(`/editar-ficha-v3/${fichaExistente.id}`, {
-          state: {
-            isNewFicha: false,
-            duplicateAlert: true,
-            duplicateCodigo: formData.codigo_ficha,
-          },
-          replace: true,
+      if (duplicadas && duplicadas.length > 0) {
+        toast({
+          title: "Código de ficha já existe",
+          description: `Já existe outra ficha com o código ${formData.codigo_ficha}. Altere o código ou abra a ficha existente para continuar.`,
+          variant: "destructive",
         });
+        setLoading(false);
         return;
       }
 
@@ -405,7 +407,21 @@ export default function EditarFichaV3() {
         });
 
         if (criarError || !data?.cliente_id) {
-          throw new Error(data?.error || criarError?.message || 'Falha ao vincular cliente');
+          // Em respostas não-2xx o supabase-js deixa data = null e criarError
+          // vira um FunctionsHttpError genérico ("non-2xx status code"). A razão
+          // real (ex.: "Telefone inválido...") vem no corpo da resposta, então
+          // lemos criarError.context (o Response) para exibir a mensagem certa.
+          let mensagem = data?.error || criarError?.message || 'Falha ao vincular cliente';
+          const ctx = (criarError as { context?: Response } | null)?.context;
+          if (ctx && typeof ctx.json === 'function') {
+            try {
+              const corpo = await ctx.json();
+              if (corpo?.error) mensagem = corpo.error;
+            } catch {
+              // corpo não-JSON: mantém a mensagem anterior
+            }
+          }
+          throw new Error(mensagem);
         }
 
         clienteId = data.cliente_id;
@@ -651,6 +667,18 @@ export default function EditarFichaV3() {
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
               <p className="text-sm font-medium text-red-900 dark:text-red-100">Erro ao processar imagem</p>
               <p className="text-xs text-red-700 dark:text-red-300 mt-1">Você pode preencher os campos manualmente ou reenviar a imagem.</p>
+            </div>
+          )}
+
+          {ficha?.erro_etapa === 'upload' && (
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">A imagem desta ficha não foi salva</p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  Ocorreu um erro ao salvar a foto no processamento. Esta ficha <strong>não será enviada ao WhatsApp</strong> e a imagem não ficará disponível. Refaça a foto para corrigir.
+                </p>
+              </div>
             </div>
           )}
 
