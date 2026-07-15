@@ -10,7 +10,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { capitalizarNome, podeEditarFicha } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
+import FiltrosFichas from "@/components/FiltrosFichas";
 import { useFichasProcessadas } from "@/hooks/useFichasProcessadas";
+import { usePedidosAvulsos } from "@/hooks/usePedidosAvulsos";
+import { useFiltrosFichas } from "@/hooks/useFiltrosFichas";
 import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,6 +37,7 @@ const Fichas = () => {
   const [searchText, setSearchText] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const avulsosSentinelRef = useRef<HTMLDivElement>(null);
 
   const { data: vendedores = [] } = useVendedoresUnidade();
   const vendedorNomes = new Map(vendedores.map(v => [v.id, v.nome]));
@@ -42,7 +46,12 @@ const Fichas = () => {
   const podeEditar = (vendedorId?: string | null) =>
     podeEditarFicha(activeUnidade?.role, user?.id, vendedorId);
 
-  // Debounce do input de busca (usado pela aba "processada")
+  const ehGlobal = ["gestor", "admin", "master"].includes(activeUnidade?.role ?? "");
+
+  // Filtros persistentes (localStorage), compartilhados entre as abas
+  const { filtros, setFiltros } = useFiltrosFichas();
+
+  // Debounce do input de busca
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchText.trim()), 400);
     return () => clearTimeout(t);
@@ -55,9 +64,20 @@ const Fichas = () => {
     isFetchingNextPage: processadasFetchingNext,
     fetchNextPage: processadasFetchNext,
     hasNextPage: processadasHasNext,
-  } = useFichasProcessadas(debouncedSearch, activeFilter === "processada");
+  } = useFichasProcessadas(debouncedSearch, filtros, activeFilter === "processada");
 
   const fichasProcessadas = processadasData?.pages.flat() ?? [];
+
+  // Hook da aba "avulsos"
+  const {
+    data: avulsosData,
+    isLoading: avulsosLoading,
+    isFetchingNextPage: avulsosFetchingNext,
+    fetchNextPage: avulsosFetchNext,
+    hasNextPage: avulsosHasNext,
+  } = usePedidosAvulsos(debouncedSearch, filtros, activeFilter === "avulsos");
+
+  const pedidosAvulsos = avulsosData?.pages.flat() ?? [];
 
   // IntersectionObserver para scroll infinito na aba "processada"
   const handleObserver = useCallback(
@@ -76,6 +96,24 @@ const Fichas = () => {
     observer.observe(el);
     return () => observer.disconnect();
   }, [handleObserver, activeFilter]);
+
+  // IntersectionObserver para scroll infinito na aba "avulsos"
+  const handleAvulsosObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0].isIntersecting && avulsosHasNext && !avulsosFetchingNext) {
+        avulsosFetchNext();
+      }
+    },
+    [avulsosHasNext, avulsosFetchingNext, avulsosFetchNext]
+  );
+
+  useEffect(() => {
+    const el = avulsosSentinelRef.current;
+    if (!el || activeFilter !== "avulsos") return;
+    const observer = new IntersectionObserver(handleAvulsosObserver, { threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleAvulsosObserver, activeFilter]);
 
   const getTipoColor = (tipo?: string) => {
     if (!tipo) return "bg-muted text-muted-foreground";
@@ -113,7 +151,6 @@ const Fichas = () => {
     const fetchPreCadastros = async () => {
       try {
         const { supabase } = await import("@/integrations/supabase/client");
-        const user = (await supabase.auth.getUser()).data.user;
         const { data, error } = await supabase
           .from('fichas')
           .select('*')
@@ -272,9 +309,9 @@ const Fichas = () => {
     }
   };
 
-  // Filtragem para abas pendente/erro (cards em memória, busca client-side)
+  // Filtragem da aba "pendente": mescla pendente + erro (busca client-side)
   const filteredCards = cards.filter(card => {
-    const statusMatch = card.status === activeFilter;
+    const statusMatch = card.status === "pendente" || card.status === "erro";
     let textMatch = true;
     if (searchText.trim()) {
       const searchLower = searchText.toLowerCase().trim();
@@ -285,9 +322,8 @@ const Fichas = () => {
     return statusMatch && textMatch;
   });
 
-  const getStatusCount = (status: string) => {
-    return cards.filter(c => c.status === status).length;
-  };
+  // Contador da aba Pendente = pendente + erro
+  const pendenteCount = cards.filter(c => c.status === "pendente" || c.status === "erro").length;
 
   const formatDate = (timestamp?: string) =>
     timestamp
@@ -331,19 +367,28 @@ const Fichas = () => {
           <Tabs value={activeFilter} onValueChange={setActiveFilter} className="mb-6">
             <TabsList className="grid w-full grid-cols-3 gap-2 h-auto p-2 bg-muted/50">
               <TabsTrigger value="pendente" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs">
-                Pendente ({getStatusCount("pendente")})
+                Pendente ({pendenteCount})
               </TabsTrigger>
               <TabsTrigger value="processada" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs">
                 Processadas
               </TabsTrigger>
-              <TabsTrigger value="erro" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs">
-                Erro ({getStatusCount("erro")})
+              <TabsTrigger value="avulsos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-2 data-[state=active]:border-primary/50 py-2 text-xs">
+                Pedidos Avulsos
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
           {activeFilter === "processada" ? (
             <>
+              <div className="mb-4">
+                <FiltrosFichas
+                  filtros={filtros}
+                  onChange={setFiltros}
+                  mostrarTipo
+                  mostrarUnidade={ehGlobal}
+                />
+              </div>
+
               {processadasLoading ? (
                 <Card className="py-12">
                   <CardContent className="text-center">
@@ -399,6 +444,72 @@ const Fichas = () => {
                 </div>
               )}
             </>
+          ) : activeFilter === "avulsos" ? (
+            <>
+              <div className="mb-4">
+                <FiltrosFichas
+                  filtros={filtros}
+                  onChange={setFiltros}
+                  mostrarTipo={false}
+                  mostrarUnidade={ehGlobal}
+                />
+              </div>
+
+              {avulsosLoading ? (
+                <Card className="py-12">
+                  <CardContent className="text-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto" />
+                  </CardContent>
+                </Card>
+              ) : pedidosAvulsos.length === 0 ? (
+                <Card className="py-12">
+                  <CardContent className="text-center">
+                    <p className="text-muted-foreground">
+                      {debouncedSearch ? "Nenhum resultado encontrado." : "Nenhum pedido avulso encontrado."}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {pedidosAvulsos.map(pedido => (
+                    <Card key={pedido.id} className="transition-all hover:shadow-md cursor-pointer" onClick={() => navigate(`/editar-ficha-v3/${pedido.ficha_id}`)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <p className="font-semibold text-sm truncate">
+                              {capitalizarNome(pedido.nome_cliente ?? undefined)}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              Código: {pedido.codigo_ficha || "-"}
+                            </p>
+                            {pedido.vendedor_nome && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                Vendedor: {pedido.vendedor_nome}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex-shrink-0 space-y-1 text-center">
+                            <p className="text-xs text-muted-foreground">
+                              {formatDate(pedido.created_at)}
+                            </p>
+                            <p className="text-xs font-medium">
+                              {formatValor(pedido.valor_total)}
+                            </p>
+                          </div>
+                          <span className={`flex-shrink-0 inline-block px-2 py-1 text-xs font-medium rounded ${pedido.pago ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
+                            {pedido.pago ? "Pago" : "Não pago"}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+
+                  <div ref={avulsosSentinelRef} className="py-2 flex justify-center">
+                    {avulsosFetchingNext && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <>
               <div className="space-y-3">
@@ -445,7 +556,7 @@ const Fichas = () => {
                 <Card className="py-12">
                   <CardContent className="text-center">
                     <p className="text-muted-foreground">
-                      {cards.length === 0 ? "Nenhuma ficha encontrada" : `Nenhuma ficha com status ${activeFilter}`}
+                      {cards.length === 0 ? "Nenhuma ficha encontrada" : "Nenhuma ficha pendente"}
                     </p>
                   </CardContent>
                 </Card>

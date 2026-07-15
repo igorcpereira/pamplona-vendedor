@@ -5,7 +5,19 @@ import type { FiltrosFichas } from '@/hooks/useFiltrosFichas';
 
 const PAGE_SIZE = 15;
 
-export const useFichasProcessadas = (
+export interface PedidoAvulso {
+  id: string;
+  ficha_id: string;
+  codigo_ficha: string;
+  nome_cliente: string;
+  vendedor_id: string;
+  vendedor_nome: string;
+  valor_total: number;
+  pago: boolean;
+  created_at: string;
+}
+
+export const usePedidosAvulsos = (
   search: string | undefined,
   filtros: FiltrosFichas,
   enabled: boolean = true
@@ -13,23 +25,22 @@ export const useFichasProcessadas = (
   const { user } = useAuth();
 
   return useInfiniteQuery({
-    queryKey: ['fichas-processadas', user?.id, search ?? '', filtros],
+    queryKey: ['pedidos-avulsos', user?.id, search ?? '', filtros],
     queryFn: async ({ pageParam = 0 }) => {
-      if (!user?.id) return [];
+      if (!user?.id) return [] as PedidoAvulso[];
 
-      const { data, error } = await supabase.rpc('listar_fichas_processadas', {
+      const { data, error } = await supabase.rpc('listar_pedidos_avulsos', {
         p_offset: pageParam,
         p_limit: PAGE_SIZE,
         p_search: search && search.length > 0 ? search : undefined,
         p_minhas: filtros.minhas,
-        p_tipos: filtros.tipos.length > 0 ? filtros.tipos : undefined,
         p_data_inicio: filtros.dataInicio ?? undefined,
         p_data_fim: filtros.dataFim ?? undefined,
         p_unidade_id: filtros.unidadeId ?? undefined,
       });
 
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as PedidoAvulso[];
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {

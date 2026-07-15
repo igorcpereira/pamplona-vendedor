@@ -1496,6 +1496,7 @@ export type Database = {
           total_valor: number
           venda_qtd: number
           venda_valor: number
+          vendedor_id: string
           vendedor_nome: string
         }[]
       }
@@ -1565,6 +1566,22 @@ export type Database = {
           valor_avulsos: number
           vendedor_id: string
           vendedor_nome: string
+        }[]
+      }
+      get_lancamentos_vendedor: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+          _vendedor_id?: string
+        }
+        Returns: {
+          categoria: string
+          cliente: string
+          codigo_ficha: string
+          quando: string
+          tipo: string
+          valor: number
         }[]
       }
       get_tags: {
@@ -1674,7 +1691,16 @@ export type Database = {
       }
       is_master_or_admin: { Args: never; Returns: boolean }
       listar_fichas_processadas: {
-        Args: { p_limit?: number; p_offset?: number; p_search?: string }
+        Args: {
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_limit?: number
+          p_minhas?: boolean
+          p_offset?: number
+          p_search?: string
+          p_tipos?: string[]
+          p_unidade_id?: number
+        }
         Returns: {
           calca: string | null
           camisa: string | null
@@ -1733,6 +1759,28 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      listar_pedidos_avulsos: {
+        Args: {
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_limit?: number
+          p_minhas?: boolean
+          p_offset?: number
+          p_search?: string
+          p_unidade_id?: number
+        }
+        Returns: {
+          codigo_ficha: string
+          created_at: string
+          ficha_id: string
+          id: string
+          nome_cliente: string
+          pago: boolean
+          valor_total: number
+          vendedor_id: string
+          vendedor_nome: string
+        }[]
       }
       listar_vendedores_unidade: {
         Args: { p_unidade_id: number }
