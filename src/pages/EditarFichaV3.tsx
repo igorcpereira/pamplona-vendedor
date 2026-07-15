@@ -372,11 +372,15 @@ export default function EditarFichaV3() {
       // com os dados bons e, quando uma duplicata apontava para esta via
       // ficha_original_id, batia na FK NO ACTION e quebrava tanto o salvar
       // quanto o excluir. Agora apenas bloqueamos e avisamos.
+      // Código da ficha é único POR UNIDADE (não global): restringe a checagem
+      // à mesma unidade da ficha e só a fichas ativas/pendentes.
       const { data: duplicadas, error: dupErr } = await supabase
         .from('fichas')
         .select('id, status')
         .eq('codigo_ficha', formData.codigo_ficha)
+        .eq('unidade_id', ficha?.unidade_id)
         .neq('id', id)
+        .in('status', ['ativa', 'pendente'])
         .limit(1);
 
       if (dupErr) throw dupErr;
@@ -384,7 +388,7 @@ export default function EditarFichaV3() {
       if (duplicadas && duplicadas.length > 0) {
         toast({
           title: "Código de ficha já existe",
-          description: `Já existe outra ficha com o código ${formData.codigo_ficha}. Altere o código ou abra a ficha existente para continuar.`,
+          description: `Já existe outra ficha com o código ${formData.codigo_ficha} nesta unidade. Altere o código ou abra a ficha existente para continuar.`,
           variant: "destructive",
         });
         setLoading(false);

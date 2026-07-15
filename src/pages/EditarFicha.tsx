@@ -267,17 +267,20 @@ export default function EditarFicha() {
         return;
       }
 
+      // Código da ficha é único POR UNIDADE (não global).
       const { data: fichaExistente } = await supabase
         .from('fichas')
         .select('id')
         .eq('codigo_ficha', formData.codigo_ficha)
+        .eq('unidade_id', ficha?.unidade_id)
         .neq('id', id)
+        .in('status', ['ativa', 'pendente'])
         .maybeSingle();
 
       if (fichaExistente) {
         toast({
           title: "Erro",
-          description: "Este código de ficha já existe",
+          description: "Este código de ficha já existe nesta unidade",
           variant: "destructive"
         });
         setLoading(false);
@@ -314,7 +317,7 @@ export default function EditarFicha() {
               nome: formData.nome_cliente || 'Cliente sem nome',
               telefone: telefone,
               vendedor_id: user?.id,
-              unidade_id: profile?.unidade_id ?? null,
+              // cliente é entidade do negócio: sem unidade_id (a unidade vive na ficha)
             })
             .select('id')
             .single();

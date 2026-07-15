@@ -246,16 +246,26 @@ async function processarBackground(
 
   if (!ocrResult) return
 
-  // Etapa 5.5 — Verificar numero_ficha duplicado
+  // Etapa 5.5 — Verificar numero_ficha duplicado (único POR UNIDADE, não global)
   const numeroFicha = String(ocrResult.numero_ficha ?? '').trim() || null
   if (numeroFicha) {
-    const { data: fichasExistentes } = await supabase
+    // Unidade da ficha atual — a checagem de duplicata é restrita a ela.
+    const { data: fichaAtual } = await supabase
+      .from('fichas')
+      .select('unidade_id')
+      .eq('id', fichaId)
+      .single()
+    const unidadeAtual = fichaAtual?.unidade_id ?? null
+
+    let dupSel = supabase
       .from('fichas')
       .select('id')
       .eq('codigo_ficha', numeroFicha)
       .neq('id', fichaId)
       .in('status', ['ativa', 'pendente'])
       .limit(1)
+    if (unidadeAtual !== null) dupSel = dupSel.eq('unidade_id', unidadeAtual)
+    const { data: fichasExistentes } = await dupSel
 
     const fichaExistente = fichasExistentes?.[0] ?? null
 
