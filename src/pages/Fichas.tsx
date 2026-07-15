@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Trash2, Search, Loader2 } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -29,6 +30,207 @@ interface ProcessingCard {
   vendedor_id?: string;
 }
 
+// ---- Helpers puros (escopo de módulo: referência estável entre renders) ----
+
+const getTipoColor = (tipo?: string | null) => {
+  if (!tipo) return "bg-muted text-muted-foreground";
+  const tipoLower = tipo.toLowerCase();
+  if (tipoLower.includes("aluguel") || tipoLower.includes("alugar")) {
+    return "bg-blue-100 text-blue-700 border border-blue-200";
+  } else if (tipoLower.includes("venda") || tipoLower.includes("vender")) {
+    return "bg-green-100 text-green-700 border border-green-200";
+  } else if (tipoLower.includes("ajuste") || tipoLower.includes("conserto")) {
+    return "bg-purple-100 text-purple-700 border border-purple-200";
+  } else {
+    return "bg-primary/10 text-primary border border-primary/20";
+  }
+};
+
+const getStatusText = (status: string) => {
+  if (status === "pendente") return "Pendente";
+  if (status === "erro") return "Erro";
+  if (status === "ativa") return "Ativa";
+  if (status === "baixa") return "Baixa";
+  return status;
+};
+
+const getStatusColor = (status: string) => {
+  if (status === "pendente") return "text-yellow-600 font-semibold";
+  if (status === "erro") return "text-red-600 font-semibold";
+  if (status === "ativa") return "text-green-600 font-semibold";
+  if (status === "baixa") return "text-blue-600 font-semibold";
+  return "text-muted-foreground";
+};
+
+const formatDate = (timestamp?: string) =>
+  timestamp
+    ? new Date(timestamp).toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+    : "-";
+
+const formatValor = (valor?: string | number | null) => {
+  if (valor === null || valor === undefined || valor === "") return "-";
+  const n = typeof valor === "number" ? valor : parseFloat(String(valor).replace(",", "."));
+  if (Number.isNaN(n)) return "-";
+  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+};
+
+// ---- Lista virtualizada (window scroll) ----
+// Renderiza apenas os itens visíveis, evitando acumular centenas de nós no DOM.
+
+interface VirtualListProps<T> {
+  items: T[];
+  estimateSize: number;
+  hasNext: boolean;
+  fetchingNext: boolean;
+  fetchNext: () => void;
+  renderItem: (item: T) => ReactNode;
+  getKey: (item: T) => string;
+}
+
+function VirtualList<T>({ items, estimateSize, hasNext, fetchingNext, fetchNext, renderItem, getKey }: VirtualListProps<T>) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => estimateSize,
+    overscan: 8,
+    scrollMargin: parentRef.current?.offsetTop ?? 0,
+  });
+
+  const virtualItems = virtualizer.getVirtualItems();
+
+  // Carrega a próxima página quando o último item entra na janela virtual.
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (last && last.index >= items.length - 1 && hasNext && !fetchingNext) {
+      fetchNext();
+    }
+  }, [virtualItems, items.length, hasNext, fetchingNext, fetchNext]);
+
+  return (
+    <div ref={parentRef}>
+      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative", width: "100%" }}>
+        {virtualItems.map(vi => (
+          <div
+            key={getKey(items[vi.index])}
+            data-index={vi.index}
+            ref={virtualizer.measureElement}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              transform: `translateY(${vi.start - virtualizer.options.scrollMargin}px)`,
+            }}
+          >
+            <div className="pb-3">{renderItem(items[vi.index])}</div>
+          </div>
+        ))}
+      </div>
+      {fetchingNext && (
+        <div className="py-2 flex justify-center">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Cards memoizados ----
+
+interface FichaProcessadaCardProps {
+  ficha: any;
+  vendedorNome?: string;
+  onClick: (id: string) => void;
+}
+
+const FichaProcessadaCard = memo(({ ficha, vendedorNome, onClick }: FichaProcessadaCardProps) => (
+  <Card className="transition-all hover:shadow-md cursor-pointer" onClick={() => onClick(ficha.id)}>
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="font-semibold text-sm truncate">{capitalizarNome(ficha.nome_cliente ?? undefined)}</p>
+          <p className="text-xs text-muted-foreground truncate">Código: {ficha.codigo_ficha || "-"}</p>
+          {vendedorNome && <p className="text-xs text-muted-foreground truncate">Vendedor: {vendedorNome}</p>}
+        </div>
+        <div className="flex-shrink-0 space-y-1 text-center">
+          <p className="text-xs text-muted-foreground">{formatDate(ficha.created_at)}</p>
+          <p className="text-xs font-medium">{formatValor(ficha.valor)}</p>
+        </div>
+        <span className={`flex-shrink-0 inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(ficha.tipo ?? undefined)}`}>
+          {ficha.tipo || "-"}
+        </span>
+      </div>
+    </CardContent>
+  </Card>
+));
+FichaProcessadaCard.displayName = "FichaProcessadaCard";
+
+interface PedidoAvulsoCardProps {
+  pedido: any;
+  onClick: (fichaId: string) => void;
+}
+
+const PedidoAvulsoCard = memo(({ pedido, onClick }: PedidoAvulsoCardProps) => (
+  <Card className="transition-all hover:shadow-md cursor-pointer" onClick={() => onClick(pedido.ficha_id)}>
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="font-semibold text-sm truncate">{capitalizarNome(pedido.nome_cliente ?? undefined)}</p>
+          <p className="text-xs text-muted-foreground truncate">Código: {pedido.codigo_ficha || "-"}</p>
+          {pedido.vendedor_nome && <p className="text-xs text-muted-foreground truncate">Vendedor: {pedido.vendedor_nome}</p>}
+        </div>
+        <div className="flex-shrink-0 space-y-1 text-center">
+          <p className="text-xs text-muted-foreground">{formatDate(pedido.created_at)}</p>
+          <p className="text-xs font-medium">{formatValor(pedido.valor_total)}</p>
+        </div>
+        <span className={`flex-shrink-0 inline-block px-2 py-1 text-xs font-medium rounded ${pedido.pago ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
+          {pedido.pago ? "Pago" : "Não pago"}
+        </span>
+      </div>
+    </CardContent>
+  </Card>
+));
+PedidoAvulsoCard.displayName = "PedidoAvulsoCard";
+
+interface FichaPendenteCardProps {
+  card: ProcessingCard;
+  vendedorNome?: string;
+  podeExcluir: boolean;
+  onClick: (id: string) => void;
+  onDelete: (e: React.MouseEvent, id: string) => void;
+}
+
+const FichaPendenteCard = memo(({ card, vendedorNome, podeExcluir, onClick, onDelete }: FichaPendenteCardProps) => (
+  <Card className="transition-all hover:shadow-md cursor-pointer" onClick={() => onClick(card.id)}>
+    <CardContent className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 space-y-1 min-w-0">
+          <p className="font-semibold text-sm truncate">{capitalizarNome(card.nome_cliente)}</p>
+          <p className="text-xs text-muted-foreground">Código: {card.codigo_ficha || "-"}</p>
+          <p className="text-xs text-muted-foreground">Data: {formatDate(card.timestamp)}</p>
+          {vendedorNome && <p className="text-xs text-muted-foreground truncate">Vendedor: {vendedorNome}</p>}
+          <p className={`text-xs ${getStatusColor(card.status)}`}>Status: {getStatusText(card.status)}</p>
+        </div>
+        <div className="flex-shrink-0 flex flex-col items-end gap-2">
+          <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(card.tipo)}`}>
+            {card.tipo || "-"}
+          </span>
+          {podeExcluir && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={e => onDelete(e, card.id)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+));
+FichaPendenteCard.displayName = "FichaPendenteCard";
+
 const Fichas = () => {
   const navigate = useNavigate();
   const [cards, setCards] = useState<ProcessingCard[]>([]);
@@ -36,15 +238,15 @@ const Fichas = () => {
   const [deletingCardId, setDeletingCardId] = useState<string | null>(null);
   const [searchText, setSearchText] = useState<string>("");
   const [debouncedSearch, setDebouncedSearch] = useState<string>("");
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const avulsosSentinelRef = useRef<HTMLDivElement>(null);
 
   const { data: vendedores = [] } = useVendedoresUnidade();
-  const vendedorNomes = new Map(vendedores.map(v => [v.id, v.nome]));
+  const vendedorNomes = useMemo(() => new Map(vendedores.map(v => [v.id, v.nome])), [vendedores]);
 
   const { user, activeUnidade } = useAuth();
-  const podeEditar = (vendedorId?: string | null) =>
-    podeEditarFicha(activeUnidade?.role, user?.id, vendedorId);
+  const podeEditar = useCallback(
+    (vendedorId?: string | null) => podeEditarFicha(activeUnidade?.role, user?.id, vendedorId),
+    [activeUnidade?.role, user?.id]
+  );
 
   const ehGlobal = ["gestor", "admin", "master"].includes(activeUnidade?.role ?? "");
 
@@ -57,7 +259,6 @@ const Fichas = () => {
     return () => clearTimeout(t);
   }, [searchText]);
 
-  // Hook da aba "processada" — só faz fetch quando a aba estiver ativa
   const {
     data: processadasData,
     isLoading: processadasLoading,
@@ -66,9 +267,8 @@ const Fichas = () => {
     hasNextPage: processadasHasNext,
   } = useFichasProcessadas(debouncedSearch, filtros, activeFilter === "processada");
 
-  const fichasProcessadas = processadasData?.pages.flat() ?? [];
+  const fichasProcessadas = useMemo(() => processadasData?.pages.flat() ?? [], [processadasData]);
 
-  // Hook da aba "avulsos"
   const {
     data: avulsosData,
     isLoading: avulsosLoading,
@@ -77,73 +277,7 @@ const Fichas = () => {
     hasNextPage: avulsosHasNext,
   } = usePedidosAvulsos(debouncedSearch, filtros, activeFilter === "avulsos");
 
-  const pedidosAvulsos = avulsosData?.pages.flat() ?? [];
-
-  // IntersectionObserver para scroll infinito na aba "processada"
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      if (entries[0].isIntersecting && processadasHasNext && !processadasFetchingNext) {
-        processadasFetchNext();
-      }
-    },
-    [processadasHasNext, processadasFetchingNext, processadasFetchNext]
-  );
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || activeFilter !== "processada") return;
-    const observer = new IntersectionObserver(handleObserver, { threshold: 0.1 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleObserver, activeFilter]);
-
-  // IntersectionObserver para scroll infinito na aba "avulsos"
-  const handleAvulsosObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      if (entries[0].isIntersecting && avulsosHasNext && !avulsosFetchingNext) {
-        avulsosFetchNext();
-      }
-    },
-    [avulsosHasNext, avulsosFetchingNext, avulsosFetchNext]
-  );
-
-  useEffect(() => {
-    const el = avulsosSentinelRef.current;
-    if (!el || activeFilter !== "avulsos") return;
-    const observer = new IntersectionObserver(handleAvulsosObserver, { threshold: 0.1 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleAvulsosObserver, activeFilter]);
-
-  const getTipoColor = (tipo?: string) => {
-    if (!tipo) return "bg-muted text-muted-foreground";
-    const tipoLower = tipo.toLowerCase();
-    if (tipoLower.includes("aluguel") || tipoLower.includes("alugar")) {
-      return "bg-blue-100 text-blue-700 border border-blue-200";
-    } else if (tipoLower.includes("venda") || tipoLower.includes("vender")) {
-      return "bg-green-100 text-green-700 border border-green-200";
-    } else if (tipoLower.includes("ajuste") || tipoLower.includes("conserto")) {
-      return "bg-purple-100 text-purple-700 border border-purple-200";
-    } else {
-      return "bg-primary/10 text-primary border border-primary/20";
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    if (status === "pendente") return "Pendente";
-    if (status === "erro") return "Erro";
-    if (status === "ativa") return "Ativa";
-    if (status === "baixa") return "Baixa";
-    return status;
-  };
-
-  const getStatusColor = (status: string) => {
-    if (status === "pendente") return "text-yellow-600 font-semibold";
-    if (status === "erro") return "text-red-600 font-semibold";
-    if (status === "ativa") return "text-green-600 font-semibold";
-    if (status === "baixa") return "text-blue-600 font-semibold";
-    return "text-muted-foreground";
-  };
+  const pedidosAvulsos = useMemo(() => avulsosData?.pages.flat() ?? [], [avulsosData]);
 
   useEffect(() => {
     let mounted = true;
@@ -281,14 +415,14 @@ const Fichas = () => {
     };
   }, []);
 
-  const handleCardClick = (id: string) => {
+  const handleCardClick = useCallback((id: string) => {
     navigate(`/editar-ficha-v3/${id}`);
-  };
+  }, [navigate]);
 
-  const handleDeleteClick = (e: React.MouseEvent, cardId: string) => {
+  const handleDeleteClick = useCallback((e: React.MouseEvent, cardId: string) => {
     e.stopPropagation();
     setDeletingCardId(cardId);
-  };
+  }, []);
 
   const handleConfirmDelete = async () => {
     if (!deletingCardId) return;
@@ -310,36 +444,23 @@ const Fichas = () => {
   };
 
   // Filtragem da aba "pendente": mescla pendente + erro (busca client-side)
-  const filteredCards = cards.filter(card => {
-    const statusMatch = card.status === "pendente" || card.status === "erro";
-    let textMatch = true;
-    if (searchText.trim()) {
-      const searchLower = searchText.toLowerCase().trim();
-      const nomeMatch = card.nome_cliente?.toLowerCase().includes(searchLower);
-      const codigoMatch = card.codigo_ficha?.toLowerCase().includes(searchLower);
-      textMatch = !!(nomeMatch || codigoMatch);
-    }
-    return statusMatch && textMatch;
-  });
+  const filteredCards = useMemo(() => {
+    const termo = searchText.trim().toLowerCase();
+    return cards.filter(card => {
+      const statusMatch = card.status === "pendente" || card.status === "erro";
+      if (!statusMatch) return false;
+      if (!termo) return true;
+      const nomeMatch = card.nome_cliente?.toLowerCase().includes(termo);
+      const codigoMatch = card.codigo_ficha?.toLowerCase().includes(termo);
+      return !!(nomeMatch || codigoMatch);
+    });
+  }, [cards, searchText]);
 
   // Contador da aba Pendente = pendente + erro
-  const pendenteCount = cards.filter(c => c.status === "pendente" || c.status === "erro").length;
-
-  const formatDate = (timestamp?: string) =>
-    timestamp
-      ? new Date(timestamp).toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        })
-      : "-";
-
-  const formatValor = (valor?: string | number | null) => {
-    if (valor === null || valor === undefined || valor === "") return "-";
-    const n = typeof valor === "number" ? valor : parseFloat(String(valor).replace(",", "."));
-    if (Number.isNaN(n)) return "-";
-    return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  };
+  const pendenteCount = useMemo(
+    () => cards.filter(c => c.status === "pendente" || c.status === "erro").length,
+    [cards]
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative">
@@ -404,44 +525,21 @@ const Fichas = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
-                  {fichasProcessadas.map(ficha => (
-                    <Card key={ficha.id} className="transition-all hover:shadow-md cursor-pointer" onClick={() => handleCardClick(ficha.id)}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <p className="font-semibold text-sm truncate">
-                              {capitalizarNome(ficha.nome_cliente ?? undefined)}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              Código: {ficha.codigo_ficha || "-"}
-                            </p>
-                            {ficha.vendedor_id && vendedorNomes.get(ficha.vendedor_id) && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                Vendedor: {vendedorNomes.get(ficha.vendedor_id)}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0 space-y-1 text-center">
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(ficha.created_at)}
-                            </p>
-                            <p className="text-xs font-medium">
-                              {formatValor(ficha.valor)}
-                            </p>
-                          </div>
-                          <span className={`flex-shrink-0 inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(ficha.tipo ?? undefined)}`}>
-                            {ficha.tipo || "-"}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  <div ref={sentinelRef} className="py-2 flex justify-center">
-                    {processadasFetchingNext && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                  </div>
-                </div>
+                <VirtualList
+                  items={fichasProcessadas}
+                  estimateSize={104}
+                  hasNext={!!processadasHasNext}
+                  fetchingNext={processadasFetchingNext}
+                  fetchNext={processadasFetchNext}
+                  getKey={(ficha) => ficha.id}
+                  renderItem={(ficha) => (
+                    <FichaProcessadaCard
+                      ficha={ficha}
+                      vendedorNome={ficha.vendedor_id ? vendedorNomes.get(ficha.vendedor_id) : undefined}
+                      onClick={handleCardClick}
+                    />
+                  )}
+                />
               )}
             </>
           ) : activeFilter === "avulsos" ? (
@@ -470,89 +568,22 @@ const Fichas = () => {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-3">
-                  {pedidosAvulsos.map(pedido => (
-                    <Card key={pedido.id} className="transition-all hover:shadow-md cursor-pointer" onClick={() => navigate(`/editar-ficha-v3/${pedido.ficha_id}`)}>
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0 space-y-1">
-                            <p className="font-semibold text-sm truncate">
-                              {capitalizarNome(pedido.nome_cliente ?? undefined)}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              Código: {pedido.codigo_ficha || "-"}
-                            </p>
-                            {pedido.vendedor_nome && (
-                              <p className="text-xs text-muted-foreground truncate">
-                                Vendedor: {pedido.vendedor_nome}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex-shrink-0 space-y-1 text-center">
-                            <p className="text-xs text-muted-foreground">
-                              {formatDate(pedido.created_at)}
-                            </p>
-                            <p className="text-xs font-medium">
-                              {formatValor(pedido.valor_total)}
-                            </p>
-                          </div>
-                          <span className={`flex-shrink-0 inline-block px-2 py-1 text-xs font-medium rounded ${pedido.pago ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
-                            {pedido.pago ? "Pago" : "Não pago"}
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  <div ref={avulsosSentinelRef} className="py-2 flex justify-center">
-                    {avulsosFetchingNext && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                  </div>
-                </div>
+                <VirtualList
+                  items={pedidosAvulsos}
+                  estimateSize={104}
+                  hasNext={!!avulsosHasNext}
+                  fetchingNext={avulsosFetchingNext}
+                  fetchNext={avulsosFetchNext}
+                  getKey={(pedido) => pedido.id}
+                  renderItem={(pedido) => (
+                    <PedidoAvulsoCard pedido={pedido} onClick={handleCardClick} />
+                  )}
+                />
               )}
             </>
           ) : (
             <>
-              <div className="space-y-3">
-                {filteredCards.map(card => (
-                  <Card key={card.id} className="transition-all hover:shadow-md cursor-pointer" onClick={() => handleCardClick(card.id)}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 space-y-1 min-w-0">
-                          <p className="font-semibold text-sm truncate">
-                            {capitalizarNome(card.nome_cliente)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Código: {card.codigo_ficha || "-"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Data: {formatDate(card.timestamp)}
-                          </p>
-                          {card.vendedor_id && vendedorNomes.get(card.vendedor_id) && (
-                            <p className="text-xs text-muted-foreground truncate">
-                              Vendedor: {vendedorNomes.get(card.vendedor_id)}
-                            </p>
-                          )}
-                          <p className={`text-xs ${getStatusColor(card.status)}`}>
-                            Status: {getStatusText(card.status)}
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0 flex flex-col items-end gap-2">
-                          <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(card.tipo)}`}>
-                            {card.tipo || "-"}
-                          </span>
-                          {podeEditar(card.vendedor_id) && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={e => handleDeleteClick(e, card.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {filteredCards.length === 0 && (
+              {filteredCards.length === 0 ? (
                 <Card className="py-12">
                   <CardContent className="text-center">
                     <p className="text-muted-foreground">
@@ -560,6 +591,19 @@ const Fichas = () => {
                     </p>
                   </CardContent>
                 </Card>
+              ) : (
+                <div className="space-y-3">
+                  {filteredCards.map(card => (
+                    <FichaPendenteCard
+                      key={card.id}
+                      card={card}
+                      vendedorNome={card.vendedor_id ? vendedorNomes.get(card.vendedor_id) : undefined}
+                      podeExcluir={podeEditar(card.vendedor_id)}
+                      onClick={handleCardClick}
+                      onDelete={handleDeleteClick}
+                    />
+                  ))}
+                </div>
               )}
             </>
           )}
