@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput } from "@/lib/utils";
+import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, podeEditarFicha } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -61,6 +61,10 @@ export default function EditarFichaV3() {
   const { data: vendedores = [] } = useVendedoresUnidade();
   const adicionarProva = useAdicionarProva(id);
   const deletarProva = useDeletarProva(id);
+
+  // Espelha a RLS: vendedor só edita a própria ficha; demais perfis editam qualquer uma.
+  const podeEditar = podeEditarFicha(activeUnidade?.role, user?.id, ficha?.vendedor_id);
+  const somenteLeitura = !!ficha && !podeEditar;
 
   const [formData, setFormData] = useState({
     nome_cliente: "",
@@ -342,6 +346,14 @@ export default function EditarFichaV3() {
   };
 
   const handleSave = async () => {
+    if (somenteLeitura) {
+      toast({
+        title: "Ação não permitida",
+        description: "Você só pode editar fichas atribuídas a você.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     try {
       if (!formData.codigo_ficha) {
@@ -659,6 +671,18 @@ export default function EditarFichaV3() {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-green-900 dark:text-green-100">Dados da ficha processados com sucesso</p>
+              </div>
+            </div>
+          )}
+
+          {somenteLeitura && (
+            <div className="mb-4 p-3 bg-muted border border-border rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Modo somente leitura</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Esta ficha pertence a outro vendedor. Você pode visualizá-la, mas não editá-la.
+                </p>
               </div>
             </div>
           )}
@@ -1288,7 +1312,7 @@ export default function EditarFichaV3() {
               </Button>
               <Button
                 onClick={handleSave}
-                disabled={loading}
+                disabled={loading || somenteLeitura}
                 variant="success"
                 className="flex-1"
               >

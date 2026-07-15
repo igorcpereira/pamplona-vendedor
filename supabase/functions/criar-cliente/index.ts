@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { nome, telefone, vendedor_id, unidade_id } = await req.json()
+    const { nome, telefone, vendedor_id } = await req.json()
 
     // --- Etapa 1: Validação ---
     if (!nome?.trim())      return json({ error: 'nome é obrigatório' }, 400)
@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
       telefone: telefoneNormalizado,
       vendedor_id,
     }
-    if (unidade_id) insertPayload.unidade_id = unidade_id
+    // Cliente é entidade do negócio: não carrega mais unidade_id (a unidade vive na ficha).
 
     const { data: inserted, error: insertError } = await supabase
       .from('clientes')

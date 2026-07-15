@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2, Image as ImageIcon, Plus, Minus, ShoppingBag } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn, parseDataSemFuso, formatarDataParaBanco } from "@/lib/utils";
+import { cn, parseDataSemFuso, formatarDataParaBanco, podeEditarFicha } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
@@ -59,6 +59,10 @@ const TIPO_LABEL: Record<string, string> = {
 export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, onSuccess }: EditFichaModalProps) {
   const { user, profile, activeUnidade } = useAuth();
   const isAdmin = activeUnidade?.role === 'administrativo';
+
+  // Espelha a RLS: vendedor só edita a própria ficha; demais perfis editam qualquer uma.
+  const podeEditar = podeEditarFicha(activeUnidade?.role, user?.id, ficha?.vendedor_id);
+  const somenteLeitura = !!ficha && !podeEditar;
 
   const [loading, setLoading] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -211,6 +215,14 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
   };
 
   const handleSave = async () => {
+    if (somenteLeitura) {
+      toast({
+        title: "Ação não permitida",
+        description: "Você só pode editar fichas atribuídas a você.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     try {
       let clienteId: string | null = null;
@@ -358,6 +370,15 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
             <DialogDescription>
               Altere os campos necessários e clique em salvar
             </DialogDescription>
+
+            {somenteLeitura && (
+              <div className="mt-4 p-3 bg-muted border border-border rounded-lg">
+                <p className="text-sm font-medium">Modo somente leitura</p>
+                <p className="text-xs text-muted-foreground">
+                  Esta ficha pertence a outro vendedor. Você pode visualizá-la, mas não editá-la.
+                </p>
+              </div>
+            )}
 
             {isLoading && (
               <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
@@ -791,7 +812,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
                 size="sm"
                 variant="outline"
                 onClick={handleSalvarItens}
-                disabled={salvarItens.isPending || !fichaId}
+                disabled={salvarItens.isPending || !fichaId || somenteLeitura}
               >
                 {salvarItens.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Salvar peças avulsas
@@ -860,7 +881,7 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={loading}>
+            <Button onClick={handleSave} disabled={loading || somenteLeitura}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Salvar
             </Button>

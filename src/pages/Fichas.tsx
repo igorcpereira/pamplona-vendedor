@@ -7,11 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { capitalizarNome } from "@/lib/utils";
+import { capitalizarNome, podeEditarFicha } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
 import { useFichasProcessadas } from "@/hooks/useFichasProcessadas";
 import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProcessingCard {
   id: string;
@@ -36,6 +37,10 @@ const Fichas = () => {
 
   const { data: vendedores = [] } = useVendedoresUnidade();
   const vendedorNomes = new Map(vendedores.map(v => [v.id, v.nome]));
+
+  const { user, activeUnidade } = useAuth();
+  const podeEditar = (vendedorId?: string | null) =>
+    podeEditarFicha(activeUnidade?.role, user?.id, vendedorId);
 
   // Debounce do input de busca (usado pela aba "processada")
   useEffect(() => {
@@ -250,6 +255,11 @@ const Fichas = () => {
 
   const handleConfirmDelete = async () => {
     if (!deletingCardId) return;
+    const alvo = cards.find(c => c.id === deletingCardId);
+    if (alvo && !podeEditar(alvo.vendedor_id)) {
+      setDeletingCardId(null);
+      return;
+    }
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const { error } = await supabase.from('fichas').delete().eq('id', deletingCardId);
@@ -419,9 +429,11 @@ const Fichas = () => {
                           <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${getTipoColor(card.tipo)}`}>
                             {card.tipo || "-"}
                           </span>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={e => handleDeleteClick(e, card.id)}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {podeEditar(card.vendedor_id) && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={e => handleDeleteClick(e, card.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>

@@ -10,6 +10,19 @@ export function capitalizarNome(nome?: string): string {
   return nome.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// Regra de negócio (espelha a RLS): o perfil "vendedor" só pode editar/excluir
+// fichas onde vendedor_id === o próprio usuário. Os demais perfis
+// (administrativo, gestor, franqueado, admin, master) podem editar/excluir
+// qualquer ficha da unidade. Retorna true quando a ação é permitida.
+export function podeEditarFicha(
+  role: string | null | undefined,
+  userId: string | null | undefined,
+  fichaVendedorId: string | null | undefined
+): boolean {
+  if (role !== "vendedor") return true;
+  return !!userId && userId === fichaVendedorId;
+}
+
 // Normaliza telefone para o formato 55xx9xxxxxxxx (DDI + DDD + 9 dígitos).
 // Aceita entradas com máscara, sem DDD, sem DDI ou sem o nono dígito.
 // Retorna null se não conseguir normalizar.
