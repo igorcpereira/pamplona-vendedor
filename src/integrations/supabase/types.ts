@@ -1748,6 +1748,20 @@ export type Database = {
         Args: { p_campanha_id: string }
         Returns: number
       }
+      relatorio_diario_londrina: {
+        Args: never
+        Returns: {
+          aluguel: number
+          avulsas_qtd: number
+          avulsas_valor: number
+          fichas: number
+          nome: string
+          provas: number
+          total: number
+          ultimo_login: string
+          venda: number
+        }[]
+      }
       relatorio_diario_maringa: {
         Args: never
         Returns: {
@@ -1768,6 +1782,34 @@ export type Database = {
           nome: string
           total_fichas: number
           ultimo_login: string
+        }[]
+      }
+      relatorio_semanal_londrina: {
+        Args: never
+        Returns: {
+          aluguel: number
+          avulsas_qtd: number
+          avulsas_valor: number
+          fichas: number
+          nome: string
+          provas: number
+          total: number
+          ultimo_login: string
+          venda: number
+        }[]
+      }
+      relatorio_semanal_maringa: {
+        Args: never
+        Returns: {
+          aluguel: number
+          avulsas_qtd: number
+          avulsas_valor: number
+          fichas: number
+          nome: string
+          provas: number
+          total: number
+          ultimo_login: string
+          venda: number
         }[]
       }
       set_user_ativo: {
