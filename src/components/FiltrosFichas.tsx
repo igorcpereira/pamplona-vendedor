@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -98,18 +97,6 @@ const FiltrosFichas = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-72 space-y-4">
-        {/* Minhas fichas */}
-        <div className="flex items-center justify-between">
-          <Label htmlFor="filtro-minhas" className="text-sm">
-            Minhas fichas
-          </Label>
-          <Switch
-            id="filtro-minhas"
-            checked={filtros.minhas}
-            onCheckedChange={(v) => onChange({ ...filtros, minhas: v })}
-          />
-        </div>
-
         {/* Tipo */}
         {mostrarTipo && (
           <div className="space-y-2">

@@ -247,7 +247,8 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
             .insert({
               nome: formData.nome_cliente || 'Cliente sem nome',
               telefone: telefone,
-              vendedor_id: authUser?.id,
+              // Cliente pertence ao vendedor da ficha (não a quem lançou)
+              vendedor_id: fichaVendedorId ?? authUser?.id,
               unidade_id: profile?.unidade_id ?? null,
             })
             .select('id')

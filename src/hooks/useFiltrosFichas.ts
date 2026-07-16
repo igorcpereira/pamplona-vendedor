@@ -35,9 +35,9 @@ const lerFiltros = (): FiltrosFichas => {
   }
 };
 
+// "minhas" não conta: é um botão próprio fora do popover de filtros
 export const contarFiltrosAtivos = (f: FiltrosFichas): number => {
   let count = 0;
-  if (f.minhas) count++;
   if (f.tipos.length > 0) count++;
   if (f.dataInicio || f.dataFim) count++;
   if (f.unidadeId !== null) count++;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
-import { Trash2, Search, Loader2 } from "lucide-react";
+import { Trash2, Search, Loader2, User } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -501,13 +501,21 @@ const Fichas = () => {
 
           {activeFilter === "processada" ? (
             <>
-              <div className="mb-4">
+              <div className="mb-4 flex items-center gap-2">
                 <FiltrosFichas
                   filtros={filtros}
                   onChange={setFiltros}
                   mostrarTipo
                   mostrarUnidade={ehGlobal}
                 />
+                <Button
+                  variant={filtros.minhas ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFiltros({ ...filtros, minhas: !filtros.minhas })}
+                >
+                  <User className="w-4 h-4 mr-1.5" />
+                  Minhas fichas
+                </Button>
               </div>
 
               {processadasLoading ? (
@@ -544,13 +552,21 @@ const Fichas = () => {
             </>
           ) : activeFilter === "avulsos" ? (
             <>
-              <div className="mb-4">
+              <div className="mb-4 flex items-center gap-2">
                 <FiltrosFichas
                   filtros={filtros}
                   onChange={setFiltros}
                   mostrarTipo={false}
                   mostrarUnidade={ehGlobal}
                 />
+                <Button
+                  variant={filtros.minhas ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setFiltros({ ...filtros, minhas: !filtros.minhas })}
+                >
+                  <User className="w-4 h-4 mr-1.5" />
+                  Minhas fichas
+                </Button>
               </div>
 
               {avulsosLoading ? (

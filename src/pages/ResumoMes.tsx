@@ -1,4 +1,5 @@
-import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -7,8 +8,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 import { useFichas } from "@/hooks/useFichas";
 import { Card } from "@/components/ui/card";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useItensAvulsosDoMes } from "@/hooks/useItensAvulsosDoMes";
+import { useResumoUnidades, useUnidadesReais } from "@/hooks/useResumoUnidade";
 
 const MESES = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -18,7 +23,153 @@ const MESES = [
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-const ResumoMes = () => {
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Grid dos 6 cards do resumo — compartilhado entre a visão pessoal e a por unidade
+function CardsResumo({ fichas, provas, avulsas, vendas, alugueis, total }: {
+  fichas: number;
+  provas: number;
+  avulsas: number;
+  vendas: number;
+  alugueis: number;
+  total: number;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <FileText className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Fichas lançadas</span>
+        </div>
+        <p className="text-2xl font-bold text-foreground">{fichas}</p>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <Scissors className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Provas feitas</span>
+        </div>
+        <p className="text-2xl font-bold text-foreground">{provas}</p>
+      </Card>
+
+      <Card className="p-4 col-span-2">
+        <div className="flex items-center gap-2 mb-2">
+          <Package className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Vendas avulsas</span>
+        </div>
+        <p className="text-xl font-bold text-foreground">{formatCurrency(avulsas)}</p>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <ShoppingBag className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Vendas</span>
+        </div>
+        <p className="text-xl font-bold text-foreground">{formatCurrency(vendas)}</p>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <CalendarDays className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Aluguéis</span>
+        </div>
+        <p className="text-xl font-bold text-foreground">{formatCurrency(alugueis)}</p>
+      </Card>
+
+      <Card className="p-4 col-span-2">
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingUp className="w-4 h-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Valor total</span>
+        </div>
+        <p className="text-xl font-bold text-foreground">{formatCurrency(total)}</p>
+      </Card>
+    </div>
+  );
+}
+
+// Visão por unidade — cargos globais (gestor/admin/master)
+function ResumoUnidadeView() {
+  const { profile } = useAuth();
+  const agora = new Date();
+  const nomeMes = MESES[agora.getMonth()];
+  const inicioMes = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-01`;
+  const prox = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
+  const fimMes = `${prox.getFullYear()}-${pad(prox.getMonth() + 1)}-01`;
+
+  const { data: unidades = [] } = useUnidadesReais(true);
+  const { data: resumos = [] } = useResumoUnidades(inicioMes, fimMes);
+
+  const [unidadeId, setUnidadeId] = useState<number | null>(null);
+
+  // Default: unidade em que o usuário está alocado (se real), senão a primeira
+  useEffect(() => {
+    if (unidadeId !== null || unidades.length === 0) return;
+    const alocada = profile?.unidade_id && profile.unidade_id !== 3
+      && unidades.some(u => u.id === profile.unidade_id)
+      ? profile.unidade_id
+      : unidades[0].id;
+    setUnidadeId(alocada);
+  }, [unidades, unidadeId, profile?.unidade_id]);
+
+  const resumo = resumos.find(r => r.unidade_id === unidadeId);
+
+  return (
+    <div className="min-h-screen bg-background pb-20 relative">
+      <Header title="Resumo do mês" />
+
+      <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">
+        <Logo className="w-96 h-96 object-contain" />
+      </div>
+
+      <main className="px-4 py-6 max-w-md mx-auto space-y-6 relative z-10">
+        <div className="bg-card rounded-lg p-6 shadow-sm">
+          <h2 className="text-2xl font-bold text-foreground mb-2">
+            Bem-vindo(a), {profile?.nome || 'Gestor(a)'}!
+          </h2>
+          <p className="text-muted-foreground">
+            Acompanhe o desempenho da unidade.
+          </p>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Resumo de {nomeMes}
+            </h3>
+            <Select
+              value={unidadeId !== null ? String(unidadeId) : undefined}
+              onValueChange={(v) => setUnidadeId(Number(v))}
+            >
+              <SelectTrigger className="w-44 h-8 text-sm">
+                <Building2 className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+                <SelectValue placeholder="Unidade" />
+              </SelectTrigger>
+              <SelectContent>
+                {unidades.map((u) => (
+                  <SelectItem key={u.id} value={String(u.id)}>{u.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <CardsResumo
+            fichas={Number(resumo?.total_fichas ?? 0)}
+            provas={Number(resumo?.total_provas ?? 0)}
+            avulsas={Number(resumo?.avulsa_valor ?? 0)}
+            vendas={Number(resumo?.venda_valor ?? 0)}
+            alugueis={Number(resumo?.aluguel_valor ?? 0)}
+            total={Number(resumo?.total_valor ?? 0)}
+          />
+        </div>
+      </main>
+
+      <BottomNav />
+    </div>
+  );
+}
+
+// Visão pessoal — vendedor/franqueado/administrativo (comportamento original)
+function ResumoPessoalView() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const { data: fichas = [] } = useFichas();
@@ -27,7 +178,7 @@ const ResumoMes = () => {
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
 
   const agora = new Date();
-  const mesAtual = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  const mesAtual = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}`;
   const nomeMes = MESES[agora.getMonth()];
 
   const fichasDoMes = fichas.filter(f => f.created_at?.startsWith(mesAtual));
@@ -118,59 +269,26 @@ const ResumoMes = () => {
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
             Resumo de {nomeMes}
           </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Fichas lançadas</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{totalFichas}</p>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Scissors className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Provas feitas</span>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{totalProvas}</p>
-            </Card>
-
-            <Card className="p-4 col-span-2">
-              <div className="flex items-center gap-2 mb-2">
-                <Package className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Vendas avulsas</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(totalAvulsasCombinado)}</p>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <ShoppingBag className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Vendas</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(totalVenda)}</p>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CalendarDays className="w-4 h-4 text-primary" />
-                <span className="text-xs text-muted-foreground">Aluguéis</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(totalAluguel)}</p>
-            </Card>
-
-            <Card className="p-4 col-span-2">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Valor total</span>
-              </div>
-              <p className="text-xl font-bold text-foreground">{formatCurrency(totalValor)}</p>
-            </Card>
-          </div>
+          <CardsResumo
+            fichas={totalFichas}
+            provas={totalProvas}
+            avulsas={totalAvulsasCombinado}
+            vendas={totalVenda}
+            alugueis={totalAluguel}
+            total={totalValor}
+          />
         </div>
       </main>
 
       <BottomNav />
     </div>;
+}
+
+const ResumoMes = () => {
+  const { activeUnidade } = useAuth();
+  // Cargos globais veem o totalizador da unidade (com seletor); demais, o resumo pessoal
+  const ehGlobal = ['gestor', 'admin', 'master'].includes(activeUnidade?.role ?? '');
+  return ehGlobal ? <ResumoUnidadeView /> : <ResumoPessoalView />;
 };
+
 export default ResumoMes;

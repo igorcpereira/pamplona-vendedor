@@ -316,7 +316,8 @@ export default function EditarFicha() {
             .insert({
               nome: formData.nome_cliente || 'Cliente sem nome',
               telefone: telefone,
-              vendedor_id: user?.id,
+              // Cliente pertence ao vendedor da ficha (não a quem lançou)
+              vendedor_id: ficha?.vendedor_id ?? user?.id,
               // cliente é entidade do negócio: sem unidade_id (a unidade vive na ficha)
             })
             .select('id')

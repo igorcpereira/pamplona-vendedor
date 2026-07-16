@@ -417,7 +417,9 @@ export default function EditarFichaV3() {
           body: {
             nome: formData.nome_cliente || 'Cliente sem nome',
             telefone: telefoneNormalizado,
-            vendedor_id: authUser?.id,
+            // Cliente pertence ao vendedor da ficha (não a quem lançou —
+            // relevante quando um administrativo lança para outro vendedor)
+            vendedor_id: fichaVendedorId ?? authUser?.id,
             unidade_id: profile?.unidade_id ?? null,
           },
         });
