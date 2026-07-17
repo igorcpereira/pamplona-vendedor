@@ -760,6 +760,47 @@ export type Database = {
         }
         Relationships: []
       }
+      logs_acesso: {
+        Row: {
+          app: string
+          created_at: string
+          evento: string
+          id: number
+          rota: string
+          unidade_id: number | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app: string
+          created_at?: string
+          evento: string
+          id?: never
+          rota: string
+          unidade_id?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app?: string
+          created_at?: string
+          evento?: string
+          id?: never
+          rota?: string
+          unidade_id?: number | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_acesso_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           created_at: string
