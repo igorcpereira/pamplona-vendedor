@@ -10,6 +10,7 @@ import { useVendedoresUnidade } from '@/hooks/useVendedoresUnidade';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useTravaSubmit } from '@/hooks/useTravaSubmit';
 
 interface Props {
   open: boolean;
@@ -55,6 +56,7 @@ export default function ProvaAvulsaModal({ open, onClose }: Props) {
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefoneCliente, setTelefoneCliente] = useState('');
   const [isPending, setIsPending] = useState(false);
+  const travarSubmit = useTravaSubmit();
 
   // Busca por número de ficha
   const [numeroFicha, setNumeroFicha] = useState('');
@@ -134,7 +136,7 @@ export default function ProvaAvulsaModal({ open, onClose }: Props) {
     setTelefoneCliente('');
   };
 
-  const handleSalvar = async () => {
+  const handleSalvar = () => travarSubmit(async () => {
     if (!nomeCliente.trim()) {
       toast({ title: 'Informe o nome do cliente', variant: 'destructive' });
       return;
@@ -166,15 +168,24 @@ export default function ProvaAvulsaModal({ open, onClose }: Props) {
       toast({ title: 'Prova avulsa registrada!' });
       onClose();
     } catch (err) {
-      toast({
-        title: 'Erro ao registrar prova',
-        description: err instanceof Error ? err.message : 'Tente novamente.',
-        variant: 'destructive',
-      });
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('Prova duplicada')) {
+        toast({
+          title: 'Prova já registrada',
+          description: 'Já existe uma prova sua para este cliente nos últimos 10 minutos.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Erro ao registrar prova',
+          description: msg || 'Tente novamente.',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setIsPending(false);
     }
-  };
+  });
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>

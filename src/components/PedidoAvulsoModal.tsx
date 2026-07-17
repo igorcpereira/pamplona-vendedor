@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { TIPOS_ITEM_AVULSO, type TipoItemAvulso } from '@/hooks/useItensAvulsosFicha';
 import { toast } from '@/hooks/use-toast';
+import { useTravaSubmit } from '@/hooks/useTravaSubmit';
 
 const TIPO_LABEL: Record<TipoItemAvulso, string> = {
   camiseta: 'Camiseta',
@@ -63,6 +64,7 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
   const [garantia, setGarantia] = useState('');
   const [pago, setPago] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const travarSubmit = useTravaSubmit();
 
   useEffect(() => {
     if (!open) return;
@@ -85,7 +87,7 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
     );
   };
 
-  const handleSalvar = async () => {
+  const handleSalvar = () => travarSubmit(async () => {
     if (!nomeCliente.trim()) {
       toast({ title: 'Informe o nome do cliente', variant: 'destructive' });
       return;
@@ -194,7 +196,7 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
     } finally {
       setIsPending(false);
     }
-  };
+  });
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>

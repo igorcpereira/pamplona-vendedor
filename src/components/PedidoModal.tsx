@@ -11,6 +11,7 @@ import { useVendedoresUnidade } from '@/hooks/useVendedoresUnidade';
 import { useCriarPedido, useAtualizarPedido, type Pedido, type ItemPedido } from '@/hooks/usePedidosFicha';
 import { TIPOS_ITEM_AVULSO, type TipoItemAvulso } from '@/hooks/useItensAvulsosFicha';
 import { toast } from '@/hooks/use-toast';
+import { useTravaSubmit } from '@/hooks/useTravaSubmit';
 
 const TIPO_LABEL: Record<TipoItemAvulso, string> = {
   camiseta: 'Camiseta',
@@ -38,6 +39,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
   const { user, activeUnidade } = useAuth();
   const isAdmin = activeUnidade?.role === 'administrativo';
   const { data: vendedores = [] } = useVendedoresUnidade();
+  const travarSubmit = useTravaSubmit();
 
   const criarPedido = useCriarPedido(fichaId);
   const atualizarPedido = useAtualizarPedido(fichaId);
@@ -76,7 +78,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
     );
   };
 
-  const handleSalvar = async () => {
+  const handleSalvar = () => travarSubmit(async () => {
     const garantiaNum = garantia ? parseFloat(garantia.replace(',', '.')) : null;
     const valorTotalNum = valorTotal ? parseFloat(valorTotal.replace(',', '.')) : 0;
 
@@ -108,7 +110,7 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
         variant: 'destructive',
       });
     }
-  };
+  });
 
   const isPending = criarPedido.isPending || atualizarPedido.isPending;
 

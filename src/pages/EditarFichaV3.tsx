@@ -17,6 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, podeEditarFicha } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useTravaSubmit } from "@/hooks/useTravaSubmit";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import Header from "@/components/Header";
@@ -37,6 +38,7 @@ export default function EditarFichaV3() {
   const { user, profile, activeUnidade } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = activeUnidade?.role === 'administrativo';
+  const travarSubmit = useTravaSubmit();
   const { imageFile, isNewFicha, isReprocessing, cliente_id, duplicateAlert, duplicateCodigo, isManual } = location.state || {};
 
   const [loading, setLoading] = useState(false);
@@ -319,18 +321,27 @@ export default function EditarFichaV3() {
     t => !tagsPadrao.some(p => p.nome.toLowerCase() === t.toLowerCase())
   );
 
-  const handleAdicionarProva = async () => {
+  const handleAdicionarProva = () => travarSubmit(async () => {
     try {
       await adicionarProva.mutateAsync();
       toast({ title: "Prova registrada", description: "Adicionada com sucesso." });
     } catch (err) {
-      toast({
-        title: "Erro ao adicionar prova",
-        description: err instanceof Error ? err.message : "Tente novamente.",
-        variant: "destructive",
-      });
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes('Prova duplicada')) {
+        toast({
+          title: "Prova já registrada",
+          description: "Já existe uma prova sua para este cliente nos últimos 10 minutos.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao adicionar prova",
+          description: msg || "Tente novamente.",
+          variant: "destructive",
+        });
+      }
     }
-  };
+  });
 
   const handleDeletarProva = async (provaId: string) => {
     try {
