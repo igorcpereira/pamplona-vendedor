@@ -68,6 +68,11 @@ export default function EditarFichaV3() {
   const podeEditar = podeEditarFicha(activeUnidade?.role, user?.id, ficha?.vendedor_id);
   const somenteLeitura = !!ficha && !podeEditar;
 
+  // Telefone só pode ser definido/corrigido enquanto a ficha ainda não foi finalizada
+  // (status pendente/erro). Após o primeiro salvamento (status vira ativa) ele é
+  // congelado — o trigger trg_fichas_bloqueia_troca_telefone garante isso no banco.
+  const telefoneBloqueado = !!ficha && !['pendente', 'erro'].includes(ficha.status);
+
   const [formData, setFormData] = useState({
     nome_cliente: "",
     telefone_cliente: "",
@@ -460,7 +465,11 @@ export default function EditarFichaV3() {
 
       const updateData: any = {
         nome_cliente: formData.nome_cliente || null,
-        telefone_cliente: telefoneNormalizado || (formData.telefone_cliente?.trim() || null),
+        // Telefone congelado após o 1º save: preserva o valor persistido para não
+        // disparar o trigger de bloqueio (garantia do banco continua valendo).
+        telefone_cliente: telefoneBloqueado
+          ? (ficha?.telefone_cliente ?? null)
+          : (telefoneNormalizado || (formData.telefone_cliente?.trim() || null)),
         codigo_ficha: formData.codigo_ficha || null,
         tipo: formData.tipo || null,
         data_retirada: formatarDataParaBanco(formData.data_retirada),
@@ -568,10 +577,13 @@ export default function EditarFichaV3() {
       }
     } catch (error) {
       console.error("Erro ao atualizar ficha:", error);
-      const message = error instanceof Error ? error.message : "Não foi possível salvar a ficha. Tente novamente.";
+      const rawMessage = error instanceof Error ? error.message : "";
+      const telefoneBloqueadoErro = rawMessage.includes("Telefone da ficha");
       toast({
-        title: "Erro ao salvar ficha",
-        description: message,
+        title: telefoneBloqueadoErro ? "Telefone bloqueado" : "Erro ao salvar ficha",
+        description: telefoneBloqueadoErro
+          ? "O telefone não pode ser alterado após o primeiro salvamento da ficha."
+          : (rawMessage || "Não foi possível salvar a ficha. Tente novamente."),
         variant: "destructive",
       });
     } finally {
@@ -783,7 +795,14 @@ export default function EditarFichaV3() {
                       value={formData.telefone_cliente}
                       onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value })}
                       placeholder="(00) 00000-0000"
+                      disabled={telefoneBloqueado}
+                      title={telefoneBloqueado ? "O telefone não pode ser alterado após o primeiro salvamento da ficha." : undefined}
                     />
+                    {telefoneBloqueado && (
+                      <p className="text-xs text-muted-foreground">
+                        O telefone não pode ser alterado após o primeiro salvamento.
+                      </p>
+                    )}
                   </div>
                 </div>
 

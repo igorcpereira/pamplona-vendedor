@@ -64,6 +64,11 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
   const podeEditar = podeEditarFicha(activeUnidade?.role, user?.id, ficha?.vendedor_id);
   const somenteLeitura = !!ficha && !podeEditar;
 
+  // Telefone só pode ser definido/corrigido enquanto a ficha ainda não foi finalizada
+  // (status pendente/erro). Após o primeiro salvamento (status vira ativa) ele é
+  // congelado — o trigger trg_fichas_bloqueia_troca_telefone garante isso no banco.
+  const telefoneBloqueado = !!ficha && !['pendente', 'erro'].includes(ficha.status);
+
   const [loading, setLoading] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
@@ -263,7 +268,11 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
 
       const updateData: any = {
         nome_cliente: formData.nome_cliente || null,
-        telefone_cliente: formData.telefone_cliente ? toPhone13(formData.telefone_cliente) : null,
+        // Telefone congelado após o 1º save: preserva o valor persistido para não
+        // disparar o trigger de bloqueio (garantia do banco continua valendo).
+        telefone_cliente: telefoneBloqueado
+          ? (ficha?.telefone_cliente ?? null)
+          : (formData.telefone_cliente ? toPhone13(formData.telefone_cliente) : null),
         codigo_ficha: formData.codigo_ficha || null,
         tipo: formData.tipo || null,
         data_retirada: formatarDataParaBanco(formData.data_retirada),
@@ -336,9 +345,13 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
       onOpenChange(false);
     } catch (error) {
       console.error("Erro ao atualizar ficha:", error);
+      const rawMessage = error instanceof Error ? error.message : "";
+      const telefoneBloqueadoErro = rawMessage.includes("Telefone da ficha");
       toast({
-        title: "Erro ao salvar ficha",
-        description: error instanceof Error ? error.message : "Tente novamente.",
+        title: telefoneBloqueadoErro ? "Telefone bloqueado" : "Erro ao salvar ficha",
+        description: telefoneBloqueadoErro
+          ? "O telefone não pode ser alterado após o primeiro salvamento da ficha."
+          : (rawMessage || "Tente novamente."),
         variant: "destructive",
       });
     } finally {
@@ -458,13 +471,22 @@ export function EditFichaModal({ open, onOpenChange, ficha, isLoading = false, o
                     {isLoading ? (
                       <Skeleton className="h-10 w-full" />
                     ) : (
-                      <Input
-                        id="telefone_cliente"
-                        type="tel"
-                        value={formatPhone(formData.telefone_cliente)}
-                        onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value.replace(/\D/g, '').slice(0, 11) })}
-                        placeholder="(00) 00000-0000"
-                      />
+                      <>
+                        <Input
+                          id="telefone_cliente"
+                          type="tel"
+                          value={formatPhone(formData.telefone_cliente)}
+                          onChange={(e) => setFormData({ ...formData, telefone_cliente: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+                          placeholder="(00) 00000-0000"
+                          disabled={telefoneBloqueado}
+                          title={telefoneBloqueado ? "O telefone não pode ser alterado após o primeiro salvamento da ficha." : undefined}
+                        />
+                        {telefoneBloqueado && (
+                          <p className="text-xs text-muted-foreground">
+                            O telefone não pode ser alterado após o primeiro salvamento.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
