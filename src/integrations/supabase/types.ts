@@ -315,10 +315,12 @@ export type Database = {
           garantia: string | null
           id: string
           is_noivo: boolean
+          lanificio_id: string | null
           nome_cliente: string | null
           ocr_tentativa: number | null
           pago: boolean
           paleto: string | null
+          paleto_categoria: string | null
           paleto_cor: string | null
           paleto_lanificio: string | null
           prova1_data: string | null
@@ -329,6 +331,7 @@ export type Database = {
           prova3_vendedor_id: string | null
           sapato: string | null
           sapato_tipo: string | null
+          sob_medida: boolean
           status: Database["public"]["Enums"]["status_ficha"]
           tags: Json | null
           telefone_cliente: string | null
@@ -367,10 +370,12 @@ export type Database = {
           garantia?: string | null
           id?: string
           is_noivo?: boolean
+          lanificio_id?: string | null
           nome_cliente?: string | null
           ocr_tentativa?: number | null
           pago?: boolean
           paleto?: string | null
+          paleto_categoria?: string | null
           paleto_cor?: string | null
           paleto_lanificio?: string | null
           prova1_data?: string | null
@@ -381,6 +386,7 @@ export type Database = {
           prova3_vendedor_id?: string | null
           sapato?: string | null
           sapato_tipo?: string | null
+          sob_medida?: boolean
           status?: Database["public"]["Enums"]["status_ficha"]
           tags?: Json | null
           telefone_cliente?: string | null
@@ -419,10 +425,12 @@ export type Database = {
           garantia?: string | null
           id?: string
           is_noivo?: boolean
+          lanificio_id?: string | null
           nome_cliente?: string | null
           ocr_tentativa?: number | null
           pago?: boolean
           paleto?: string | null
+          paleto_categoria?: string | null
           paleto_cor?: string | null
           paleto_lanificio?: string | null
           prova1_data?: string | null
@@ -433,6 +441,7 @@ export type Database = {
           prova3_vendedor_id?: string | null
           sapato?: string | null
           sapato_tipo?: string | null
+          sob_medida?: boolean
           status?: Database["public"]["Enums"]["status_ficha"]
           tags?: Json | null
           telefone_cliente?: string | null
@@ -455,6 +464,13 @@ export type Database = {
             columns: ["cliente_id"]
             isOneToOne: false
             referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_lanificio_id_fkey"
+            columns: ["lanificio_id"]
+            isOneToOne: false
+            referencedRelation: "lanificios"
             referencedColumns: ["id"]
           },
           {
@@ -674,7 +690,41 @@ export type Database = {
             referencedRelation: "pedidos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "itens_avulsos_ficha_tipo_item_fkey"
+            columns: ["tipo_item"]
+            isOneToOne: false
+            referencedRelation: "tipos_item_avulso"
+            referencedColumns: ["slug"]
+          },
         ]
+      }
+      lanificios: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          tipo: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          tipo: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          tipo?: string
+        }
+        Relationships: []
       }
       log_alteracoes_ficha: {
         Row: {
@@ -800,6 +850,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      opcoes_ficha: {
+        Row: {
+          ativo: boolean
+          campo: string
+          created_at: string
+          id: string
+          ordem: number
+          valor: string
+        }
+        Insert: {
+          ativo?: boolean
+          campo: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          valor: string
+        }
+        Update: {
+          ativo?: boolean
+          campo?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          valor?: string
+        }
+        Relationships: []
       }
       pedidos: {
         Row: {
@@ -1020,6 +1097,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tipos_item_avulso: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          slug: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          slug: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          slug?: string
+        }
+        Relationships: []
       }
       unidades: {
         Row: {
@@ -1764,10 +1868,12 @@ export type Database = {
           garantia: string | null
           id: string
           is_noivo: boolean
+          lanificio_id: string | null
           nome_cliente: string | null
           ocr_tentativa: number | null
           pago: boolean
           paleto: string | null
+          paleto_categoria: string | null
           paleto_cor: string | null
           paleto_lanificio: string | null
           prova1_data: string | null
@@ -1778,6 +1884,7 @@ export type Database = {
           prova3_vendedor_id: string | null
           sapato: string | null
           sapato_tipo: string | null
+          sob_medida: boolean
           status: Database["public"]["Enums"]["status_ficha"]
           tags: Json | null
           telefone_cliente: string | null

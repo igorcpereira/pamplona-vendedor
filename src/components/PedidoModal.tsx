@@ -9,18 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useAuth } from '@/contexts/AuthContext';
 import { useVendedoresUnidade } from '@/hooks/useVendedoresUnidade';
 import { useCriarPedido, useAtualizarPedido, type Pedido, type ItemPedido } from '@/hooks/usePedidosFicha';
-import { TIPOS_ITEM_AVULSO, type TipoItemAvulso } from '@/hooks/useItensAvulsosFicha';
+import { type TipoItemAvulso } from '@/hooks/useItensAvulsosFicha';
+import { useTiposItemAvulso } from '@/hooks/useTiposItemAvulso';
 import { toast } from '@/hooks/use-toast';
 import { useTravaSubmit } from '@/hooks/useTravaSubmit';
 
-const TIPO_LABEL: Record<TipoItemAvulso, string> = {
-  camiseta: 'Camiseta',
-  camisa: 'Camisa',
-  gravata: 'Gravata',
-  sapato: 'Sapato',
-  meia: 'Meia',
-  cinto: 'Cinto',
-};
+// Capitaliza um slug como fallback quando o tipo não está na lista de registros.
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 interface Props {
   fichaId: string | undefined;
@@ -39,16 +34,30 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
   const { user, activeUnidade } = useAuth();
   const isAdmin = activeUnidade?.role === 'administrativo';
   const { data: vendedores = [] } = useVendedoresUnidade();
+  const { data: tiposItem = [] } = useTiposItemAvulso();
   const travarSubmit = useTravaSubmit();
 
   const criarPedido = useCriarPedido(fichaId);
   const atualizarPedido = useAtualizarPedido(fichaId);
 
+  // Slugs ativos (ordenados) + tipos presentes no pedido salvo, para não sumir
+  // um item de tipo hoje inativo de um pedido antigo.
+  const tiposAtivos = tiposItem.map((t) => t.slug);
+  const tiposSalvos = pedido?.itens.map((i) => i.tipo_item) ?? [];
+  const tipos: TipoItemAvulso[] = [
+    ...tiposAtivos,
+    ...tiposSalvos.filter((t) => !tiposAtivos.includes(t)),
+  ];
+
+  // Label de exibição a partir do registro (fallback: capitalize do slug).
+  const labelDe = (slug: string) =>
+    tiposItem.find((t) => t.slug === slug)?.nome ?? capitalize(slug);
+
   const [vendedorId, setVendedorId] = useState<string>('');
   const [pago, setPago] = useState(false);
   const [garantia, setGarantia] = useState('');
   const [valorTotal, setValorTotal] = useState('');
-  const [itens, setItens] = useState<ItemPedido[]>(TIPOS_ITEM_AVULSO.map(itemZerado));
+  const [itens, setItens] = useState<ItemPedido[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -58,15 +67,16 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
       setGarantia(pedido.garantia != null ? String(pedido.garantia) : '');
       setValorTotal(pedido.valor_total > 0 ? String(pedido.valor_total) : '');
       const mapa = new Map(pedido.itens.map((i) => [i.tipo_item, i]));
-      setItens(TIPOS_ITEM_AVULSO.map((t) => mapa.get(t) ?? itemZerado(t)));
+      setItens(tipos.map((t) => mapa.get(t) ?? itemZerado(t)));
     } else {
       setVendedorId(user?.id ?? '');
       setPago(false);
       setGarantia('');
       setValorTotal('');
-      setItens(TIPOS_ITEM_AVULSO.map(itemZerado));
+      setItens(tipos.map(itemZerado));
     }
-  }, [open, pedido, user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pedido, user?.id, tiposItem]);
 
   const handleQuantChange = (tipo: TipoItemAvulso, delta: number) => {
     setItens((prev) =>
@@ -139,11 +149,11 @@ export default function PedidoModal({ fichaId, pedido, open, onClose }: Props) {
           )}
 
           <div className="space-y-2">
-            {TIPOS_ITEM_AVULSO.map((tipo) => {
+            {tipos.map((tipo) => {
               const item = itens.find((i) => i.tipo_item === tipo) ?? itemZerado(tipo);
               return (
                 <div key={tipo} className="flex items-center gap-3 p-3 rounded border border-border">
-                  <span className="flex-1 text-sm font-medium">{TIPO_LABEL[tipo]}</span>
+                  <span className="flex-1 text-sm font-medium">{labelDe(tipo)}</span>
 
                   <div className="flex items-center gap-1">
                     <Button

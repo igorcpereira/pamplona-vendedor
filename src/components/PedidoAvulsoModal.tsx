@@ -10,18 +10,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useVendedoresUnidade } from '@/hooks/useVendedoresUnidade';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { TIPOS_ITEM_AVULSO, type TipoItemAvulso } from '@/hooks/useItensAvulsosFicha';
+import { type TipoItemAvulso } from '@/hooks/useItensAvulsosFicha';
+import { useTiposItemAvulso } from '@/hooks/useTiposItemAvulso';
 import { toast } from '@/hooks/use-toast';
 import { useTravaSubmit } from '@/hooks/useTravaSubmit';
 
-const TIPO_LABEL: Record<TipoItemAvulso, string> = {
-  camiseta: 'Camiseta',
-  camisa: 'Camisa',
-  gravata: 'Gravata',
-  sapato: 'Sapato',
-  meia: 'Meia',
-  cinto: 'Cinto',
-};
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 interface ItemLocal {
   tipo_item: TipoItemAvulso;
@@ -32,9 +26,6 @@ interface Props {
   open: boolean;
   onClose: () => void;
 }
-
-const itensZerados = (): ItemLocal[] =>
-  TIPOS_ITEM_AVULSO.map((tipo) => ({ tipo_item: tipo, quantidade: 0 }));
 
 const formatPhone = (digits: string): string => {
   const d = digits.slice(0, 11);
@@ -54,12 +45,19 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
   const { user, profile, activeUnidade } = useAuth();
   const isAdmin = activeUnidade?.role === 'administrativo';
   const { data: vendedores = [] } = useVendedoresUnidade();
+  const { data: tiposItem = [] } = useTiposItemAvulso();
   const queryClient = useQueryClient();
+
+  const tipos = tiposItem.map((t) => t.slug);
+  const labelDe = (slug: string) =>
+    tiposItem.find((t) => t.slug === slug)?.nome ?? capitalize(slug);
+  const itensZerados = (): ItemLocal[] =>
+    tipos.map((tipo) => ({ tipo_item: tipo, quantidade: 0 }));
 
   const [vendedorId, setVendedorId] = useState('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [telefoneCliente, setTelefoneCliente] = useState('');
-  const [itens, setItens] = useState<ItemLocal[]>(itensZerados());
+  const [itens, setItens] = useState<ItemLocal[]>([]);
   const [valorTotal, setValorTotal] = useState('');
   const [garantia, setGarantia] = useState('');
   const [pago, setPago] = useState(false);
@@ -75,7 +73,8 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
     setValorTotal('');
     setGarantia('');
     setPago(false);
-  }, [open, user?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, user?.id, tiposItem]);
 
   const handleQuantChange = (tipo: TipoItemAvulso, delta: number) => {
     setItens((prev) =>
@@ -244,11 +243,11 @@ export default function PedidoAvulsoModal({ open, onClose }: Props) {
           </div>
 
           <div className="space-y-2">
-            {TIPOS_ITEM_AVULSO.map((tipo) => {
-              const item = itens.find((i) => i.tipo_item === tipo)!;
+            {tipos.map((tipo) => {
+              const item = itens.find((i) => i.tipo_item === tipo) ?? { tipo_item: tipo, quantidade: 0 };
               return (
                 <div key={tipo} className="flex items-center gap-3 p-3 rounded border border-border">
-                  <span className="flex-1 text-sm font-medium">{TIPO_LABEL[tipo]}</span>
+                  <span className="flex-1 text-sm font-medium">{labelDe(tipo)}</span>
                   <div className="flex items-center gap-1">
                     <Button
                       type="button"

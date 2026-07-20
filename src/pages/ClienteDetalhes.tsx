@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseDataSemFuso } from "@/lib/utils";
+import { useLanificios } from "@/hooks/useLanificios";
+import { useTiposItemAvulso } from "@/hooks/useTiposItemAvulso";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 
@@ -30,6 +32,17 @@ export default function ClienteDetalhes() {
   const [pedidosByFichaId, setPedidosByFichaId] = useState<Map<string, PedidoResumo[]>>(new Map());
   const [vendedorNomes, setVendedorNomes] = useState<Map<string, string>>(new Map());
   const [formData, setFormData] = useState({ nome: "", telefone: "" });
+  const { data: lanificios = [] } = useLanificios();
+  const { data: tiposItem = [] } = useTiposItemAvulso();
+
+  // Nome do lanifício por id (lookup); fallback no texto legado paleto_lanificio.
+  const nomeLanificio = (ficha: any): string | null => {
+    if (ficha.lanificio_id) {
+      const encontrado = lanificios.find(l => l.id === ficha.lanificio_id);
+      if (encontrado) return encontrado.nome;
+    }
+    return ficha.paleto_lanificio || null;
+  };
 
   useEffect(() => {
     const loadClienteData = async () => {
@@ -128,14 +141,8 @@ export default function ClienteDetalhes() {
     }
   };
 
-  const TIPO_LABEL_AVULSO: Record<string, string> = {
-    camiseta: 'Camiseta',
-    camisa: 'Camisa',
-    gravata: 'Gravata',
-    sapato: 'Sapato',
-    meia: 'Meia',
-    cinto: 'Cinto',
-  };
+  const labelItemAvulso = (slug: string) =>
+    tiposItem.find(t => t.slug === slug)?.nome ?? (slug.charAt(0).toUpperCase() + slug.slice(1));
 
   const formatValor = (v?: any) => {
     if (v === null || v === undefined || v === "") return null;
@@ -227,7 +234,13 @@ export default function ClienteDetalhes() {
                 const vendedorNome = ficha.vendedor_id ? vendedorNomes.get(ficha.vendedor_id) : undefined;
                 const isNaoAtiva = ficha.status === 'pendente' || ficha.status === 'erro';
 
-                const paletoParts = joinParts(ficha.paleto ? `Paletó ${ficha.paleto}` : null, ficha.paleto_cor, ficha.paleto_lanificio);
+                const paletoParts = joinParts(
+                  ficha.paleto ? `Paletó ${ficha.paleto}` : null,
+                  ficha.paleto_cor,
+                  ficha.tipo === 'venda' ? nomeLanificio(ficha) : null,
+                  ficha.sob_medida ? 'Sob medida' : null,
+                  ficha.tipo === 'aluguel' ? ficha.paleto_categoria : null,
+                );
                 const calcaParts = ficha.calca ? `Calça ${ficha.calca}` : null;
                 const camisaParts = joinParts(ficha.camisa ? `Camisa ${ficha.camisa}` : null, ficha.camisa_fios ? `${ficha.camisa_fios} fios` : null, ficha.camisa_cor);
                 const sapatoParts = joinParts(ficha.sapato ? `Sapato ${ficha.sapato}` : null, ficha.sapato_tipo);
@@ -242,7 +255,7 @@ export default function ClienteDetalhes() {
                   const pedido = pedidosFicha[0];
                   const itensAvulso = pedido?.itens ?? [];
                   const itensTexto = itensAvulso
-                    .map((i) => `${TIPO_LABEL_AVULSO[i.tipo_item] ?? i.tipo_item} × ${i.quantidade}`)
+                    .map((i) => `${labelItemAvulso(i.tipo_item)} × ${i.quantidade}`)
                     .join(' · ');
 
                   return (

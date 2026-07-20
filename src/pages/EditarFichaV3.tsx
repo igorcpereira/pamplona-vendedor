@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag, Pencil, ChevronDown, DollarSign } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -28,7 +28,35 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useProvasFicha, useAdicionarProva, useDeletarProva } from "@/hooks/useProvasFicha";
 import { usePedidosFicha, type Pedido } from "@/hooks/usePedidosFicha";
 import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
+import { useLanificios } from "@/hooks/useLanificios";
+import { useOpcoesFicha } from "@/hooks/useOpcoesFicha";
+import { useTiposItemAvulso } from "@/hooks/useTiposItemAvulso";
 import PedidoModal from "@/components/PedidoModal";
+
+const CATEGORIAS_ALUGUEL = ['Básico', 'Intermediário', 'Premium'] as const;
+
+// Quais campos preenchidos abrem cada seção do accordion de "Detalhes do Item".
+const seccoesComDados = (f: {
+  paleto?: string | null;
+  calca?: string | null;
+  paleto_cor?: string | null;
+  lanificio_id?: string | null;
+  paleto_lanificio?: string | null;
+  paleto_categoria?: string | null;
+  camisa?: string | null;
+  camisa_fios?: string | null;
+  camisa_cor?: string | null;
+  sapato?: string | null;
+  sapato_tipo?: string | null;
+}): string[] => {
+  const secoes: string[] = [];
+  if (f.paleto || f.calca || f.paleto_cor || f.lanificio_id || f.paleto_lanificio || f.paleto_categoria) {
+    secoes.push('paleto-calca');
+  }
+  if (f.camisa || f.camisa_fios || f.camisa_cor) secoes.push('camisa');
+  if (f.sapato || f.sapato_tipo) secoes.push('sapato');
+  return secoes;
+};
 
 
 export default function EditarFichaV3() {
@@ -61,8 +89,16 @@ export default function EditarFichaV3() {
   const { data: provas = [] } = useProvasFicha(id);
 
   const { data: vendedores = [] } = useVendedoresUnidade();
+  const { data: lanificios = [] } = useLanificios();
+  const { data: opcoes } = useOpcoesFicha();
+  const { data: tiposItem = [] } = useTiposItemAvulso();
   const adicionarProva = useAdicionarProva(id);
   const deletarProva = useDeletarProva(id);
+
+  // Seções abertas do accordion "Detalhes do Item" (controlado).
+  const [openSections, setOpenSections] = useState<string[]>([]);
+  // Ref do bloco de lanifício/categoria — usado para scrollIntoView pelo botão dinâmico.
+  const blocoLanificioRef = useRef<HTMLDivElement>(null);
 
   // Espelha a RLS: vendedor só edita a própria ficha; demais perfis editam qualquer uma.
   const podeEditar = podeEditarFicha(activeUnidade?.role, user?.id, ficha?.vendedor_id);
@@ -90,6 +126,9 @@ export default function EditarFichaV3() {
     sapato: "",
     paleto_cor: null as string | null,
     paleto_lanificio: null as string | null,
+    lanificio_id: null as string | null,
+    sob_medida: false,
+    paleto_categoria: null as string | null,
     camisa_fios: null as string | null,
     camisa_cor: null as string | null,
     sapato_tipo: null as string | null,
@@ -191,12 +230,18 @@ export default function EditarFichaV3() {
           sapato: fichaData.sapato || "",
           paleto_cor: fichaData.paleto_cor || null,
           paleto_lanificio: fichaData.paleto_lanificio || null,
+          lanificio_id: fichaData.lanificio_id || null,
+          sob_medida: fichaData.sob_medida || false,
+          paleto_categoria: fichaData.paleto_categoria || null,
           camisa_fios: fichaData.camisa_fios || null,
           camisa_cor: fichaData.camisa_cor || null,
           sapato_tipo: fichaData.sapato_tipo || null,
           pago: fichaData.pago || false,
           tags: clienteTags,
         }));
+
+        // Abre as seções que já têm dado; ficha manual nova (tudo vazio) = tudo fechado.
+        setOpenSections(seccoesComDados(fichaData));
       } catch (error) {
         console.error('Erro ao carregar ficha:', error);
         navigate("/fichas");
@@ -271,11 +316,23 @@ export default function EditarFichaV3() {
             sapato: fichaAtualizada.sapato || prev.sapato,
             paleto_cor: fichaAtualizada.paleto_cor ?? prev.paleto_cor,
             paleto_lanificio: fichaAtualizada.paleto_lanificio ?? prev.paleto_lanificio,
+            lanificio_id: fichaAtualizada.lanificio_id ?? prev.lanificio_id,
+            sob_medida: fichaAtualizada.sob_medida ?? prev.sob_medida,
+            paleto_categoria: fichaAtualizada.paleto_categoria ?? prev.paleto_categoria,
             camisa_fios: fichaAtualizada.camisa_fios ?? prev.camisa_fios,
             camisa_cor: fichaAtualizada.camisa_cor ?? prev.camisa_cor,
             sapato_tipo: fichaAtualizada.sapato_tipo ?? prev.sapato_tipo,
             pago: fichaAtualizada.pago ?? prev.pago,
           }));
+
+          // O OCR preencheu campos: abre as seções que ganharam dado, sem fechar
+          // o que o usuário já tinha aberto (merge aditivo).
+          setOpenSections(prev => {
+            const novas = seccoesComDados(fichaAtualizada);
+            const merged = [...prev];
+            for (const s of novas) if (!merged.includes(s)) merged.push(s);
+            return merged;
+          });
 
           if (fichaAtualizada.status === 'erro' && fichaAtualizada.erro_etapa !== 'ficha_duplicada') {
             setIsProcessing(false);
@@ -293,6 +350,64 @@ export default function EditarFichaV3() {
       supabase.removeChannel(channel);
     };
   }, [id, isNewFicha, navigate]);
+
+  // Label de item avulso a partir do registro (fallback: capitalize do slug).
+  const labelItemAvulso = (slug: string) =>
+    tiposItem.find(t => t.slug === slug)?.nome ?? (slug.charAt(0).toUpperCase() + slug.slice(1));
+
+  // Lanifícios do tipo atual do toggle "Sob medida".
+  const tipoLanificio = formData.sob_medida ? 'sob_medida' : 'padrao';
+  const lanificiosDoTipo = lanificios.filter(l => l.tipo === tipoLanificio);
+  // Lanifício legado gravado só como texto (sem lanificio_id) — exibido como fallback.
+  const lanificioLegado = !formData.lanificio_id && formData.paleto_lanificio
+    ? formData.paleto_lanificio
+    : null;
+
+  // Opções (cores/fios/tipos) vindas dos registros; valor legado fora da lista
+  // aparece como opção extra selecionada para não sumir dado antigo.
+  const opcoesComLegado = (lista: string[] | undefined, atual: string | null): string[] => {
+    const base = lista ?? [];
+    return atual && !base.includes(atual) ? [...base, atual] : base;
+  };
+  const coresPaleto = opcoesComLegado(opcoes?.paleto_cor, formData.paleto_cor);
+  const fiosCamisa = opcoesComLegado(opcoes?.camisa_fios, formData.camisa_fios);
+  const coresCamisa = opcoesComLegado(opcoes?.camisa_cor, formData.camisa_cor);
+  const tiposSapato = opcoesComLegado(opcoes?.sapato_tipo, formData.sapato_tipo);
+
+  // Ao mudar o tipo de atendimento: sair de venda limpa lanifício/sob_medida;
+  // sair de aluguel limpa a categoria.
+  const handleTipoChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tipo: value,
+      ...(prev.tipo === 'venda' && value !== 'venda'
+        ? { sob_medida: false, lanificio_id: null }
+        : {}),
+      ...(prev.tipo === 'aluguel' && value !== 'aluguel'
+        ? { paleto_categoria: null }
+        : {}),
+    }));
+  };
+
+  // Obrigatório novo pendente: lanifício (venda) ou categoria (aluguel), apenas
+  // quando a ficha tem paletó e/ou calça (seção minimizada não obriga).
+  const temPaletoOuCalca = !!formData.paleto || !!formData.calca;
+  const pendencia: 'lanificio' | 'categoria' | null =
+    formData.tipo === 'venda' && temPaletoOuCalca && !formData.lanificio_id ? 'lanificio' :
+    formData.tipo === 'aluguel' && temPaletoOuCalca && !formData.paleto_categoria ? 'categoria' :
+    null;
+
+  // Nome do lanifício selecionado (para o dual-write em paleto_lanificio).
+  const nomeLanificioSelecionado = formData.lanificio_id
+    ? (lanificios.find(l => l.id === formData.lanificio_id)?.nome ?? formData.paleto_lanificio ?? null)
+    : null;
+
+  const abrirBlocoLanificio = () => {
+    setOpenSections(prev => prev.includes('paleto-calca') ? prev : [...prev, 'paleto-calca']);
+    setTimeout(() => {
+      blocoLanificioRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  };
 
   const handleToggleTag = (tagNome: string) => {
     setFormData(prev => ({
@@ -379,6 +494,21 @@ export default function EditarFichaV3() {
           variant: "destructive"
         });
         setLoading(false);
+        return;
+      }
+
+      // Obrigatórios novos (lanifício na venda / categoria no aluguel) — defesa em
+      // profundidade além do botão dinâmico. Só vale quando há paletó e/ou calça.
+      if (pendencia) {
+        toast({
+          title: pendencia === 'lanificio' ? "Selecione o lanifício" : "Selecione a categoria",
+          description: pendencia === 'lanificio'
+            ? "Escolha um lanifício para a venda com paletó e/ou calça."
+            : "Escolha a categoria (Básico/Intermediário/Premium) para o aluguel com paletó e/ou calça.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        abrirBlocoLanificio();
         return;
       }
 
@@ -482,7 +612,12 @@ export default function EditarFichaV3() {
         camisa: formData.camisa || null,
         sapato: formData.sapato || null,
         paleto_cor: formData.paleto_cor || null,
-        paleto_lanificio: formData.paleto_lanificio || null,
+        // Dual-write da transição: grava lanificio_id/sob_medida/paleto_categoria
+        // E o texto paleto_lanificio (nome do lanifício ou null) para relatórios legados.
+        lanificio_id: formData.lanificio_id || null,
+        sob_medida: formData.sob_medida,
+        paleto_categoria: formData.paleto_categoria || null,
+        paleto_lanificio: nomeLanificioSelecionado,
         camisa_fios: formData.camisa_fios || null,
         camisa_cor: formData.camisa_cor || null,
         sapato_tipo: formData.sapato_tipo || null,
@@ -820,7 +955,7 @@ export default function EditarFichaV3() {
 
                   <div className="space-y-2">
                     <Label htmlFor="tipo">Tipo de Atendimento</Label>
-                    <Select value={formData.tipo} onValueChange={(value) => setFormData({ ...formData, tipo: value })}>
+                    <Select value={formData.tipo} onValueChange={handleTipoChange}>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione o tipo" />
                       </SelectTrigger>
@@ -935,147 +1070,208 @@ export default function EditarFichaV3() {
             <Separator />
 
             {/* Detalhes do Item */}
-            <div className="space-y-6">
+            <div className="space-y-4">
               <h3 className="text-base font-semibold">Detalhes do Item</h3>
 
-              {/* Paletó / Calça */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Paletó / Calça</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="paleto">Paletó</Label>
-                    <Input
-                      id="paleto"
-                      value={formData.paleto}
-                      onChange={(e) => setFormData({ ...formData, paleto: e.target.value })}
-                      placeholder="Número"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="calca">Calça</Label>
-                    <Input
-                      id="calca"
-                      value={formData.calca}
-                      onChange={(e) => setFormData({ ...formData, calca: e.target.value })}
-                      placeholder="Número"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Cor</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Azul', 'Preto', 'Cinza', 'Outros'].map(cor => (
-                      <Button
-                        key={cor}
-                        type="button"
-                        size="sm"
-                        variant={formData.paleto_cor === cor ? 'default' : 'outline'}
-                        onClick={() => setFormData({ ...formData, paleto_cor: formData.paleto_cor === cor ? null : cor })}
-                      >
-                        {cor}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Lanifício</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Reda', 'Paramount', 'Canonico', 'Pietro di Mosso'].map(lan => (
-                      <Button
-                        key={lan}
-                        type="button"
-                        size="sm"
-                        variant={formData.paleto_lanificio === lan ? 'default' : 'outline'}
-                        onClick={() => setFormData({ ...formData, paleto_lanificio: formData.paleto_lanificio === lan ? null : lan })}
-                      >
-                        {lan}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              <Accordion
+                type="multiple"
+                value={openSections}
+                onValueChange={setOpenSections}
+                className="space-y-2"
+              >
+                {/* Paletó / Calça */}
+                <AccordionItem value="paleto-calca" className="border rounded-md px-3">
+                  <AccordionTrigger className="hover:no-underline py-3 text-sm font-medium">
+                    Paletó / Calça
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="paleto">Paletó</Label>
+                        <Input
+                          id="paleto"
+                          value={formData.paleto}
+                          onChange={(e) => setFormData({ ...formData, paleto: e.target.value })}
+                          placeholder="Número"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="calca">Calça</Label>
+                        <Input
+                          id="calca"
+                          value={formData.calca}
+                          onChange={(e) => setFormData({ ...formData, calca: e.target.value })}
+                          placeholder="Número"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cor</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {coresPaleto.map(cor => (
+                          <Button
+                            key={cor}
+                            type="button"
+                            size="sm"
+                            variant={formData.paleto_cor === cor ? 'default' : 'outline'}
+                            onClick={() => setFormData({ ...formData, paleto_cor: formData.paleto_cor === cor ? null : cor })}
+                          >
+                            {cor}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
 
-              <Separator className="opacity-50" />
+                    {/* Lanifício (venda) / Categoria (aluguel) — varia por tipo de atendimento */}
+                    <div ref={blocoLanificioRef}>
+                      {formData.tipo === 'aluguel' && (
+                        <div className="space-y-2">
+                          <Label>
+                            Categoria
+                            {temPaletoOuCalca && <span className="text-destructive"> *</span>}
+                          </Label>
+                          <div className="flex flex-wrap gap-2">
+                            {CATEGORIAS_ALUGUEL.map(cat => (
+                              <Button
+                                key={cat}
+                                type="button"
+                                size="sm"
+                                variant={formData.paleto_categoria === cat ? 'default' : 'outline'}
+                                onClick={() => setFormData({ ...formData, paleto_categoria: formData.paleto_categoria === cat ? null : cat })}
+                              >
+                                {cat}
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-              {/* Camisa */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Camisa</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="camisa">Número</Label>
-                  <Input
-                    id="camisa"
-                    value={formData.camisa}
-                    onChange={(e) => setFormData({ ...formData, camisa: e.target.value })}
-                    placeholder="Número"
-                    className="max-w-[160px]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Fios</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['140', '120', '100'].map(fio => (
-                      <Button
-                        key={fio}
-                        type="button"
-                        size="sm"
-                        variant={formData.camisa_fios === fio ? 'default' : 'outline'}
-                        onClick={() => setFormData({ ...formData, camisa_fios: formData.camisa_fios === fio ? null : fio })}
-                      >
-                        {fio}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Cor</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Branco', 'Outros'].map(cor => (
-                      <Button
-                        key={cor}
-                        type="button"
-                        size="sm"
-                        variant={formData.camisa_cor === cor ? 'default' : 'outline'}
-                        onClick={() => setFormData({ ...formData, camisa_cor: formData.camisa_cor === cor ? null : cor })}
-                      >
-                        {cor}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                      {formData.tipo === 'venda' && (
+                        <div className="space-y-2">
+                          <Label>
+                            Lanifício
+                            {temPaletoOuCalca && <span className="text-destructive"> *</span>}
+                          </Label>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Select
+                              value={formData.lanificio_id ?? ''}
+                              onValueChange={(value) => setFormData({ ...formData, lanificio_id: value || null })}
+                            >
+                              <SelectTrigger className="w-full sm:w-64">
+                                <SelectValue placeholder="Selecione o lanifício" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {lanificiosDoTipo.map(l => (
+                                  <SelectItem key={l.id} value={l.id}>{l.nome}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={formData.sob_medida ? 'default' : 'outline'}
+                              onClick={() => setFormData({ ...formData, sob_medida: !formData.sob_medida, lanificio_id: null })}
+                            >
+                              Sob medida
+                            </Button>
+                          </div>
+                          {lanificioLegado && (
+                            <p className="text-xs text-muted-foreground">
+                              Lanifício registrado: {lanificioLegado} — selecione no dropdown para atualizar.
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              <Separator className="opacity-50" />
+                {/* Camisa */}
+                <AccordionItem value="camisa" className="border rounded-md px-3">
+                  <AccordionTrigger className="hover:no-underline py-3 text-sm font-medium">
+                    Camisa
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="camisa">Número</Label>
+                      <Input
+                        id="camisa"
+                        value={formData.camisa}
+                        onChange={(e) => setFormData({ ...formData, camisa: e.target.value })}
+                        placeholder="Número"
+                        className="max-w-[160px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fios</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {fiosCamisa.map(fio => (
+                          <Button
+                            key={fio}
+                            type="button"
+                            size="sm"
+                            variant={formData.camisa_fios === fio ? 'default' : 'outline'}
+                            onClick={() => setFormData({ ...formData, camisa_fios: formData.camisa_fios === fio ? null : fio })}
+                          >
+                            {fio}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Cor</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {coresCamisa.map(cor => (
+                          <Button
+                            key={cor}
+                            type="button"
+                            size="sm"
+                            variant={formData.camisa_cor === cor ? 'default' : 'outline'}
+                            onClick={() => setFormData({ ...formData, camisa_cor: formData.camisa_cor === cor ? null : cor })}
+                          >
+                            {cor}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-              {/* Sapato */}
-              <div className="space-y-4">
-                <h4 className="text-sm font-medium text-muted-foreground">Sapato</h4>
-                <div className="space-y-2">
-                  <Label htmlFor="sapato">Número</Label>
-                  <Input
-                    id="sapato"
-                    value={formData.sapato}
-                    onChange={(e) => setFormData({ ...formData, sapato: e.target.value })}
-                    placeholder="Número"
-                    className="max-w-[160px]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Casual', 'Social'].map(tipo => (
-                      <Button
-                        key={tipo}
-                        type="button"
-                        size="sm"
-                        variant={formData.sapato_tipo === tipo ? 'default' : 'outline'}
-                        onClick={() => setFormData({ ...formData, sapato_tipo: formData.sapato_tipo === tipo ? null : tipo })}
-                      >
-                        {tipo}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                {/* Sapato */}
+                <AccordionItem value="sapato" className="border rounded-md px-3">
+                  <AccordionTrigger className="hover:no-underline py-3 text-sm font-medium">
+                    Sapato
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sapato">Número</Label>
+                      <Input
+                        id="sapato"
+                        value={formData.sapato}
+                        onChange={(e) => setFormData({ ...formData, sapato: e.target.value })}
+                        placeholder="Número"
+                        className="max-w-[160px]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Tipo</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {tiposSapato.map(tipo => (
+                          <Button
+                            key={tipo}
+                            type="button"
+                            size="sm"
+                            variant={formData.sapato_tipo === tipo ? 'default' : 'outline'}
+                            onClick={() => setFormData({ ...formData, sapato_tipo: formData.sapato_tipo === tipo ? null : tipo })}
+                          >
+                            {tipo}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
 
             <Separator />
@@ -1176,7 +1372,7 @@ export default function EditarFichaV3() {
                         <div className="space-y-2">
                           {pedido.itens.filter((i) => i.quantidade > 0).map((item) => (
                             <div key={item.tipo_item} className="flex justify-between text-sm">
-                              <span className="capitalize">{item.tipo_item} × {item.quantidade}</span>
+                              <span>{labelItemAvulso(item.tipo_item)} × {item.quantidade}</span>
                               <span className="tabular-nums text-muted-foreground">
                                 {(item.quantidade * (item.valor_unitario ?? 0))
                                   .toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -1346,15 +1542,27 @@ export default function EditarFichaV3() {
               >
                 Cancelar
               </Button>
-              <Button
-                onClick={handleSave}
-                disabled={loading || somenteLeitura}
-                variant="success"
-                className="flex-1"
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Lançar Pedido
-              </Button>
+              {pendencia ? (
+                <Button
+                  type="button"
+                  onClick={abrirBlocoLanificio}
+                  disabled={somenteLeitura}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  {pendencia === 'lanificio' ? 'Selecionar Lanifício' : 'Selecionar Categoria'}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSave}
+                  disabled={loading || somenteLeitura}
+                  variant="success"
+                  className="flex-1"
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Lançar Pedido
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -2,16 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-export type TipoItemAvulso = 'camiseta' | 'camisa' | 'gravata' | 'sapato' | 'meia' | 'cinto';
-
-export const TIPOS_ITEM_AVULSO: TipoItemAvulso[] = [
-  'camiseta',
-  'camisa',
-  'gravata',
-  'sapato',
-  'meia',
-  'cinto',
-];
+// tipo_item é slug texto (chave de upsert), agora com FK -> tipos_item_avulso.slug.
+// A lista de tipos vem de useTiposItemAvulso (tabela tipos_item_avulso), não mais hardcoded.
+export type TipoItemAvulso = string;
 
 export interface ItemAvulso {
   tipo_item: TipoItemAvulso;
@@ -25,14 +18,24 @@ const itemZerado = (tipo: TipoItemAvulso): ItemAvulso => ({
   valor_unitario: null,
 });
 
-export const useItensAvulsosFicha = (fichaId?: string, vendedorId?: string) => {
-  const { user, profile } = useAuth();
+/**
+ * Itens avulsos salvos para a ficha/vendedor.
+ * `tiposAtivos` (slugs vindos de useTiposItemAvulso) define a lista base exibida;
+ * o resultado mescla a lista ativa com tipos presentes nos dados salvos, para que
+ * itens de um tipo hoje inativo não sumam de pedidos antigos.
+ */
+export const useItensAvulsosFicha = (
+  fichaId?: string,
+  vendedorId?: string,
+  tiposAtivos: TipoItemAvulso[] = [],
+) => {
+  const { user } = useAuth();
   const resolvedVendedorId = vendedorId ?? user?.id;
 
   return useQuery({
-    queryKey: ['itens-avulsos-ficha', fichaId, resolvedVendedorId],
+    queryKey: ['itens-avulsos-ficha', fichaId, resolvedVendedorId, tiposAtivos],
     queryFn: async (): Promise<ItemAvulso[]> => {
-      if (!fichaId || !resolvedVendedorId) return TIPOS_ITEM_AVULSO.map(itemZerado);
+      if (!fichaId || !resolvedVendedorId) return tiposAtivos.map(itemZerado);
 
       const { data, error } = await supabase
         .from('itens_avulsos_ficha')
@@ -44,7 +47,14 @@ export const useItensAvulsosFicha = (fichaId?: string, vendedorId?: string) => {
 
       const mapa = new Map((data ?? []).map((r) => [r.tipo_item, r]));
 
-      return TIPOS_ITEM_AVULSO.map((tipo) => {
+      // Lista base = tipos ativos + tipos presentes nos dados salvos (preserva ordem
+      // dos ativos e acrescenta ao final quaisquer tipos salvos hoje inativos).
+      const tipos = [...tiposAtivos];
+      for (const tipo of mapa.keys()) {
+        if (!tipos.includes(tipo)) tipos.push(tipo);
+      }
+
+      return tipos.map((tipo) => {
         const salvo = mapa.get(tipo);
         return salvo
           ? { tipo_item: tipo, quantidade: salvo.quantidade, valor_unitario: salvo.valor_unitario }

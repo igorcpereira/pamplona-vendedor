@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { TIPOS_ITEM_AVULSO, type TipoItemAvulso } from './useItensAvulsosFicha';
+import { type TipoItemAvulso } from './useItensAvulsosFicha';
 
 export interface ItemPedido {
   tipo_item: TipoItemAvulso;
@@ -265,5 +265,3 @@ export const usePedidosDoMes = () => {
     staleTime: 60 * 1000,
   });
 };
-
-export { TIPOS_ITEM_AVULSO };
