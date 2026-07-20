@@ -37,6 +37,7 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
 }) {
   return (
     <div className="grid grid-cols-2 gap-3">
+      {/* Linha 1 — Ficha lançada / Prova feita */}
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-2">
           <FileText className="w-4 h-4 text-muted-foreground" />
@@ -53,20 +54,13 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
         <p className="text-2xl font-bold text-foreground">{provas}</p>
       </Card>
 
-      <Card className="p-4 col-span-2">
+      {/* Linha 2 — Vendas avulsas / Aluguéis */}
+      <Card className="p-4">
         <div className="flex items-center gap-2 mb-2">
           <Package className="w-4 h-4 text-primary" />
           <span className="text-xs text-muted-foreground">Vendas avulsas</span>
         </div>
         <p className="text-xl font-bold text-foreground">{formatCurrency(avulsas)}</p>
-      </Card>
-
-      <Card className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <ShoppingBag className="w-4 h-4 text-primary" />
-          <span className="text-xs text-muted-foreground">Vendas</span>
-        </div>
-        <p className="text-xl font-bold text-foreground">{formatCurrency(vendas)}</p>
       </Card>
 
       <Card className="p-4">
@@ -77,7 +71,16 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
         <p className="text-xl font-bold text-foreground">{formatCurrency(alugueis)}</p>
       </Card>
 
-      <Card className="p-4 col-span-2">
+      {/* Linha 3 — Vendas / Sob medida */}
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <ShoppingBag className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Vendas</span>
+        </div>
+        <p className="text-xl font-bold text-foreground">{formatCurrency(vendas)}</p>
+      </Card>
+
+      <Card className="p-4">
         <div className="flex items-center gap-2 mb-2">
           <Ruler className="w-4 h-4 text-primary" />
           <span className="text-xs text-muted-foreground">Sob medida</span>
@@ -85,6 +88,7 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
         <p className="text-xl font-bold text-foreground">{formatCurrency(sobMedida)}</p>
       </Card>
 
+      {/* Linha 4 — Valor total (largura cheia) */}
       <Card className="p-4 col-span-2">
         <div className="flex items-center gap-2 mb-2">
           <TrendingUp className="w-4 h-4 text-muted-foreground" />
