@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package, Building2 } from "lucide-react";
+import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package, Building2, Ruler } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -26,11 +26,12 @@ const formatCurrency = (value: number) =>
 const pad = (n: number) => String(n).padStart(2, '0');
 
 // Grid dos 6 cards do resumo — compartilhado entre a visão pessoal e a por unidade
-function CardsResumo({ fichas, provas, avulsas, vendas, alugueis, total }: {
+function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, total }: {
   fichas: number;
   provas: number;
   avulsas: number;
   vendas: number;
+  sobMedida: number;
   alugueis: number;
   total: number;
 }) {
@@ -74,6 +75,14 @@ function CardsResumo({ fichas, provas, avulsas, vendas, alugueis, total }: {
           <span className="text-xs text-muted-foreground">Aluguéis</span>
         </div>
         <p className="text-xl font-bold text-foreground">{formatCurrency(alugueis)}</p>
+      </Card>
+
+      <Card className="p-4 col-span-2">
+        <div className="flex items-center gap-2 mb-2">
+          <Ruler className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Sob medida</span>
+        </div>
+        <p className="text-xl font-bold text-foreground">{formatCurrency(sobMedida)}</p>
       </Card>
 
       <Card className="p-4 col-span-2">
@@ -157,6 +166,7 @@ function ResumoUnidadeView() {
             provas={Number(resumo?.total_provas ?? 0)}
             avulsas={Number(resumo?.avulsa_valor ?? 0)}
             vendas={Number(resumo?.venda_valor ?? 0)}
+            sobMedida={Number(resumo?.sob_medida_valor ?? 0)}
             alugueis={Number(resumo?.aluguel_valor ?? 0)}
             total={Number(resumo?.total_valor ?? 0)}
           />
@@ -216,10 +226,14 @@ function ResumoPessoalView() {
   const totalAluguel = fichasDoMes
     .filter(f => f.tipo?.toLowerCase() === 'aluguel')
     .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  const totalVendaFichas = fichasDoMes
-    .filter(f => f.tipo?.toLowerCase() === 'venda')
+  // "Vendas" = venda padrão; "Sob medida" = venda com sob_medida=true (separados,
+  // como no dashboard do CRM). O total continua somando tudo.
+  const totalVenda = fichasDoMes
+    .filter(f => f.tipo?.toLowerCase() === 'venda' && !f.sob_medida)
     .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  const totalVenda = totalVendaFichas;
+  const totalSobMedida = fichasDoMes
+    .filter(f => f.tipo?.toLowerCase() === 'venda' && f.sob_medida)
+    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
   const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalAvulsasCombinado;
 
   return <div className="min-h-screen bg-background pb-20 relative">
@@ -274,6 +288,7 @@ function ResumoPessoalView() {
             provas={totalProvas}
             avulsas={totalAvulsasCombinado}
             vendas={totalVenda}
+            sobMedida={totalSobMedida}
             alugueis={totalAluguel}
             total={totalValor}
           />

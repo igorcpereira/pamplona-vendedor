@@ -11,6 +11,8 @@ export interface ResumoUnidade {
   aluguel_valor: number;
   venda_qtd: number;
   venda_valor: number;
+  sob_medida_qtd: number;
+  sob_medida_valor: number;
   ajuste_qtd: number;
   ajuste_valor: number;
   avulsa_qtd: number;
