@@ -65,8 +65,9 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, onCancelar, isUpdating 
 
   return (
     <Card className={cn("p-4", encerrada && "opacity-60")}>
-      <div className="flex items-start gap-3">
-        <div className="flex-1 min-w-0">
+      {/* Linha 1: tipo + status (esq) · ações (dir) */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className={cn("font-semibold text-foreground", sv === "concluida" && "line-through")}>
               {atividade.tipo_nome}
@@ -75,40 +76,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, onCancelar, isUpdating 
               {badge.label}
             </Badge>
           </div>
-
-          {atividade.descricao && <p className="text-sm text-muted-foreground mt-1">{atividade.descricao}</p>}
-
-          {atividade.cliente_id && (
-            <button type="button" onClick={() => setHistOpen(true)}
-              className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline">
-              <History className="h-3.5 w-3.5" /> Histórico do cliente
-            </button>
-          )}
-
-          {contatoNome && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
-              <User className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{contatoNome}</span>
-            </div>
-          )}
-          {telefone && (
-            <div className="flex items-center gap-2 mt-2">
-              <a href={`tel:${telefoneRaw}`} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary hover:underline">
-                <Phone className="h-3.5 w-3.5 shrink-0" />
-                {telefone}
-              </a>
-              <a
-                href={`https://wa.me/${telefoneRaw}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
-                title="Abrir no WhatsApp"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                WhatsApp
-              </a>
-            </div>
-          )}
+          {atividade.descricao && <p className="text-sm text-muted-foreground mt-0.5">{atividade.descricao}</p>}
         </div>
 
         {!encerrada && (
@@ -130,6 +98,47 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, onCancelar, isUpdating 
           </div>
         )}
       </div>
+
+      {/* Linha 2: nome do cliente (esq) · telefone (dir) */}
+      {(contatoNome || telefone) && (
+        <div className="mt-2 flex items-center justify-between gap-2 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5 min-w-0">
+            {contatoNome && (
+              <>
+                <User className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{contatoNome}</span>
+              </>
+            )}
+          </span>
+          {telefone && (
+            <a href={`tel:${telefoneRaw}`} className="flex items-center gap-1.5 shrink-0 hover:text-primary hover:underline">
+              <Phone className="h-3.5 w-3.5 shrink-0" />
+              {telefone}
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Linha 3: histórico do cliente (esq) · WhatsApp (dir) */}
+      {(atividade.cliente_id || telefone) && (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          {atividade.cliente_id ? (
+            <button type="button" onClick={() => setHistOpen(true)}
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary hover:underline">
+              <History className="h-3.5 w-3.5" /> Histórico do cliente
+            </button>
+          ) : (
+            <span />
+          )}
+          {telefone && (
+            <a href={`https://wa.me/${telefoneRaw}`} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
+              title="Abrir no WhatsApp">
+              <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+            </a>
+          )}
+        </div>
+      )}
 
       <Dialog open={modal !== null} onOpenChange={(v) => !v && setModal(null)}>
         <DialogContent className="max-w-xs">
