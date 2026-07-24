@@ -23,6 +23,12 @@ export function podeEditarFicha(
   return !!userId && userId === fichaVendedorId;
 }
 
+// Rótulo do botão principal de salvar da ficha: "Lançar Ficha" no primeiro
+// salvamento (ficha ainda pendente/erro) e "Atualizar Ficha" do segundo em diante.
+export function rotuloBotaoFicha(jaLancada: boolean): "Lançar Ficha" | "Atualizar Ficha" {
+  return jaLancada ? "Atualizar Ficha" : "Lançar Ficha";
+}
+
 // Normaliza telefone para o formato 55xx9xxxxxxxx (DDI + DDD + 9 dígitos).
 // Aceita entradas com máscara, sem DDD, sem DDI ou sem o nono dígito.
 // Retorna null se não conseguir normalizar.

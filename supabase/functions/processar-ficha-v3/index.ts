@@ -8,6 +8,7 @@ const corsHeaders = {
 const ACCEPTED_FORMATS = new Set(['image/jpeg', 'image/png', 'image/heic', 'image/heif'])
 const MAX_SIZE = 25 * 1024 * 1024 // 25MB (alinhado ao file_size_limit do bucket)
 const DEFAULT_DDD = '44'
+const OCR_MODEL = 'gpt-5.4'
 
 // ============================================================
 // PROMPT OCR
@@ -152,7 +153,7 @@ async function callOpenAI(base64: string, mimeType: string): Promise<Record<stri
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-5.4',
+      model: OCR_MODEL,
       messages: [
         { role: 'system', content: SYSTEM_MESSAGE },
         {
@@ -230,6 +231,19 @@ async function processarBackground(
 
     try {
       ocrResult = await callOpenAI(base64, mimeType)
+      // Debug — guarda o JSON bruto exatamente como o OCR devolveu, antes de
+      // qualquer parse/normalização e antes dos ajustes do vendedor. Falha
+      // aqui nunca deve interromper o processamento da ficha.
+      try {
+        await supabase.from('fichas_ocr_log').insert({
+          ficha_id: fichaId,
+          raw: ocrResult,
+          modelo: OCR_MODEL,
+          tentativa,
+        })
+      } catch (logErr) {
+        console.error('Falha ao gravar fichas_ocr_log', logErr)
+      }
       break
     } catch {
       if (tentativa < 2) {

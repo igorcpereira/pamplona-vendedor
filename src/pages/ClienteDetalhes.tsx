@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { parseDataSemFuso } from "@/lib/utils";
+import { parseDataSemFuso, normalizarTelefone } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 import { useLanificios } from "@/hooks/useLanificios";
 import { useTiposItemAvulso } from "@/hooks/useTiposItemAvulso";
 import Header from "@/components/Header";
@@ -114,17 +115,43 @@ export default function ClienteDetalhes() {
 
   const handleSave = async () => {
     if (!id) return;
+
+    // Normaliza o telefone (mesma regra do banco) antes de gravar. Telefone é a
+    // chave de unicidade do cliente; se não normalizar, avisa e não salva.
+    let telefoneNormalizado: string | null = null;
+    if (formData.telefone.trim() !== '') {
+      telefoneNormalizado = normalizarTelefone(formData.telefone);
+      if (!telefoneNormalizado) {
+        toast({
+          title: "Telefone inválido",
+          description: "Não foi possível normalizar o telefone. Confira o formato.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from('clientes')
-        .update({ nome: formData.nome, telefone: formData.telefone, updated_at: new Date().toISOString() })
+        .update({ nome: formData.nome, telefone: telefoneNormalizado, updated_at: new Date().toISOString() })
         .eq('id', id);
       if (error) throw error;
       const { data: clienteData } = await supabase.from('clientes').select('*').eq('id', id).single();
       if (clienteData) setCliente(clienteData);
+      toast({ title: "Cadastro atualizado" });
     } catch (error) {
       console.error("Erro ao atualizar cliente:", error);
+      const msg = error instanceof Error ? error.message : "";
+      const duplicado = msg.includes('uq_clientes_telefone') || msg.includes('duplicate') || msg.includes('23505');
+      toast({
+        title: duplicado ? "Telefone já cadastrado" : "Erro ao atualizar cadastro",
+        description: duplicado
+          ? "Já existe outro cliente com este telefone."
+          : (msg || "Tente novamente."),
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }

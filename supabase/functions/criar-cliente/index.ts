@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { nome, telefone, vendedor_id } = await req.json()
+    const { nome, telefone, vendedor_id, cliente_id } = await req.json()
 
     // --- Etapa 1: Validação ---
     if (!nome?.trim())      return json({ error: 'nome é obrigatório' }, 400)
@@ -73,6 +73,33 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
+
+    // --- Etapa 1b: Cliente já vinculado → UPDATE por id (não duplica) ---
+    // Quando a ficha já aponta para um cliente, atualizamos ESSE registro em vez
+    // de re-resolver por telefone. Assim, corrigir o telefone de uma ficha
+    // vinculada altera o cliente existente, sem criar duplicata.
+    if (typeof cliente_id === 'string' && cliente_id.trim() !== '') {
+      const { data: updated, error: updateError } = await supabase
+        .from('clientes')
+        .update({ nome: nome.trim(), telefone: telefoneNormalizado })
+        .eq('id', cliente_id)
+        .select('id')
+        .single()
+
+      if (updated?.id) {
+        return json({ cliente_id: updated.id })
+      }
+
+      // Telefone novo colide com OUTRO cliente (unique 23505): não dá para mover
+      // este número; devolve 409 com mensagem clara em vez de estourar.
+      if (updateError?.code === '23505') {
+        return json({
+          error: 'Já existe outro cliente com este telefone. Ajuste o cadastro do cliente diretamente.',
+        }, 409)
+      }
+      // Qualquer outro caso (ex.: cliente_id órfão, sem linha para atualizar) cai
+      // no fluxo normal de insert/upsert abaixo, em vez de estourar.
+    }
 
     // --- Etapa 2: Upsert ---
     const insertPayload: Record<string, unknown> = {

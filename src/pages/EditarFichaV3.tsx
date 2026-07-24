@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, podeEditarFicha } from "@/lib/utils";
+import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, podeEditarFicha, rotuloBotaoFicha } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useTravaSubmit } from "@/hooks/useTravaSubmit";
@@ -100,14 +100,34 @@ export default function EditarFichaV3() {
   // Ref do bloco de lanifício/categoria — usado para scrollIntoView pelo botão dinâmico.
   const blocoLanificioRef = useRef<HTMLDivElement>(null);
 
-  // Espelha a RLS: vendedor só edita a própria ficha; demais perfis editam qualquer uma.
-  const podeEditar = podeEditarFicha(activeUnidade?.role, user?.id, ficha?.vendedor_id);
-  const somenteLeitura = !!ficha && !podeEditar;
+  // Ficha já lançada = fora de pendente/erro. Após o 1º lançamento a ficha entra
+  // em "modo ações": qualquer vendedor da unidade pode lançar prova / pedido avulso,
+  // marcar como pago e adicionar tags, mas os campos-núcleo (cadastro/peças/valores)
+  // ficam travados nesta tela — alterações de cadastro passam pela tela do cliente.
+  // A venda e a comissão continuam do vendedor original (vendedor_id não é reatribuído).
+  const jaLancada = !!ficha && !['pendente', 'erro'].includes(ficha.status);
+  const nucleoBloqueado = jaLancada;
 
   // Telefone só pode ser definido/corrigido enquanto a ficha ainda não foi finalizada
   // (status pendente/erro). Após o primeiro salvamento (status vira ativa) ele é
   // congelado — o trigger trg_fichas_bloqueia_troca_telefone garante isso no banco.
-  const telefoneBloqueado = !!ficha && !['pendente', 'erro'].includes(ficha.status);
+  const telefoneBloqueado = jaLancada;
+
+  // Ownership: um 'vendedor' só edita o núcleo da própria ficha. Ao abrir a ficha
+  // de outro vendedor, a tela fica em modo somente-leitura do núcleo — mas ele ainda
+  // pode lançar provas/pedidos avulsos (marcados em seu nome) e marcar como pago.
+  // Perfis elevados (administrativo/gestor/etc.) editam qualquer ficha (podeEditarFicha
+  // retorna true), então soLeituraDono = false para eles. Espelha a RLS fichas_update.
+  const soLeituraDono = !podeEditarFicha(activeUnidade?.role, user?.id, fichaVendedorId);
+
+  // Núcleo (cadastro/peças/valores) fica read-only por status OU por não ser o dono.
+  const nucleoReadOnly = nucleoBloqueado || soLeituraDono;
+
+  // Ficha lançada trava o accordion de "Detalhes do Item" (dentro do fieldset).
+  // Abre as seções para que os valores continuem visíveis mesmo sem poder editar.
+  useEffect(() => {
+    if (nucleoReadOnly) setOpenSections(['paleto-calca', 'camisa', 'sapato']);
+  }, [nucleoReadOnly]);
 
   const [formData, setFormData] = useState({
     nome_cliente: "",
@@ -476,15 +496,28 @@ export default function EditarFichaV3() {
     }
   };
 
-  const handleSave = async () => {
-    if (somenteLeitura) {
+  // Marca a ficha de OUTRO vendedor como paga via RPC (marcar_ficha_paga).
+  // Usado só no modo somente-leitura por dono: a RLS bloqueia o UPDATE direto, e a
+  // RPC altera exclusivamente o campo `pago` (mão-única, escopo por unidade).
+  const handleMarcarPago = async () => {
+    if (!id) return;
+    try {
+      const { error } = await supabase.rpc('marcar_ficha_paga', { p_ficha_id: id });
+      if (error) throw error;
+      setFormData((prev) => ({ ...prev, pago: true }));
+      setFicha((prev: any) => (prev ? { ...prev, pago: true } : prev));
+      queryClient.invalidateQueries({ queryKey: ['fichas-processadas'] });
+      toast({ title: "Pagamento registrado" });
+    } catch (err) {
       toast({
-        title: "Ação não permitida",
-        description: "Você só pode editar fichas atribuídas a você.",
+        title: "Erro ao marcar como pago",
+        description: err instanceof Error ? err.message : "Tente novamente.",
         variant: "destructive",
       });
-      return;
     }
+  };
+
+  const handleSave = async () => {
     setLoading(true);
     try {
       if (!formData.codigo_ficha) {
@@ -499,7 +532,8 @@ export default function EditarFichaV3() {
 
       // Obrigatórios novos (lanifício na venda / categoria no aluguel) — defesa em
       // profundidade além do botão dinâmico. Só vale quando há paletó e/ou calça.
-      if (pendencia) {
+      // Não se aplica a fichas já lançadas (núcleo travado, não há como corrigir aqui).
+      if (pendencia && !nucleoBloqueado) {
         toast({
           title: pendencia === 'lanificio' ? "Selecione o lanifício" : "Selecione a categoria",
           description: pendencia === 'lanificio'
@@ -567,6 +601,10 @@ export default function EditarFichaV3() {
             // relevante quando um administrativo lança para outro vendedor)
             vendedor_id: fichaVendedorId ?? authUser?.id,
             unidade_id: profile?.unidade_id ?? null,
+            // Se a ficha já está vinculada a um cliente, atualiza ESSE cliente
+            // (update por id) em vez de re-resolver por telefone — evita duplicar
+            // ao corrigir o telefone de uma ficha já vinculada.
+            cliente_id: ficha?.cliente_id ?? undefined,
           },
         });
 
@@ -621,7 +659,8 @@ export default function EditarFichaV3() {
         camisa_fios: formData.camisa_fios || null,
         camisa_cor: formData.camisa_cor || null,
         sapato_tipo: formData.sapato_tipo || null,
-        pago: formData.pago,
+        // Pago é mão-única: uma vez pago, não volta a "não pago" por esta tela.
+        pago: ficha?.pago ? true : formData.pago,
         cliente_id: clienteId,
         status: novoStatus,
         updated_at: new Date().toISOString(),
@@ -632,7 +671,9 @@ export default function EditarFichaV3() {
         updateData.ficha_original_id = null;
       }
 
-      if (isAdmin && fichaVendedorId) {
+      // Venda/comissão continuam do vendedor original: o vendedor responsável só
+      // pode ser (re)definido por admin ENQUANTO a ficha não foi lançada.
+      if (isAdmin && fichaVendedorId && !jaLancada) {
         updateData.vendedor_id = fichaVendedorId;
       }
 
@@ -839,13 +880,28 @@ export default function EditarFichaV3() {
             </div>
           )}
 
-          {somenteLeitura && (
+          {soLeituraDono && (
+            <div className="mb-4 p-3 bg-muted border border-border rounded-lg flex items-start gap-3">
+              <User className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Ficha de outro vendedor</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Você pode visualizar esta ficha, mas não editar os dados dela. Aqui você ainda
+                  pode registrar prova, lançar pedido avulso (marcados em seu nome) e marcar como pago.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {nucleoBloqueado && !soLeituraDono && (
             <div className="mb-4 p-3 bg-muted border border-border rounded-lg flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium">Modo somente leitura</p>
+                <p className="text-sm font-medium">Ficha já lançada</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Esta ficha pertence a outro vendedor. Você pode visualizá-la, mas não editá-la.
+                  Os dados de cadastro, peças e valores estão travados. Aqui você ainda pode
+                  registrar prova, lançar pedido avulso, marcar como pago e adicionar tags.
+                  Para alterar nome ou telefone, edite o cadastro do cliente.
                 </p>
               </div>
             </div>
@@ -891,7 +947,7 @@ export default function EditarFichaV3() {
                     className={`${ficha?.url_bucket ? 'flex-1' : 'w-full'} flex items-center justify-center gap-2`}
                   >
                     <User className="h-4 w-4" />
-                    Ver Cliente
+                    {jaLancada ? 'Editar Cadastro do Cliente' : 'Ver Cliente'}
                   </Button>
                 </TooltipTrigger>
                 {!ficha?.cliente_id && (
@@ -904,6 +960,12 @@ export default function EditarFichaV3() {
           </div>
 
           <div className="space-y-6 [&_.border-input]:border-foreground/30">
+
+            {/* Núcleo da ficha (cadastro/peças/valores) — travado após o lançamento
+                OU quando é ficha de outro vendedor (nucleoReadOnly).
+                fieldset[disabled] desabilita todos os controles internos de uma vez;
+                `contents` preserva o layout (não gera caixa própria). */}
+            <fieldset disabled={nucleoReadOnly} className="contents">
 
             {/* Cabeçalho */}
             <div className="space-y-4">
@@ -1274,6 +1336,8 @@ export default function EditarFichaV3() {
               </Accordion>
             </div>
 
+            </fieldset>
+
             <Separator />
 
             {/* Provas */}
@@ -1424,6 +1488,7 @@ export default function EditarFichaV3() {
                     value={formData.valor}
                     onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
                     placeholder="0,00"
+                    disabled={nucleoReadOnly}
                   />
                 </div>
 
@@ -1437,6 +1502,7 @@ export default function EditarFichaV3() {
                     value={formData.garantia}
                     onChange={(e) => setFormData({ ...formData, garantia: e.target.value })}
                     placeholder="0,00"
+                    disabled={nucleoReadOnly}
                   />
                 </div>
               </div>
@@ -1445,12 +1511,24 @@ export default function EditarFichaV3() {
                 <Switch
                   id="pago"
                   checked={formData.pago}
-                  onCheckedChange={(checked) => setFormData({ ...formData, pago: checked })}
+                  // Pago é mão-única: pode ir de "não pago" → "pago", nunca o contrário.
+                  // Já pago + (lançada ou ficha de outro vendedor) = travado.
+                  disabled={(nucleoBloqueado || soLeituraDono) && formData.pago}
+                  onCheckedChange={(checked) => {
+                    if ((nucleoBloqueado || soLeituraDono) && !checked) return;
+                    // Ficha de outro vendedor: só o campo `pago` pode mudar, e isso
+                    // passa pela RPC marcar_ficha_paga (a RLS bloqueia UPDATE direto).
+                    if (soLeituraDono) {
+                      if (checked) handleMarcarPago();
+                      return;
+                    }
+                    setFormData({ ...formData, pago: checked });
+                  }}
                 />
                 <Label htmlFor="pago">Pagamento realizado</Label>
               </div>
 
-              {isAdmin && (
+              {isAdmin && !jaLancada && (
                 <div className="space-y-2">
                   <Label>Vendedor responsável pela ficha</Label>
                   <Select value={fichaVendedorId ?? ''} onValueChange={setFichaVendedorId}>
@@ -1472,6 +1550,9 @@ export default function EditarFichaV3() {
             {/* Tags */}
             <div className="space-y-3">
               <h3 className="text-base font-semibold">Tags</h3>
+
+              {/* Ficha de outro vendedor: as tags também ficam somente-leitura. */}
+              <fieldset disabled={soLeituraDono} className="contents">
 
               {/* 8 tags principais — botões on/off */}
               {tagsPadrao.length > 0 && (
@@ -1531,6 +1612,7 @@ export default function EditarFichaV3() {
                   Adicionar
                 </Button>
               </div>
+              </fieldset>
             </div>
 
             {/* Botões de ação */}
@@ -1540,28 +1622,31 @@ export default function EditarFichaV3() {
                 onClick={() => navigate("/fichas")}
                 className="flex-1"
               >
-                Cancelar
+                {soLeituraDono ? 'Voltar' : 'Cancelar'}
               </Button>
-              {pendencia ? (
-                <Button
-                  type="button"
-                  onClick={abrirBlocoLanificio}
-                  disabled={somenteLeitura}
-                  variant="secondary"
-                  className="flex-1"
-                >
-                  {pendencia === 'lanificio' ? 'Selecionar Lanifício' : 'Selecionar Categoria'}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSave}
-                  disabled={loading || somenteLeitura}
-                  variant="success"
-                  className="flex-1"
-                >
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Lançar Pedido
-                </Button>
+              {/* Ficha de outro vendedor: sem botão de salvar (núcleo é somente-leitura;
+                  provas/pedidos/pago têm ações próprias). */}
+              {!soLeituraDono && (
+                pendencia && !nucleoBloqueado ? (
+                  <Button
+                    type="button"
+                    onClick={abrirBlocoLanificio}
+                    variant="secondary"
+                    className="flex-1"
+                  >
+                    {pendencia === 'lanificio' ? 'Selecionar Lanifício' : 'Selecionar Categoria'}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSave}
+                    disabled={loading}
+                    variant="success"
+                    className="flex-1"
+                  >
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {rotuloBotaoFicha(jaLancada)}
+                  </Button>
+                )
               )}
             </div>
           </div>
