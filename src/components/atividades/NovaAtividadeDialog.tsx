@@ -8,47 +8,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useClientes } from "@/hooks/useClientes";
+import { useVendedores } from "@/hooks/useVendedores";
+import { useTiposAtividade } from "@/hooks/useTiposAtividade";
 import { useCriarAtividade } from "@/hooks/useAtividades";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import {
+  clienteObrigatorio,
+  podeCriarParaOutro,
+  responsavelEfetivo,
+  validarNovaAtividade,
+  semErros,
+} from "@/lib/atividades";
 
 interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-type ContatoModo = "nenhum" | "cliente" | "avulso";
-
-const formatPhone = (digits: string): string => {
-  const d = digits.slice(0, 11);
-  if (d.length <= 2) return d;
-  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-};
-
-const toPhone13 = (digits: string): string => {
-  const d = digits.replace(/\D/g, "");
-  if (d.length === 13) return d;
-  if (d.length === 11) return `55${d}`;
-  return d;
-};
-
 const NovaAtividadeDialog = ({ open, onClose }: Props) => {
-  const criar = useCriarAtividade();
+  const { user, activeUnidade } = useAuth();
+  const role = activeUnidade?.role;
+  const podeOutro = podeCriarParaOutro(role);
 
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
+  const criar = useCriarAtividade();
+  const { data: tipos = [] } = useTiposAtividade();
+  const { data: vendedores = [] } = useVendedores();
+
+  const [tipoId, setTipoId] = useState("");
   const [data, setData] = useState<Date>(new Date());
   const [calAberto, setCalAberto] = useState(false);
-
-  const [contatoModo, setContatoModo] = useState<ContatoModo>("nenhum");
-  // cliente cadastrado
+  const [descricao, setDescricao] = useState("");
   const [busca, setBusca] = useState("");
   const [clienteSel, setClienteSel] = useState<{ id: string; nome: string } | null>(null);
-  // avulso
-  const [nomeAvulso, setNomeAvulso] = useState("");
-  const [telefoneAvulso, setTelefoneAvulso] = useState("");
+  const [responsavelSel, setResponsavelSel] = useState<string>("");
+
+  const tipo = useMemo(() => tipos.find((t) => t.id === tipoId), [tipos, tipoId]);
+  const exigeCliente = clienteObrigatorio(tipo ? { slug: tipo.slug, exige_cliente: tipo.exige_cliente } : null);
 
   const { data: clientesPages, isFetching } = useClientes(busca);
   const clientes = useMemo(
@@ -58,55 +57,38 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
 
   useEffect(() => {
     if (!open) return;
-    setTitulo("");
-    setDescricao("");
+    setTipoId("");
     setData(new Date());
     setCalAberto(false);
-    setContatoModo("nenhum");
+    setDescricao("");
     setBusca("");
     setClienteSel(null);
-    setNomeAvulso("");
-    setTelefoneAvulso("");
+    setResponsavelSel("");
   }, [open]);
 
   const handleSalvar = async () => {
-    if (!titulo.trim()) {
-      toast({ title: "Informe o título da atividade", variant: "destructive" });
+    if (!user?.id) return;
+    const responsavelId = responsavelEfetivo(role, user.id, podeOutro ? responsavelSel || null : null);
+
+    const erros = validarNovaAtividade({
+      tipo: tipo ? { slug: tipo.slug, exige_cliente: tipo.exige_cliente } : null,
+      data: format(data, "yyyy-MM-dd"),
+      clienteId: clienteSel?.id ?? null,
+      responsavelId,
+    });
+    if (!semErros(erros)) {
+      toast({ title: erros.tipo || erros.cliente || erros.data || erros.responsavel, variant: "destructive" });
       return;
-    }
-
-    let cliente_id: string | null = null;
-    let nome_contato: string | null = null;
-    let telefone_contato: string | null = null;
-
-    if (contatoModo === "cliente") {
-      if (!clienteSel) {
-        toast({ title: "Selecione um cliente", variant: "destructive" });
-        return;
-      }
-      cliente_id = clienteSel.id;
-    } else if (contatoModo === "avulso") {
-      if (!nomeAvulso.trim()) {
-        toast({ title: "Informe o nome do contato", variant: "destructive" });
-        return;
-      }
-      const digits = telefoneAvulso.replace(/\D/g, "");
-      if (digits && digits.length !== 11) {
-        toast({ title: "Telefone inválido", description: "Use o formato (DD) 9XXXX-XXXX.", variant: "destructive" });
-        return;
-      }
-      nome_contato = nomeAvulso.trim();
-      telefone_contato = digits ? toPhone13(digits) : null;
     }
 
     try {
       await criar.mutateAsync({
-        titulo: titulo.trim(),
+        tipoId,
         data: format(data, "yyyy-MM-dd"),
+        responsaveis: [responsavelId],
+        clienteId: clienteSel?.id ?? null,
         descricao: descricao.trim() || null,
-        cliente_id,
-        nome_contato,
-        telefone_contato,
+        unidadeId: activeUnidade?.unidade.id ?? null,
       });
       toast({ title: "Atividade criada!" });
       onClose();
@@ -119,150 +101,100 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
     }
   };
 
-  const ModoBtn = ({ modo, label }: { modo: ContatoModo; label: string }) => (
-    <Button
-      type="button"
-      variant={contatoModo === modo ? "default" : "outline"}
-      size="sm"
-      className="flex-1"
-      onClick={() => setContatoModo(modo)}
-    >
-      {label}
-    </Button>
-  );
-
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogTitle>Nova atividade</DialogTitle>
-        <DialogDescription>Cria um lembrete na sua agenda.</DialogDescription>
+        <DialogDescription>Agende um próximo contato.</DialogDescription>
 
         <div className="space-y-4 mt-2">
-          {/* Título */}
+          {/* Tipo */}
           <div className="space-y-2">
-            <Label htmlFor="ativTitulo">Título *</Label>
-            <Input
-              id="ativTitulo"
-              value={titulo}
-              onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Ex: Ligar para o cliente"
-            />
+            <Label>Tipo *</Label>
+            <Select value={tipoId} onValueChange={setTipoId}>
+              <SelectTrigger aria-label="Tipo"><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
+              <SelectContent>
+                {tipos.map((t) => <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Responsável (só cargos globais) */}
+          {podeOutro && (
+            <div className="space-y-2">
+              <Label>Responsável</Label>
+              <Select value={responsavelSel} onValueChange={setResponsavelSel}>
+                <SelectTrigger aria-label="Responsável"><SelectValue placeholder="Eu mesmo" /></SelectTrigger>
+                <SelectContent>
+                  {vendedores.map((v) => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Data */}
           <div className="space-y-2">
             <Label>Data *</Label>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn("w-full justify-start text-left font-normal")}
-              onClick={() => setCalAberto((v) => !v)}
-            >
+            <Button type="button" variant="outline" className={cn("w-full justify-start text-left font-normal")}
+              onClick={() => setCalAberto((v) => !v)}>
               <CalendarIcon className="mr-2 h-4 w-4" />
               {format(data, "PPP", { locale: ptBR })}
             </Button>
             {calAberto && (
               <div className="flex justify-center rounded-md border border-border">
-                <Calendar
-                  mode="single"
-                  selected={data}
-                  onSelect={(d) => {
-                    if (d) setData(d);
-                    setCalAberto(false);
-                  }}
-                  initialFocus
-                  locale={ptBR}
-                />
+                <Calendar mode="single" selected={data} onSelect={(d) => { if (d) setData(d); setCalAberto(false); }}
+                  initialFocus locale={ptBR} />
               </div>
             )}
           </div>
 
-          {/* Contato */}
+          {/* Cliente */}
           <div className="space-y-2">
-            <Label>Contato (opcional)</Label>
-            <div className="flex gap-2">
-              <ModoBtn modo="nenhum" label="Nenhum" />
-              <ModoBtn modo="cliente" label="Cliente" />
-              <ModoBtn modo="avulso" label="Avulso" />
-            </div>
-
-            {contatoModo === "cliente" && (
-              <div className="space-y-2 pt-1">
-                {clienteSel ? (
-                  <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 p-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
-                      {clienteSel.nome}
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setClienteSel(null)}>
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="relative">
-                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        value={busca}
-                        onChange={(e) => setBusca(e.target.value)}
-                        placeholder="Buscar cliente pelo nome…"
-                        className="pl-8"
-                      />
-                    </div>
-                    {busca.trim().length >= 2 && (
-                      <div className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
-                        {isFetching && (
-                          <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Buscando…
-                          </div>
-                        )}
-                        {!isFetching && clientes.length === 0 && (
-                          <div className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</div>
-                        )}
-                        {clientes.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            className="w-full text-left p-3 text-sm hover:bg-muted/60"
-                            onClick={() => setClienteSel({ id: c.id, nome: c.nome })}
-                          >
-                            {c.nome}
-                          </button>
-                        ))}
+            <Label>Cliente {exigeCliente ? "*" : "(opcional)"}</Label>
+            {clienteSel ? (
+              <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 p-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  {clienteSel.nome}
+                </div>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setClienteSel(null)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input value={busca} onChange={(e) => setBusca(e.target.value)}
+                    placeholder="Buscar cliente pelo nome…" className="pl-8" />
+                </div>
+                {busca.trim().length >= 2 && (
+                  <div className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                    {isFetching && (
+                      <div className="p-3 text-sm text-muted-foreground flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Buscando…
                       </div>
                     )}
-                  </>
+                    {!isFetching && clientes.length === 0 && (
+                      <div className="p-3 text-sm text-muted-foreground">Nenhum cliente encontrado.</div>
+                    )}
+                    {clientes.map((c) => (
+                      <button key={c.id} type="button" className="w-full text-left p-3 text-sm hover:bg-muted/60"
+                        onClick={() => setClienteSel({ id: c.id, nome: c.nome })}>
+                        {c.nome}
+                      </button>
+                    ))}
+                  </div>
                 )}
-              </div>
-            )}
-
-            {contatoModo === "avulso" && (
-              <div className="space-y-2 pt-1">
-                <Input
-                  value={nomeAvulso}
-                  onChange={(e) => setNomeAvulso(e.target.value)}
-                  placeholder="Nome do contato"
-                />
-                <Input
-                  type="tel"
-                  value={formatPhone(telefoneAvulso)}
-                  onChange={(e) => setTelefoneAvulso(e.target.value.replace(/\D/g, "").slice(0, 11))}
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
+              </>
             )}
           </div>
 
           {/* Descrição */}
           <div className="space-y-2">
             <Label htmlFor="ativDescricao">Observação (opcional)</Label>
-            <Textarea
-              id="ativDescricao"
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-              placeholder="Detalhes do lembrete…"
-              rows={3}
-            />
+            <Textarea id="ativDescricao" value={descricao} onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Detalhes do contato…" rows={3} />
           </div>
 
           <div className="flex gap-2 pt-2">

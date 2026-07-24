@@ -3,35 +3,31 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 
-export type AtividadeStatus = "pendente" | "feita" | "adiada" | "cancelada";
-
-// Linha retornada por atividades_listar (RPC SECURITY DEFINER sobre dev.atividades)
+// Linha enriquecida retornada por atividades_listar (RPC SECURITY DEFINER).
 export type Atividade =
   Database["public"]["Functions"]["atividades_listar"]["Returns"][number];
 
-interface ListarFiltros {
-  status?: AtividadeStatus | null;
+const KEY = "atividades";
+
+export interface AtividadeFiltros {
+  status?: string | null; // 'a_fazer' | 'concluida' | 'cancelada' | 'atrasada'
   de?: string | null; // YYYY-MM-DD
-  ate?: string | null; // YYYY-MM-DD
+  ate?: string | null;
+  responsavelId?: string | null;
+  clienteId?: string | null;
 }
 
-const ATIVIDADES_KEY = "atividades";
-
-/**
- * Lista apenas as atividades do vendedor logado (responsavel_id = self).
- * O servidor já restringe cargos não-globais à própria unidade.
- */
-export function useAtividades(filtros: ListarFiltros = {}) {
+export function useAtividades(f: AtividadeFiltros = {}) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: [ATIVIDADES_KEY, user?.id, filtros.status ?? null, filtros.de ?? null, filtros.ate ?? null],
-    queryFn: async () => {
-      if (!user?.id) return [] as Atividade[];
+    queryKey: [KEY, user?.id, f.status ?? null, f.de ?? null, f.ate ?? null, f.responsavelId ?? null, f.clienteId ?? null],
+    queryFn: async (): Promise<Atividade[]> => {
       const { data, error } = await supabase.rpc("atividades_listar", {
-        p_responsavel_id: user.id,
-        p_status: filtros.status ?? undefined,
-        p_de: filtros.de ?? undefined,
-        p_ate: filtros.ate ?? undefined,
+        p_status: f.status ?? undefined,
+        p_de: f.de ?? undefined,
+        p_ate: f.ate ?? undefined,
+        p_responsavel_id: f.responsavelId ?? undefined,
+        p_cliente_id: f.clienteId ?? undefined,
       });
       if (error) throw error;
       return (data ?? []) as Atividade[];
@@ -41,72 +37,82 @@ export function useAtividades(filtros: ListarFiltros = {}) {
   });
 }
 
-export function useAtualizarStatusAtividade() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: AtividadeStatus }) => {
-      const { error } = await supabase.rpc("atividades_atualizar_status", {
-        p_id: id,
-        p_status: status,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
-    },
-  });
-}
-
-/** Reagenda a atividade para uma nova data (e marca status = 'adiada'). */
-export function useAdiarAtividade() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, novaData }: { id: string; novaData: string }) => {
-      const { error } = await supabase.rpc("atividades_adiar", {
-        p_id: id,
-        p_nova_data: novaData,
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
-    },
-  });
-}
-
-interface CriarAtividadeInput {
-  titulo: string;
+export interface CriarAtividadeInput {
+  tipoId: string;
   data: string; // YYYY-MM-DD
+  responsaveis?: string[] | null; // ignorado pelo servidor p/ cargos não-globais
+  clienteId?: string | null;
   descricao?: string | null;
-  cliente_id?: string | null;
-  nome_contato?: string | null;
-  telefone_contato?: string | null;
+  fichaId?: string | null;
+  pedidoId?: string | null;
+  unidadeId?: number | null;
 }
 
-/**
- * Cria uma atividade manual atribuída ao próprio vendedor logado.
- */
 export function useCriarAtividade() {
-  const queryClient = useQueryClient();
-  const { user, activeUnidade } = useAuth();
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CriarAtividadeInput) => {
-      if (!user?.id) throw new Error("Usuário não autenticado.");
+    mutationFn: async (i: CriarAtividadeInput) => {
       const { data, error } = await supabase.rpc("atividades_criar", {
-        p_titulo: input.titulo,
-        p_data: input.data,
-        p_responsaveis: [user.id],
-        p_descricao: input.descricao ?? undefined,
-        p_cliente_id: input.cliente_id ?? undefined,
-        p_nome_contato: input.nome_contato ?? undefined,
-        p_telefone_contato: input.telefone_contato ?? undefined,
-        p_unidade_id: activeUnidade?.unidade.id ?? undefined,
+        p_tipo_id: i.tipoId,
+        p_data: i.data,
+        p_responsaveis: i.responsaveis ?? undefined,
+        p_cliente_id: i.clienteId ?? undefined,
+        p_descricao: i.descricao ?? undefined,
+        p_ficha_id: i.fichaId ?? undefined,
+        p_pedido_id: i.pedidoId ?? undefined,
+        p_unidade_id: i.unidadeId ?? undefined,
       });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export function useConcluirAtividade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, obs }: { id: string; obs?: string | null }) => {
+      const { error } = await supabase.rpc("atividades_concluir", { p_id: id, p_obs: obs ?? undefined });
+      if (error) throw error;
     },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export function useAdiarAtividade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, novaData, obs }: { id: string; novaData: string; obs?: string | null }) => {
+      const { error } = await supabase.rpc("atividades_adiar", {
+        p_id: id,
+        p_nova_data: novaData,
+        p_obs: obs ?? undefined,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export function useCancelarAtividade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, motivo }: { id: string; motivo?: string | null }) => {
+      const { error } = await supabase.rpc("atividades_cancelar", { p_id: id, p_motivo: motivo ?? undefined });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
+export function useReatribuirAtividade() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, responsavelId }: { id: string; responsavelId: string }) => {
+      const { error } = await supabase.rpc("atividades_reatribuir", { p_id: id, p_responsavel_id: responsavelId });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }
