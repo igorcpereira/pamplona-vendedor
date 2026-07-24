@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, CalendarCheck2, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, addDays, subDays } from "date-fns";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
@@ -42,7 +42,15 @@ const Atividades = () => {
   const responsavelId =
     aba === "minha" ? user?.id ?? null : vendedorFiltro === "todos" ? null : vendedorFiltro;
 
-  const { data: atividades = [], isLoading } = useAtividades({ responsavelId });
+  // Janela de data (mantém a agenda leve): "Ativas" mostra atrasadas (sem piso) +
+  // próximos N dias; "Todas" usa uma janela em torno de hoje. "Ver período maior" amplia N.
+  const [diasJanela, setDiasJanela] = useState(60);
+  useEffect(() => { setDiasJanela(60); }, [aba, filtro, vendedorFiltro]);
+  const de = filtro === "todas" ? format(subDays(new Date(), diasJanela), "yyyy-MM-dd") : null;
+  const ate = format(addDays(new Date(), diasJanela), "yyyy-MM-dd");
+
+  const { data: atividades = [], isLoading } = useAtividades({ responsavelId, de, ate });
+  const noTeto = atividades.length >= 500; // teto de segurança da RPC
   const concluir = useConcluirAtividade();
   const adiar = useAdiarAtividade();
   const cancelar = useCancelarAtividade();
@@ -89,19 +97,29 @@ const Atividades = () => {
           </Button>
         </div>
 
-        {/* Toggle Minha / Equipe (só gestor+) */}
-        {temEquipe && (
+        {/* Filtros lado a lado: aba (gestor+) à esquerda, status à direita */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {temEquipe && (
+            <div className="flex gap-2">
+              {(["minha", "equipe"] as const).map((a) => (
+                <Button key={a} type="button" variant={aba === a ? "default" : "outline"} size="sm"
+                  className="rounded-full" onClick={() => setAba(a)}>
+                  {a === "minha" ? "Minha agenda" : "Equipe"}
+                </Button>
+              ))}
+            </div>
+          )}
           <div className="flex gap-2">
-            {(["minha", "equipe"] as const).map((a) => (
-              <Button key={a} type="button" variant={aba === a ? "default" : "outline"} size="sm"
-                className="rounded-full" onClick={() => setAba(a)}>
-                {a === "minha" ? "Minha agenda" : "Equipe"}
+            {(["ativas", "todas"] as const).map((f) => (
+              <Button key={f} type="button" variant={filtro === f ? "default" : "outline"} size="sm"
+                className="rounded-full" onClick={() => setFiltro(f)}>
+                {f === "ativas" ? "Ativas" : "Todas"}
               </Button>
             ))}
           </div>
-        )}
+        </div>
 
-        {/* Filtro por vendedor (aba Equipe) */}
+        {/* Filtro por vendedor (aba Equipe) — linha própria (select largo) */}
         {temEquipe && aba === "equipe" && (
           <Select value={vendedorFiltro} onValueChange={setVendedorFiltro}>
             <SelectTrigger aria-label="Filtrar por vendedor"><SelectValue /></SelectTrigger>
@@ -111,16 +129,6 @@ const Atividades = () => {
             </SelectContent>
           </Select>
         )}
-
-        {/* Filtro ativas/todas */}
-        <div className="flex gap-2">
-          {(["ativas", "todas"] as const).map((f) => (
-            <Button key={f} type="button" variant={filtro === f ? "default" : "outline"} size="sm"
-              className="rounded-full" onClick={() => setFiltro(f)}>
-              {f === "ativas" ? "Ativas" : "Todas"}
-            </Button>
-          ))}
-        </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-muted-foreground">
@@ -154,6 +162,20 @@ const Atividades = () => {
               </div>
             </section>
           ))
+        )}
+
+        {!isLoading && grupos.length > 0 && (
+          <div className="pt-2 text-center space-y-2">
+            {noTeto && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                Mostrando os primeiros 500 itens — refine o período ou o filtro.
+              </p>
+            )}
+            <Button variant="ghost" size="sm" className="text-muted-foreground"
+              onClick={() => setDiasJanela((d) => d + 60)}>
+              Ver período maior (±{diasJanela} dias)
+            </Button>
+          </div>
         )}
       </main>
 
