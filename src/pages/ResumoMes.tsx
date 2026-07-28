@@ -37,8 +37,11 @@ function TituloPeriodo({ periodo, onToggle }: { periodo: Periodo; onToggle: () =
       title="Alternar entre mês e dia"
       className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground"
     >
-      {periodo === 'mes' ? `Resumo de ${nomeMes}` : 'Resumo do dia'}
-      <ArrowLeftRight className="h-3.5 w-3.5" />
+      <span>
+        {periodo === 'mes' ? 'Resumo de ' : 'Resumo do '}
+        <span className="text-primary">{periodo === 'mes' ? nomeMes : 'dia'}</span>
+      </span>
+      <ArrowLeftRight className="h-3.5 w-3.5 text-primary" />
     </button>
   );
 }
@@ -152,7 +155,7 @@ const dataLocalISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-$
 // Visão por unidade — cargos globais (gestor/admin/master)
 function ResumoUnidadeView() {
   const { profile } = useAuth();
-  const [periodo, setPeriodo] = useState<Periodo>('mes');
+  const [periodo, setPeriodo] = useState<Periodo>('dia');
   const { inicio, fim } = limitesPeriodo(periodo);
 
   const { data: unidades = [] } = useUnidadesReais(true);
@@ -236,7 +239,7 @@ function ResumoPessoalView() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const { data: fichas = [] } = useFichas();
-  const [periodo, setPeriodo] = useState<Periodo>('mes');
+  const [periodo, setPeriodo] = useState<Periodo>('dia');
 
   const nomeVendedor = profile?.nome || 'Vendedor(a)';
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
