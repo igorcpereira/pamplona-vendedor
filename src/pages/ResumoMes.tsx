@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package, Building2, Ruler } from "lucide-react";
+import { ArrowRight, AlertCircle, FileText, TrendingUp, ShoppingBag, CalendarDays, Scissors, Package, Building2, Ruler, ArrowLeftRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import Header from "@/components/Header";
@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
-import { useItensAvulsosDoMes } from "@/hooks/useItensAvulsosDoMes";
+import { useItensAvulsos } from "@/hooks/useItensAvulsos";
 import { useResumoUnidades, useUnidadesReais } from "@/hooks/useResumoUnidade";
 
 const MESES = [
@@ -25,14 +25,46 @@ const formatCurrency = (value: number) =>
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+type Periodo = 'mes' | 'dia';
+
+/** Título da seção que alterna entre resumo do mês e do dia. */
+function TituloPeriodo({ periodo, onToggle }: { periodo: Periodo; onToggle: () => void }) {
+  const nomeMes = MESES[new Date().getMonth()];
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title="Alternar entre mês e dia"
+      className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground"
+    >
+      {periodo === 'mes' ? `Resumo de ${nomeMes}` : 'Resumo do dia'}
+      <ArrowLeftRight className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+/** Valor com a quantidade de fichas do tipo entre parênteses. */
+function ValorComQtd({ valor, qtd }: { valor: number; qtd: number }) {
+  return (
+    <p className="text-xl font-bold text-foreground">
+      {formatCurrency(valor)}{' '}
+      <span className="text-sm font-normal text-muted-foreground">({qtd})</span>
+    </p>
+  );
+}
+
 // Grid dos 6 cards do resumo — compartilhado entre a visão pessoal e a por unidade
-function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, total }: {
+function CardsResumo({ fichas, provas, avulsas, avulsasQtd, vendas, vendasQtd, sobMedida, sobMedidaQtd, alugueis, alugueisQtd, total }: {
   fichas: number;
   provas: number;
   avulsas: number;
+  avulsasQtd: number;
   vendas: number;
+  vendasQtd: number;
   sobMedida: number;
+  sobMedidaQtd: number;
   alugueis: number;
+  alugueisQtd: number;
   total: number;
 }) {
   return (
@@ -60,7 +92,7 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
           <Package className="w-4 h-4 text-primary" />
           <span className="text-xs text-muted-foreground">Vendas avulsas</span>
         </div>
-        <p className="text-xl font-bold text-foreground">{formatCurrency(avulsas)}</p>
+        <ValorComQtd valor={avulsas} qtd={avulsasQtd} />
       </Card>
 
       <Card className="p-4">
@@ -68,7 +100,7 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
           <CalendarDays className="w-4 h-4 text-primary" />
           <span className="text-xs text-muted-foreground">Aluguéis</span>
         </div>
-        <p className="text-xl font-bold text-foreground">{formatCurrency(alugueis)}</p>
+        <ValorComQtd valor={alugueis} qtd={alugueisQtd} />
       </Card>
 
       {/* Linha 3 — Vendas / Sob medida */}
@@ -77,7 +109,7 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
           <ShoppingBag className="w-4 h-4 text-primary" />
           <span className="text-xs text-muted-foreground">Vendas</span>
         </div>
-        <p className="text-xl font-bold text-foreground">{formatCurrency(vendas)}</p>
+        <ValorComQtd valor={vendas} qtd={vendasQtd} />
       </Card>
 
       <Card className="p-4">
@@ -85,7 +117,7 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
           <Ruler className="w-4 h-4 text-primary" />
           <span className="text-xs text-muted-foreground">Sob medida</span>
         </div>
-        <p className="text-xl font-bold text-foreground">{formatCurrency(sobMedida)}</p>
+        <ValorComQtd valor={sobMedida} qtd={sobMedidaQtd} />
       </Card>
 
       {/* Linha 4 — Valor total (largura cheia) */}
@@ -100,17 +132,32 @@ function CardsResumo({ fichas, provas, avulsas, vendas, sobMedida, alugueis, tot
   );
 }
 
+/** Limites do período no fuso local: mês corrente ou o dia de hoje. Fim exclusivo. */
+function limitesPeriodo(periodo: Periodo): { inicio: Date; fim: Date } {
+  const agora = new Date();
+  if (periodo === 'mes') {
+    return {
+      inicio: new Date(agora.getFullYear(), agora.getMonth(), 1),
+      fim: new Date(agora.getFullYear(), agora.getMonth() + 1, 1),
+    };
+  }
+  return {
+    inicio: new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()),
+    fim: new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1),
+  };
+}
+
+const dataLocalISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
 // Visão por unidade — cargos globais (gestor/admin/master)
 function ResumoUnidadeView() {
   const { profile } = useAuth();
-  const agora = new Date();
-  const nomeMes = MESES[agora.getMonth()];
-  const inicioMes = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-01`;
-  const prox = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
-  const fimMes = `${prox.getFullYear()}-${pad(prox.getMonth() + 1)}-01`;
+  const [periodo, setPeriodo] = useState<Periodo>('mes');
+  const { inicio, fim } = limitesPeriodo(periodo);
 
   const { data: unidades = [] } = useUnidadesReais(true);
-  const { data: resumos = [] } = useResumoUnidades(inicioMes, fimMes);
+  // RPC recebe datas 'YYYY-MM-DD' (fim exclusivo)
+  const { data: resumos = [] } = useResumoUnidades(dataLocalISO(inicio), dataLocalISO(fim));
 
   const [unidadeId, setUnidadeId] = useState<number | null>(null);
 
@@ -146,9 +193,7 @@ function ResumoUnidadeView() {
 
         <div>
           <div className="flex items-center justify-between gap-3 mb-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Resumo de {nomeMes}
-            </h3>
+            <TituloPeriodo periodo={periodo} onToggle={() => setPeriodo(p => p === 'mes' ? 'dia' : 'mes')} />
             <Select
               value={unidadeId !== null ? String(unidadeId) : undefined}
               onValueChange={(v) => setUnidadeId(Number(v))}
@@ -169,9 +214,13 @@ function ResumoUnidadeView() {
             fichas={Number(resumo?.total_fichas ?? 0)}
             provas={Number(resumo?.total_provas ?? 0)}
             avulsas={Number(resumo?.avulsa_valor ?? 0)}
+            avulsasQtd={Number(resumo?.avulsa_qtd ?? 0)}
             vendas={Number(resumo?.venda_valor ?? 0)}
+            vendasQtd={Number(resumo?.venda_qtd ?? 0)}
             sobMedida={Number(resumo?.sob_medida_valor ?? 0)}
+            sobMedidaQtd={Number(resumo?.sob_medida_qtd ?? 0)}
             alugueis={Number(resumo?.aluguel_valor ?? 0)}
+            alugueisQtd={Number(resumo?.aluguel_qtd ?? 0)}
             total={Number(resumo?.total_valor ?? 0)}
           />
         </div>
@@ -187,31 +236,33 @@ function ResumoPessoalView() {
   const navigate = useNavigate();
   const { profile, user } = useAuth();
   const { data: fichas = [] } = useFichas();
+  const [periodo, setPeriodo] = useState<Periodo>('mes');
 
   const nomeVendedor = profile?.nome || 'Vendedor(a)';
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
 
-  const agora = new Date();
-  const mesAtual = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}`;
-  const nomeMes = MESES[agora.getMonth()];
+  // Limites do período no fuso local, comparados por timestamp
+  const { inicio, fim } = limitesPeriodo(periodo);
+  const inicioISO = inicio.toISOString();
+  const fimISO = fim.toISOString();
 
-  const fichasDoMes = fichas.filter(f => f.created_at?.startsWith(mesAtual));
+  const fichasDoPeriodo = fichas.filter(f => {
+    if (!f.created_at) return false;
+    const t = new Date(f.created_at);
+    return t >= inicio && t < fim;
+  });
 
-  // Limites do mês atual (UTC) para queries em created_at
-  const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
-  const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 1).toISOString();
-
-  // Provas feitas pelo vendedor neste mês (nova tabela `provas`)
-  const { data: provasDoMes = [] } = useQuery({
-    queryKey: ['provas-vendedor-mes', user?.id, mesAtual],
+  // Provas feitas pelo vendedor no período (nova tabela `provas`)
+  const { data: provasDoPeriodo = [] } = useQuery({
+    queryKey: ['provas-vendedor-resumo', user?.id, inicioISO],
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase
         .from('provas')
         .select('id')
         .eq('vendedor_id', user.id)
-        .gte('created_at', inicioMes)
-        .lt('created_at', fimMes);
+        .gte('created_at', inicioISO)
+        .lt('created_at', fimISO);
       if (error) throw error;
       return data ?? [];
     },
@@ -219,26 +270,19 @@ function ResumoPessoalView() {
     staleTime: 60 * 1000,
   });
 
-  const totalProvas = provasDoMes.length;
+  const totalProvas = provasDoPeriodo.length;
 
-  const { data: totalItensAvulsos = 0 } = useItensAvulsosDoMes();
+  const { data: avulsos = { valor: 0, qtd: 0 } } = useItensAvulsos(inicioISO, fimISO);
 
-  // Total de itens avulsos do mês (tabela itens_avulsos_ficha)
-  const totalAvulsasCombinado = totalItensAvulsos;
-
-  const totalFichas = fichasDoMes.length;
-  const totalAluguel = fichasDoMes
-    .filter(f => f.tipo?.toLowerCase() === 'aluguel')
-    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
+  const totalFichas = fichasDoPeriodo.length;
+  const fichasAluguel = fichasDoPeriodo.filter(f => f.tipo?.toLowerCase() === 'aluguel');
   // "Vendas" = venda padrão; "Sob medida" = venda com sob_medida=true (separados,
   // como no dashboard do CRM). O total continua somando tudo.
-  const totalVenda = fichasDoMes
-    .filter(f => f.tipo?.toLowerCase() === 'venda' && !f.sob_medida)
-    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  const totalSobMedida = fichasDoMes
-    .filter(f => f.tipo?.toLowerCase() === 'venda' && f.sob_medida)
-    .reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
-  const totalValor = fichasDoMes.reduce((acc, f) => acc + Number(f.valor ?? 0), 0) + totalAvulsasCombinado;
+  const fichasVenda = fichasDoPeriodo.filter(f => f.tipo?.toLowerCase() === 'venda' && !f.sob_medida);
+  const fichasSobMedida = fichasDoPeriodo.filter(f => f.tipo?.toLowerCase() === 'venda' && f.sob_medida);
+
+  const soma = (fs: typeof fichasDoPeriodo) => fs.reduce((acc, f) => acc + Number(f.valor ?? 0), 0);
+  const totalValor = soma(fichasDoPeriodo) + avulsos.valor;
 
   return <div className="min-h-screen bg-background pb-20 relative">
       <Header title="Resumo do mês" />
@@ -282,18 +326,22 @@ function ResumoPessoalView() {
           </Card>
         )}
 
-        {/* Resumo do mês */}
+        {/* Resumo do período */}
         <div>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Resumo de {nomeMes}
-          </h3>
+          <div className="mb-3">
+            <TituloPeriodo periodo={periodo} onToggle={() => setPeriodo(p => p === 'mes' ? 'dia' : 'mes')} />
+          </div>
           <CardsResumo
             fichas={totalFichas}
             provas={totalProvas}
-            avulsas={totalAvulsasCombinado}
-            vendas={totalVenda}
-            sobMedida={totalSobMedida}
-            alugueis={totalAluguel}
+            avulsas={avulsos.valor}
+            avulsasQtd={avulsos.qtd}
+            vendas={soma(fichasVenda)}
+            vendasQtd={fichasVenda.length}
+            sobMedida={soma(fichasSobMedida)}
+            sobMedidaQtd={fichasSobMedida.length}
+            alugueis={soma(fichasAluguel)}
+            alugueisQtd={fichasAluguel.length}
             total={totalValor}
           />
         </div>
