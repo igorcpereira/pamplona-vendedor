@@ -10,6 +10,16 @@ export function capitalizarNome(nome?: string): string {
   return nome.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+/**
+ * Normaliza texto para busca: minúsculas e sem acentos/diacríticos
+ * ("Agrônomo" → "agronomo"), para que "agro" encontre "Agrônomo".
+ * NFD separa a letra do acento; a faixa U+0300–U+036F são os acentos soltos.
+ */
+const SEM_DIACRITICOS = new RegExp("[\\u0300-\\u036f]", "g");
+export function normalizarBusca(texto: string): string {
+  return texto.toLowerCase().normalize("NFD").replace(SEM_DIACRITICOS, "");
+}
+
 // Regra de negócio (espelha a RLS): o perfil "vendedor" só pode editar/excluir
 // fichas onde vendedor_id === o próprio usuário. Os demais perfis
 // (administrativo, gestor, franqueado, admin, master) podem editar/excluir

@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, podeEditarFicha, rotuloBotaoFicha } from "@/lib/utils";
+import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, normalizarBusca, podeEditarFicha, rotuloBotaoFicha } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useTravaSubmit } from "@/hooks/useTravaSubmit";
@@ -445,13 +445,14 @@ export default function EditarFichaV3() {
 
   // Busca de tags existentes (a criação livre acabou): filtra as ativas não-padrão
   // ainda não selecionadas. Lista aparece com 2+ caracteres, no máximo 8 resultados.
+  // Sem case e sem acento nos dois lados: "agro" encontra "Agrônomo".
   const resultadosBuscaTag = useMemo(() => {
-    const q = buscaTag.trim().toLowerCase();
+    const q = normalizarBusca(buscaTag.trim());
     if (q.length < 2) return [];
     return tagsAtivas
       .filter(t => !t.padrao)
       .filter(t => !formData.tags.some(s => s.id === t.id))
-      .filter(t => t.nome.toLowerCase().includes(q))
+      .filter(t => normalizarBusca(t.nome).includes(q))
       .slice(0, 8);
   }, [buscaTag, tagsAtivas, formData.tags]);
 
