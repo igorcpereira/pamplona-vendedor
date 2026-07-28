@@ -1581,7 +1581,7 @@ export default function EditarFichaV3() {
                   <div className="rounded-md border border-border divide-y divide-border max-h-48 overflow-y-auto">
                     {resultadosBuscaTag.length === 0 ? (
                       <p className="px-3 py-2 text-sm text-muted-foreground">
-                        Nenhuma tag encontrada. Tags novas são criadas pela gestão, no CRM.
+                        Nenhuma tag encontrada. Fale com seu gestor para adicionar novas tags.
                       </p>
                     ) : (
                       resultadosBuscaTag.map((tag) => (
