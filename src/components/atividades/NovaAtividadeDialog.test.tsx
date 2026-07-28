@@ -55,21 +55,19 @@ describe("NovaAtividadeDialog — passo 1 (cliente)", () => {
 });
 
 describe("NovaAtividadeDialog — passo 2 (tipo e data)", () => {
-  it("sem cliente, só tipos que dispensam cliente", async () => {
+  it("sem cliente, só tipos que dispensam cliente (botões)", async () => {
     render(<NovaAtividadeDialog open onClose={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /Continuar sem cliente/ }));
     expect(screen.getByText("Sem cliente")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("combobox"));
-    expect(screen.getByRole("option", { name: "Lembrete" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "Casamento" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lembrete" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Casamento" })).not.toBeInTheDocument();
   });
 
-  it("com cliente, todos os tipos aparecem", async () => {
+  it("com cliente, todos os tipos aparecem como botões", async () => {
     render(<NovaAtividadeDialog open onClose={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: /Fulano/ }));
-    await userEvent.click(screen.getByRole("combobox"));
-    expect(screen.getByRole("option", { name: "Casamento" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Lembrete" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Casamento" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lembrete" })).toBeInTheDocument();
   });
 
   it("mostra os 4 atalhos de data e o Outra data…", async () => {

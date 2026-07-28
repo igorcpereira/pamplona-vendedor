@@ -9,9 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useClientes } from "@/hooks/useClientes";
 import { useUltimosClientes } from "@/hooks/useUltimosClientes";
@@ -245,16 +242,23 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
               {/* Tipo */}
               <div className="space-y-2">
                 <Label>Tipo *</Label>
-                <Select value={tipoId} onValueChange={setTipoId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Escolha o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposDisponiveis.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 gap-2">
+                  {tiposDisponiveis.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTipoId(t.id)}
+                      className={cn(
+                        "flex items-center justify-center rounded-md border px-3 h-11 text-sm text-center leading-snug",
+                        tipoId === t.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border bg-muted/40 hover:border-primary hover:bg-primary/5",
+                      )}
+                    >
+                      {t.nome}
+                    </button>
+                  ))}
+                </div>
                 {!clienteSel && (
                   <p className="text-xs text-muted-foreground">
                     Sem cliente, só tipos de lembrete ficam disponíveis.
