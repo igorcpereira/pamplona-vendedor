@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag, Pencil, ChevronDown, DollarSign } from "lucide-react";
+import { ArrowLeft, Image as ImageIcon, X, User, AlertTriangle, Plus, Trash2, Ruler, ShoppingBag, Pencil, ChevronDown, DollarSign, Search } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,6 +28,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useProvasFicha, useAdicionarProva, useDeletarProva } from "@/hooks/useProvasFicha";
 import { usePedidosFicha, type Pedido } from "@/hooks/usePedidosFicha";
 import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
+import { useTagsAtivas } from "@/hooks/useTagsAtivas";
 import { useLanificios } from "@/hooks/useLanificios";
 import { useOpcoesFicha } from "@/hooks/useOpcoesFicha";
 import { useTiposItemAvulso } from "@/hooks/useTiposItemAvulso";
@@ -79,11 +80,10 @@ export default function EditarFichaV3() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [wasProcessed, setWasProcessed] = useState(false);
   const [showDuplicateBanner, setShowDuplicateBanner] = useState<boolean>(!!duplicateAlert);
-  const [tagsPadrao, setTagsPadrao] = useState<{ id: string; nome: string }[]>([]);
   const [fichaVendedorId, setFichaVendedorId] = useState<string | undefined>(undefined);
   const [pedidoModalOpen, setPedidoModalOpen] = useState(false);
   const [pedidoEditando, setPedidoEditando] = useState<Pedido | undefined>();
-  const [novaTag, setNovaTag] = useState("");
+  const [buscaTag, setBuscaTag] = useState("");
 
   const { data: pedidos = [] } = usePedidosFicha(id);
   const { data: provas = [] } = useProvasFicha(id);
@@ -153,20 +153,13 @@ export default function EditarFichaV3() {
     camisa_cor: null as string | null,
     sapato_tipo: null as string | null,
     pago: false,
-    tags: [] as string[],
+    // Tags do cliente por id — a criação livre acabou (RLS de tags só permite
+    // escrita à gestão); o vendedor escolhe entre as existentes.
+    tags: [] as { id: string; nome: string }[],
   });
 
-  // Fetch padrao tags once
-  useEffect(() => {
-    supabase
-      .from('tags')
-      .select('id, nome')
-      .eq('padrao', true)
-      .order('nome')
-      .then(({ data }) => {
-        if (data) setTagsPadrao(data as { id: string; nome: string }[]);
-      });
-  }, []);
+  const { data: tagsAtivas = [] } = useTagsAtivas();
+  const tagsPadrao = useMemo(() => tagsAtivas.filter(t => t.padrao), [tagsAtivas]);
 
   useEffect(() => {
     const loadFicha = async () => {
@@ -214,18 +207,18 @@ export default function EditarFichaV3() {
           setIsProcessing(true);
         }
 
-        let clienteTags: string[] = [];
+        let clienteTags: { id: string; nome: string }[] = [];
         if (fichaData.cliente_id) {
           try {
             const { data: relacoes, error } = await supabase
               .from('relacao_cliente_tag')
-              .select('id_tag, tags(nome)')
+              .select('id_tag, tags(id, nome)')
               .eq('id_cliente', fichaData.cliente_id);
 
             if (!error && relacoes) {
               clienteTags = relacoes
-                .map(r => (r as any).tags?.nome)
-                .filter(Boolean);
+                .map(r => (r as any).tags)
+                .filter((t): t is { id: string; nome: string } => !!t?.id);
             }
           } catch (error) {
             console.error('Erro ao buscar tags:', error);
@@ -429,37 +422,38 @@ export default function EditarFichaV3() {
     }, 150);
   };
 
-  const handleToggleTag = (tagNome: string) => {
+  const handleToggleTag = (tag: { id: string; nome: string }) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.some(t => t.toLowerCase() === tagNome.toLowerCase())
-        ? prev.tags.filter(t => t.toLowerCase() !== tagNome.toLowerCase())
-        : [...prev.tags, tagNome],
+      tags: prev.tags.some(t => t.id === tag.id)
+        ? prev.tags.filter(t => t.id !== tag.id)
+        : [...prev.tags, { id: tag.id, nome: tag.nome }],
     }));
   };
 
-  const handleAdicionarTag = () => {
-    const nome = novaTag.trim();
-    if (!nome) return;
-    setFormData(prev =>
-      prev.tags.some(t => t.toLowerCase() === nome.toLowerCase())
-        ? prev
-        : { ...prev, tags: [...prev.tags, nome] }
-    );
-    setNovaTag("");
-  };
-
-  const handleRemoverTag = (tagNome: string) => {
+  const handleRemoverTag = (tagId: string) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags.filter(t => t.toLowerCase() !== tagNome.toLowerCase()),
+      tags: prev.tags.filter(t => t.id !== tagId),
     }));
   };
 
-  // Tags selecionadas que não fazem parte das 8 principais (exibidas como chips removíveis)
+  // Tags selecionadas que não fazem parte das principais (exibidas como chips removíveis)
   const tagsExtras = formData.tags.filter(
-    t => !tagsPadrao.some(p => p.nome.toLowerCase() === t.toLowerCase())
+    t => !tagsPadrao.some(p => p.id === t.id)
   );
+
+  // Busca de tags existentes (a criação livre acabou): filtra as ativas não-padrão
+  // ainda não selecionadas. Lista aparece com 2+ caracteres, no máximo 8 resultados.
+  const resultadosBuscaTag = useMemo(() => {
+    const q = buscaTag.trim().toLowerCase();
+    if (q.length < 2) return [];
+    return tagsAtivas
+      .filter(t => !t.padrao)
+      .filter(t => !formData.tags.some(s => s.id === t.id))
+      .filter(t => t.nome.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [buscaTag, tagsAtivas, formData.tags]);
 
   const handleAdicionarProva = () => travarSubmit(async () => {
     try {
@@ -693,33 +687,11 @@ export default function EditarFichaV3() {
         });
       }
 
-      // Sincroniza tags do cliente (principais + personalizadas).
-      // Cria tags inexistentes e ajusta as relações conforme a seleção atual.
+      // Sincroniza tags do cliente por id — só relações; tag nova não nasce
+      // mais aqui (a seleção vem de tags existentes e a RLS de `tags` bloqueia
+      // escrita fora da gestão).
       if (clienteId) {
-        const nomesSelecionados = Array.from(
-          new Set(formData.tags.map(t => t.trim()).filter(Boolean))
-        );
-
-        const { data: todasTags } = await supabase.from('tags').select('id, nome');
-        const idPorNome = new Map(
-          (todasTags ?? []).map(t => [t.nome.trim().toLowerCase(), t.id])
-        );
-
-        const idsDesejados: string[] = [];
-        for (const nome of nomesSelecionados) {
-          const chave = nome.toLowerCase();
-          let tagId = idPorNome.get(chave);
-          if (!tagId) {
-            const { data: novaTagRow } = await supabase
-              .from('tags')
-              .insert({ nome })
-              .select('id')
-              .single();
-            tagId = novaTagRow?.id;
-            if (tagId) idPorNome.set(chave, tagId);
-          }
-          if (tagId) idsDesejados.push(tagId);
-        }
+        const idsDesejados = Array.from(new Set(formData.tags.map(t => t.id)));
 
         const { data: relacoesAtuais } = await supabase
           .from('relacao_cliente_tag')
@@ -736,11 +708,11 @@ export default function EditarFichaV3() {
             .insert(inserir.map(id_tag => ({ id_cliente: clienteId, id_tag })));
         }
 
-        const remover = (relacoesAtuais ?? []).filter(
-          r => r.id_tag && !idsDesejadosSet.has(r.id_tag)
-        );
-        for (const rel of remover) {
-          await supabase.from('relacao_cliente_tag').delete().eq('id', rel.id);
+        const removerIds = (relacoesAtuais ?? [])
+          .filter(r => r.id_tag && !idsDesejadosSet.has(r.id_tag))
+          .map(r => r.id);
+        if (removerIds.length > 0) {
+          await supabase.from('relacao_cliente_tag').delete().in('id', removerIds);
         }
       }
 
@@ -1554,18 +1526,18 @@ export default function EditarFichaV3() {
               {/* Ficha de outro vendedor: as tags também ficam somente-leitura. */}
               <fieldset disabled={soLeituraDono} className="contents">
 
-              {/* 8 tags principais — botões on/off */}
+              {/* Tags principais (padrao = true) — botões on/off */}
               {tagsPadrao.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {tagsPadrao.map((tag) => {
-                    const selected = formData.tags.some(t => t.toLowerCase() === tag.nome.toLowerCase());
+                    const selected = formData.tags.some(t => t.id === tag.id);
                     return (
                       <Button
                         key={tag.id}
                         type="button"
                         size="sm"
                         variant={selected ? 'default' : 'outline'}
-                        onClick={() => handleToggleTag(tag.nome)}
+                        onClick={() => handleToggleTag(tag)}
                       >
                         {tag.nome}
                       </Button>
@@ -1577,14 +1549,14 @@ export default function EditarFichaV3() {
               {/* Tags adicionais selecionadas */}
               {tagsExtras.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {tagsExtras.map((nome) => (
-                    <Badge key={nome} variant="secondary" className="gap-1 pr-1">
-                      {nome}
+                  {tagsExtras.map((tag) => (
+                    <Badge key={tag.id} variant="secondary" className="gap-1 pr-1">
+                      {tag.nome}
                       <button
                         type="button"
-                        onClick={() => handleRemoverTag(nome)}
+                        onClick={() => handleRemoverTag(tag.id)}
                         className="rounded-full hover:bg-foreground/10 p-0.5"
-                        aria-label={`Remover tag ${nome}`}
+                        aria-label={`Remover tag ${tag.nome}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1593,24 +1565,40 @@ export default function EditarFichaV3() {
                 </div>
               )}
 
-              {/* Adicionar outra tag */}
-              <div className="flex gap-2">
-                <Input
-                  value={novaTag}
-                  onChange={(e) => setNovaTag(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAdicionarTag();
-                    }
-                  }}
-                  placeholder="Adicionar outra tag"
-                  className="flex-1"
-                />
-                <Button type="button" variant="outline" onClick={handleAdicionarTag} disabled={!novaTag.trim()}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Adicionar
-                </Button>
+              {/* Buscar outra tag — só tags existentes; criar é papel da gestão (CRM) */}
+              <div className="space-y-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={buscaTag}
+                    onChange={(e) => setBuscaTag(e.target.value)}
+                    placeholder="Buscar outra tag…"
+                    className="pl-9"
+                  />
+                </div>
+                {buscaTag.trim().length >= 2 && (
+                  <div className="rounded-md border border-border divide-y divide-border max-h-48 overflow-y-auto">
+                    {resultadosBuscaTag.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        Nenhuma tag encontrada. Tags novas são criadas pela gestão, no CRM.
+                      </p>
+                    ) : (
+                      resultadosBuscaTag.map((tag) => (
+                        <button
+                          key={tag.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
+                          onClick={() => {
+                            handleToggleTag(tag);
+                            setBuscaTag("");
+                          }}
+                        >
+                          {tag.nome}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
               </fieldset>
             </div>
