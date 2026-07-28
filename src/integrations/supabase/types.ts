@@ -14,107 +14,154 @@ export type Database = {
   }
   public: {
     Tables: {
-      campanha_tags: {
+      atividade_eventos: {
         Row: {
-          campanha_id: string
-          tag_id: string
+          acao: string
+          atividade_id: string
+          autor_id: string | null
+          created_at: string
+          data_anterior: string | null
+          data_nova: string | null
+          id: string
+          observacao: string | null
+          resp_anterior: string | null
+          resp_novo: string | null
         }
         Insert: {
-          campanha_id: string
-          tag_id: string
+          acao: string
+          atividade_id: string
+          autor_id?: string | null
+          created_at?: string
+          data_anterior?: string | null
+          data_nova?: string | null
+          id?: string
+          observacao?: string | null
+          resp_anterior?: string | null
+          resp_novo?: string | null
         }
         Update: {
-          campanha_id?: string
-          tag_id?: string
+          acao?: string
+          atividade_id?: string
+          autor_id?: string | null
+          created_at?: string
+          data_anterior?: string | null
+          data_nova?: string | null
+          id?: string
+          observacao?: string | null
+          resp_anterior?: string | null
+          resp_novo?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "campanha_tags_campanha_id_fkey"
-            columns: ["campanha_id"]
+            foreignKeyName: "atividade_eventos_atividade_id_fkey"
+            columns: ["atividade_id"]
             isOneToOne: false
-            referencedRelation: "campanhas"
+            referencedRelation: "atividades"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "campanha_tags_tag_id_fkey"
-            columns: ["tag_id"]
+            foreignKeyName: "atividade_eventos_autor_id_fkey"
+            columns: ["autor_id"]
             isOneToOne: false
-            referencedRelation: "tags"
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
       }
-      campanhas: {
+      atividades: {
         Row: {
+          cliente_id: string | null
           created_at: string
-          criado_por: string
-          data_fim: string
-          data_inicio: string
-          finalizada_em: string | null
+          created_by: string | null
+          data: string
+          descricao: string | null
+          ficha_id: string | null
+          grupo_id: string | null
           id: string
-          iniciada_em: string | null
-          intervalo_envio_minutos: number
-          janela_atribuicao_dias: number
-          midia_tipo: Database["public"]["Enums"]["campanha_midia_tipo"]
-          midia_url: string | null
-          nome: string
-          publico_estimado: number | null
-          status: Database["public"]["Enums"]["campanha_status"]
-          tags_modo: Database["public"]["Enums"]["campanha_tags_modo"]
-          texto: string
-          unidade_id: number
+          pedido_id: string | null
+          responsavel_id: string
+          status: string
+          tipo_id: string
+          unidade_id: number | null
           updated_at: string
         }
         Insert: {
+          cliente_id?: string | null
           created_at?: string
-          criado_por: string
-          data_fim: string
-          data_inicio?: string
-          finalizada_em?: string | null
+          created_by?: string | null
+          data: string
+          descricao?: string | null
+          ficha_id?: string | null
+          grupo_id?: string | null
           id?: string
-          iniciada_em?: string | null
-          intervalo_envio_minutos?: number
-          janela_atribuicao_dias?: number
-          midia_tipo?: Database["public"]["Enums"]["campanha_midia_tipo"]
-          midia_url?: string | null
-          nome: string
-          publico_estimado?: number | null
-          status?: Database["public"]["Enums"]["campanha_status"]
-          tags_modo?: Database["public"]["Enums"]["campanha_tags_modo"]
-          texto: string
-          unidade_id: number
+          pedido_id?: string | null
+          responsavel_id: string
+          status?: string
+          tipo_id: string
+          unidade_id?: number | null
           updated_at?: string
         }
         Update: {
+          cliente_id?: string | null
           created_at?: string
-          criado_por?: string
-          data_fim?: string
-          data_inicio?: string
-          finalizada_em?: string | null
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          ficha_id?: string | null
+          grupo_id?: string | null
           id?: string
-          iniciada_em?: string | null
-          intervalo_envio_minutos?: number
-          janela_atribuicao_dias?: number
-          midia_tipo?: Database["public"]["Enums"]["campanha_midia_tipo"]
-          midia_url?: string | null
-          nome?: string
-          publico_estimado?: number | null
-          status?: Database["public"]["Enums"]["campanha_status"]
-          tags_modo?: Database["public"]["Enums"]["campanha_tags_modo"]
-          texto?: string
-          unidade_id?: number
+          pedido_id?: string | null
+          responsavel_id?: string
+          status?: string
+          tipo_id?: string
+          unidade_id?: number | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "campanhas_criado_por_fkey"
-            columns: ["criado_por"]
+            foreignKeyName: "atividades_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "campanhas_unidade_id_fkey"
+            foreignKeyName: "atividades_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_tipo_id_fkey"
+            columns: ["tipo_id"]
+            isOneToOne: false
+            referencedRelation: "tipos_atividade"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_unidade_id_fkey"
             columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "unidades"
@@ -240,57 +287,6 @@ export type Database = {
           responsavel?: string | null
         }
         Relationships: []
-      }
-      disparos: {
-        Row: {
-          agendado_para: string
-          campanha_id: string
-          cliente_id: string
-          created_at: string
-          enviado_em: string | null
-          erro: string | null
-          id: string
-          status: Database["public"]["Enums"]["disparo_status"]
-          wpp_msg_id: string | null
-        }
-        Insert: {
-          agendado_para: string
-          campanha_id: string
-          cliente_id: string
-          created_at?: string
-          enviado_em?: string | null
-          erro?: string | null
-          id?: string
-          status?: Database["public"]["Enums"]["disparo_status"]
-          wpp_msg_id?: string | null
-        }
-        Update: {
-          agendado_para?: string
-          campanha_id?: string
-          cliente_id?: string
-          created_at?: string
-          enviado_em?: string | null
-          erro?: string | null
-          id?: string
-          status?: Database["public"]["Enums"]["disparo_status"]
-          wpp_msg_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "disparos_campanha_id_fkey"
-            columns: ["campanha_id"]
-            isOneToOne: false
-            referencedRelation: "campanhas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "disparos_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       fichas: {
         Row: {
@@ -467,13 +463,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "fichas_lanificio_id_fkey"
-            columns: ["lanificio_id"]
-            isOneToOne: false
-            referencedRelation: "lanificios"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "fichas_ficha_original_id_fkey"
             columns: ["ficha_original_id"]
             isOneToOne: false
@@ -481,10 +470,229 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fichas_lanificio_id_fkey"
+            columns: ["lanificio_id"]
+            isOneToOne: false
+            referencedRelation: "lanificios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fichas_unidade_id_fkey"
             columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fichas_excluidas: {
+        Row: {
+          calca: string | null
+          camisa: string | null
+          camisa_cor: string | null
+          camisa_fios: string | null
+          cliente_encontrado: boolean | null
+          cliente_id: string | null
+          cliente_sugerido_id: string | null
+          cliente_sugerido_nome: string | null
+          codigo_ficha: string | null
+          created_at: string
+          data_devolucao: string | null
+          data_festa: string | null
+          data_retirada: string | null
+          descricao_cliente: string | null
+          enviada_whatsapp_geral: boolean
+          enviada_whatsapp_venda: boolean
+          erro_etapa: string | null
+          excluida_em: string
+          excluida_por: string | null
+          ficha_original_id: string | null
+          garantia: string | null
+          id: string
+          id_ficha_original: string
+          is_noivo: boolean
+          lanificio_id: string | null
+          nome_cliente: string | null
+          ocr_tentativa: number | null
+          pago: boolean
+          paleto: string | null
+          paleto_categoria: string | null
+          paleto_cor: string | null
+          paleto_lanificio: string | null
+          prova1_data: string | null
+          prova1_vendedor_id: string | null
+          prova2_data: string | null
+          prova2_vendedor_id: string | null
+          prova3_data: string | null
+          prova3_vendedor_id: string | null
+          sapato: string | null
+          sapato_tipo: string | null
+          sob_medida: boolean | null
+          status: Database["public"]["Enums"]["status_ficha"]
+          tags: Json | null
+          telefone_cliente: string | null
+          tempo_processamento: number | null
+          tipo: string | null
+          transcricao_audio: string | null
+          unidade_id: number | null
+          updated_at: string
+          url_audio: string | null
+          url_bucket: string | null
+          valor: number | null
+          valor_calca: string | null
+          valor_camisa: string | null
+          valor_paleto: string | null
+          vendedor_id: string | null
+        }
+        Insert: {
+          calca?: string | null
+          camisa?: string | null
+          camisa_cor?: string | null
+          camisa_fios?: string | null
+          cliente_encontrado?: boolean | null
+          cliente_id?: string | null
+          cliente_sugerido_id?: string | null
+          cliente_sugerido_nome?: string | null
+          codigo_ficha?: string | null
+          created_at: string
+          data_devolucao?: string | null
+          data_festa?: string | null
+          data_retirada?: string | null
+          descricao_cliente?: string | null
+          enviada_whatsapp_geral: boolean
+          enviada_whatsapp_venda: boolean
+          erro_etapa?: string | null
+          excluida_em?: string
+          excluida_por?: string | null
+          ficha_original_id?: string | null
+          garantia?: string | null
+          id: string
+          id_ficha_original: string
+          is_noivo: boolean
+          lanificio_id?: string | null
+          nome_cliente?: string | null
+          ocr_tentativa?: number | null
+          pago: boolean
+          paleto?: string | null
+          paleto_categoria?: string | null
+          paleto_cor?: string | null
+          paleto_lanificio?: string | null
+          prova1_data?: string | null
+          prova1_vendedor_id?: string | null
+          prova2_data?: string | null
+          prova2_vendedor_id?: string | null
+          prova3_data?: string | null
+          prova3_vendedor_id?: string | null
+          sapato?: string | null
+          sapato_tipo?: string | null
+          sob_medida?: boolean | null
+          status: Database["public"]["Enums"]["status_ficha"]
+          tags?: Json | null
+          telefone_cliente?: string | null
+          tempo_processamento?: number | null
+          tipo?: string | null
+          transcricao_audio?: string | null
+          unidade_id?: number | null
+          updated_at: string
+          url_audio?: string | null
+          url_bucket?: string | null
+          valor?: number | null
+          valor_calca?: string | null
+          valor_camisa?: string | null
+          valor_paleto?: string | null
+          vendedor_id?: string | null
+        }
+        Update: {
+          calca?: string | null
+          camisa?: string | null
+          camisa_cor?: string | null
+          camisa_fios?: string | null
+          cliente_encontrado?: boolean | null
+          cliente_id?: string | null
+          cliente_sugerido_id?: string | null
+          cliente_sugerido_nome?: string | null
+          codigo_ficha?: string | null
+          created_at?: string
+          data_devolucao?: string | null
+          data_festa?: string | null
+          data_retirada?: string | null
+          descricao_cliente?: string | null
+          enviada_whatsapp_geral?: boolean
+          enviada_whatsapp_venda?: boolean
+          erro_etapa?: string | null
+          excluida_em?: string
+          excluida_por?: string | null
+          ficha_original_id?: string | null
+          garantia?: string | null
+          id?: string
+          id_ficha_original?: string
+          is_noivo?: boolean
+          lanificio_id?: string | null
+          nome_cliente?: string | null
+          ocr_tentativa?: number | null
+          pago?: boolean
+          paleto?: string | null
+          paleto_categoria?: string | null
+          paleto_cor?: string | null
+          paleto_lanificio?: string | null
+          prova1_data?: string | null
+          prova1_vendedor_id?: string | null
+          prova2_data?: string | null
+          prova2_vendedor_id?: string | null
+          prova3_data?: string | null
+          prova3_vendedor_id?: string | null
+          sapato?: string | null
+          sapato_tipo?: string | null
+          sob_medida?: boolean | null
+          status?: Database["public"]["Enums"]["status_ficha"]
+          tags?: Json | null
+          telefone_cliente?: string | null
+          tempo_processamento?: number | null
+          tipo?: string | null
+          transcricao_audio?: string | null
+          unidade_id?: number | null
+          updated_at?: string
+          url_audio?: string | null
+          url_bucket?: string | null
+          valor?: number | null
+          valor_calca?: string | null
+          valor_camisa?: string | null
+          valor_paleto?: string | null
+          vendedor_id?: string | null
+        }
+        Relationships: []
+      }
+      fichas_ocr_log: {
+        Row: {
+          created_at: string
+          ficha_id: string
+          id: string
+          modelo: string | null
+          raw: Json
+          tentativa: number | null
+        }
+        Insert: {
+          created_at?: string
+          ficha_id: string
+          id?: string
+          modelo?: string | null
+          raw: Json
+          tentativa?: number | null
+        }
+        Update: {
+          created_at?: string
+          ficha_id?: string
+          id?: string
+          modelo?: string | null
+          raw?: Json
+          tentativa?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_ocr_log_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
             referencedColumns: ["id"]
           },
         ]
@@ -1098,6 +1306,39 @@ export type Database = {
           },
         ]
       }
+      tipos_atividade: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          exige_cliente: boolean
+          id: string
+          nome: string
+          ordem: number
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          exige_cliente?: boolean
+          id?: string
+          nome: string
+          ordem?: number
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          exige_cliente?: boolean
+          id?: string
+          nome?: string
+          ordem?: number
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tipos_item_avulso: {
         Row: {
           ativo: boolean
@@ -1207,61 +1448,6 @@ export type Database = {
             columns: ["unidade_id"]
             isOneToOne: false
             referencedRelation: "unidades"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendas_atribuidas: {
-        Row: {
-          campanha_id: string
-          created_at: string
-          dias_ate_conversao: number
-          disparo_em: string
-          disparo_id: string
-          ficha_id: string | null
-          id: string
-          venda_em: string
-        }
-        Insert: {
-          campanha_id: string
-          created_at?: string
-          dias_ate_conversao: number
-          disparo_em: string
-          disparo_id: string
-          ficha_id?: string | null
-          id?: string
-          venda_em: string
-        }
-        Update: {
-          campanha_id?: string
-          created_at?: string
-          dias_ate_conversao?: number
-          disparo_em?: string
-          disparo_id?: string
-          ficha_id?: string | null
-          id?: string
-          venda_em?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendas_atribuidas_campanha_id_fkey"
-            columns: ["campanha_id"]
-            isOneToOne: false
-            referencedRelation: "campanhas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendas_atribuidas_disparo_id_fkey"
-            columns: ["disparo_id"]
-            isOneToOne: false
-            referencedRelation: "disparos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendas_atribuidas_ficha_id_fkey"
-            columns: ["ficha_id"]
-            isOneToOne: false
-            referencedRelation: "fichas"
             referencedColumns: ["id"]
           },
         ]
@@ -1444,16 +1630,38 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _atividade_pode_agir: { Args: { p_id: string }; Returns: boolean }
       _ficha_log_diff: {
         Args: { p_ignore: string[]; p_new: Json; p_old: Json }
         Returns: Json
       }
+      atividade_historico_cliente: {
+        Args: { p_cliente_id: string }
+        Returns: {
+          acao: string
+          atividade_data: string
+          atividade_id: string
+          atividade_status: string
+          autor_id: string
+          autor_nome: string
+          data_anterior: string
+          data_nova: string
+          evento_id: string
+          observacao: string
+          quando: string
+          tipo_nome: string
+        }[]
+      }
       atividades_adiar: {
-        Args: { p_id: string; p_nova_data: string }
+        Args: { p_id: string; p_nova_data: string; p_obs?: string }
         Returns: undefined
       }
-      atividades_atualizar_status: {
-        Args: { p_id: string; p_status: string }
+      atividades_cancelar: {
+        Args: { p_id: string; p_motivo?: string }
+        Returns: undefined
+      }
+      atividades_concluir: {
+        Args: { p_id: string; p_obs?: string }
         Returns: undefined
       }
       atividades_criar: {
@@ -1461,24 +1669,18 @@ export type Database = {
           p_cliente_id?: string
           p_data: string
           p_descricao?: string
-          p_nome_contato?: string
-          p_responsaveis: string[]
-          p_telefone_contato?: string
-          p_titulo: string
+          p_ficha_id?: string
+          p_pedido_id?: string
+          p_responsaveis?: string[]
+          p_tipo_id: string
           p_unidade_id?: number
         }
         Returns: string
       }
-      atividades_gerar: {
-        Args: never
-        Returns: {
-          inseridas: number
-          tipo: string
-        }[]
-      }
       atividades_listar: {
         Args: {
           p_ate?: string
+          p_cliente_id?: string
           p_de?: string
           p_responsavel_id?: string
           p_status?: string
@@ -1489,25 +1691,26 @@ export type Database = {
           cliente_nome: string
           cliente_telefone: string
           created_at: string
+          created_by: string
           data: string
           descricao: string
-          gatilho_id: string
-          gatilho_tipo: string
+          ficha_id: string
           grupo_id: string
           id: string
-          nome_contato: string
-          origem: string
+          pedido_id: string
           responsavel_id: string
           responsavel_nome: string
           status: string
-          telefone_contato: string
-          titulo: string
+          status_visivel: string
+          tipo_id: string
+          tipo_nome: string
+          tipo_slug: string
           unidade_id: number
-          unidade_nome: string
+          updated_at: string
         }[]
       }
-      atribuir_venda_campanhas: {
-        Args: { _ficha_id: string }
+      atividades_reatribuir: {
+        Args: { p_id: string; p_responsavel_id: string }
         Returns: undefined
       }
       atualizar_ficha: {
@@ -1515,6 +1718,7 @@ export type Database = {
           p_data_devolucao?: string
           p_data_festa?: string
           p_data_retirada?: string
+          p_detalhes?: Json
           p_ficha_id: string
           p_itens?: Json
           p_pago?: boolean
@@ -1554,34 +1758,7 @@ export type Database = {
         Args: { _target_unidade_id: number; _user_id: string }
         Returns: boolean
       }
-      cancelar_campanha: { Args: { p_campanha_id: string }; Returns: undefined }
-      estimar_publico_campanha: {
-        Args: {
-          p_tag_ids: string[]
-          p_tags_modo: Database["public"]["Enums"]["campanha_tags_modo"]
-          p_unidade_id: number
-        }
-        Returns: number
-      }
-      gatilhos_listar: {
-        Args: never
-        Returns: {
-          ativo: boolean
-          id: string
-          parametros: Json
-          tipo: string
-          unidade_id: number
-        }[]
-      }
-      gatilhos_salvar: {
-        Args: {
-          p_ativo: boolean
-          p_parametros: Json
-          p_tipo: string
-          p_unidade_id?: number
-        }
-        Returns: undefined
-      }
+      excluir_ficha: { Args: { p_ficha_id: string }; Returns: undefined }
       get_clientes: {
         Args: {
           _page?: number
@@ -1614,6 +1791,8 @@ export type Database = {
           aluguel_valor: number
           avulsa_qtd: number
           avulsa_valor: number
+          sob_medida_qtd: number
+          sob_medida_valor: number
           total_fichas: number
           total_provas: number
           total_valor: number
@@ -1636,6 +1815,8 @@ export type Database = {
           aluguel_valor: number
           avulsa_qtd: number
           avulsa_valor: number
+          sob_medida_qtd: number
+          sob_medida_valor: number
           total_fichas: number
           total_provas: number
           total_valor: number
@@ -1660,6 +1841,10 @@ export type Database = {
           avulsa_mes_passado: number
           avulsa_semestre: number
           avulsa_trimestre: number
+          sob_medida_mes_atual: number
+          sob_medida_mes_passado: number
+          sob_medida_semestre: number
+          sob_medida_trimestre: number
           total_mes_atual: number
           total_mes_passado: number
           total_semestre: number
@@ -1668,6 +1853,21 @@ export type Database = {
           venda_mes_passado: number
           venda_semestre: number
           venda_trimestre: number
+        }[]
+      }
+      get_dashboard_totalizadores: {
+        Args: { _unidade_id?: number }
+        Returns: {
+          mes_atual: number
+          mes_atual_ant: number
+          mes_passado: number
+          mes_passado_ant: number
+          previsto: number
+          semestre: number
+          semestre_ant: number
+          serie: string
+          trimestre: number
+          trimestre_ant: number
         }[]
       }
       get_ficha_log: {
@@ -1680,6 +1880,55 @@ export type Database = {
           diff: Json
           id: string
           origem: string
+        }[]
+      }
+      get_fichas: {
+        Args: {
+          p_data_fim?: string
+          p_data_inicio?: string
+          p_page?: number
+          p_page_size?: number
+          p_search?: string
+          p_tipos?: string[]
+          p_unidade_id?: number
+        }
+        Returns: {
+          avulsos: Json
+          calca: string
+          camisa: string
+          camisa_cor: string
+          camisa_fios: string
+          cliente_id: string
+          codigo_ficha: string
+          created_at: string
+          data_devolucao: string
+          data_festa: string
+          data_retirada: string
+          garantia: string
+          id: string
+          lanificio_id: string
+          lanificio_nome: string
+          nome_cliente: string
+          pago: boolean
+          paleto: string
+          paleto_categoria: string
+          paleto_cor: string
+          paleto_lanificio: string
+          pedidos: Json
+          provas_count: number
+          provas_datas: string[]
+          sapato: string
+          sapato_tipo: string
+          sob_medida: boolean
+          status: string
+          tipo: string
+          total_count: number
+          unidade_id: number
+          url_bucket: string
+          valor: string
+          valor_avulsos: number
+          vendedor_id: string
+          vendedor_nome: string
         }[]
       }
       get_fichas_cliente: {
@@ -1695,9 +1944,13 @@ export type Database = {
           data_devolucao: string
           data_festa: string
           data_retirada: string
+          garantia: string
           id: string
+          lanificio_id: string
+          lanificio_nome: string
           pago: boolean
           paleto: string
+          paleto_categoria: string
           paleto_cor: string
           paleto_lanificio: string
           pedidos: Json
@@ -1705,8 +1958,11 @@ export type Database = {
           provas_datas: string[]
           sapato: string
           sapato_tipo: string
+          sob_medida: boolean
+          status: string
           tipo: string
           unidade_id: number
+          url_bucket: string
           valor: string
           valor_avulsos: number
           vendedor_id: string
@@ -1725,8 +1981,137 @@ export type Database = {
           cliente: string
           codigo_ficha: string
           quando: string
+          sob_medida: boolean
+          tipo: string
+          url_bucket: string
+          valor: number
+        }[]
+      }
+      get_relatorio_fichas: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          calca: string
+          camisa: string
+          camisa_cor: string
+          camisa_fios: string
+          created_at: string
+          lanificio_id: string
+          lanificio_nome: string
+          paleto: string
+          paleto_categoria: string
+          paleto_cor: string
+          paleto_lanificio: string
+          sapato: string
+          sapato_tipo: string
+          sob_medida: boolean
+          tipo: string
+          unidade_id: number
+          valor: number
+          valor_calca: string
+          valor_camisa: string
+          valor_paleto: string
+          vendedor_id: string
+          vendedor_nome: string
+        }[]
+      }
+      get_relatorio_fin_mensal: {
+        Args: { _dim?: string; _unidade_id?: number }
+        Returns: {
+          ano: number
+          dim_key: string
+          dim_nome: string
+          mes: number
+          valor: number
+        }[]
+      }
+      get_relatorio_fin_por_dim: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _dim?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          dim_key: string
+          dim_nome: string
+          qtd: number
           tipo: string
           valor: number
+        }[]
+      }
+      get_relatorio_fin_por_item: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          tipo_item: string
+          valor: number
+        }[]
+      }
+      get_relatorio_fin_temporal: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _dim?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          bucket: number
+          bucket_tipo: string
+          dim_key: string
+          valor: number
+        }[]
+      }
+      get_relatorio_itens_avulsos: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          created_at: string
+          pedido_id: string
+          quantidade: number
+          tipo_item: string
+          unidade_id: number
+          valor_unitario: number
+          vendedor_id: string
+        }[]
+      }
+      get_relatorio_pecas_agg: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          chave: string
+          dimensao: string
+          quantidade: number
+          sob_medida: boolean
+          tipo: string
+          valor: number
+        }[]
+      }
+      get_relatorio_pedidos: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          created_at: string
+          id: string
+          unidade_id: number
+          valor_total: number
+          vendedor_id: string
+          vendedor_nome: string
         }[]
       }
       get_tags: {
@@ -1825,16 +2210,9 @@ export type Database = {
         }
         Returns: boolean
       }
-      iniciar_campanha: {
-        Args: { p_campanha_id: string }
-        Returns: {
-          agendado_ate: string
-          campanha_id: string
-          publico_estimado: number
-          status: Database["public"]["Enums"]["campanha_status"]
-        }[]
-      }
+      is_gestor_ou_acima: { Args: never; Returns: boolean }
       is_master_or_admin: { Args: never; Returns: boolean }
+      is_unidade_piloto: { Args: { p_unidade_id: number }; Returns: boolean }
       listar_fichas_processadas: {
         Args: {
           p_data_fim?: string
@@ -1937,12 +2315,17 @@ export type Database = {
           nome: string
         }[]
       }
+      marcar_ficha_paga: { Args: { p_ficha_id: string }; Returns: undefined }
       next_business_time: { Args: { p_ts: string }; Returns: string }
       normalize_phone: { Args: { input: string }; Returns: string }
+      parse_valor_ptbr: { Args: { _v: string }; Returns: number }
       parse_valor_to_numeric: { Args: { v: string }; Returns: number }
-      reagendar_disparos_campanha: {
-        Args: { p_campanha_id: string }
-        Returns: number
+      precos_estimados_itens_avulsos: {
+        Args: never
+        Returns: {
+          preco: number
+          tipo_item: string
+        }[]
       }
       relatorio_diario_londrina: {
         Args: never
@@ -2016,6 +2399,36 @@ export type Database = {
         Args: { _is_teste: boolean; _user_id: string }
         Returns: undefined
       }
+      tipos_atividade_listar: {
+        Args: never
+        Returns: {
+          ativo: boolean
+          created_at: string
+          exige_cliente: boolean
+          id: string
+          nome: string
+          ordem: number
+          slug: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "tipos_atividade"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      tipos_atividade_salvar: {
+        Args: {
+          p_ativo?: boolean
+          p_exige_cliente?: boolean
+          p_id: string
+          p_nome: string
+          p_ordem?: number
+          p_slug: string
+        }
+        Returns: string
+      }
       title_case_nome: { Args: { p_nome: string }; Returns: string }
       touch_ultimo_acesso: { Args: never; Returns: undefined }
       update_user_role: {
@@ -2037,7 +2450,6 @@ export type Database = {
         | "administrativo"
       campanha_midia_tipo: "nenhum" | "imagem" | "video"
       campanha_status: "rascunho" | "em_andamento" | "finalizada" | "cancelada"
-      campanha_tags_modo: "any" | "all"
       disparo_status: "pendente" | "enviado" | "falhou" | "cancelado"
       status_campanha:
         | "rascunho"
@@ -2192,7 +2604,6 @@ export const Constants = {
       ],
       campanha_midia_tipo: ["nenhum", "imagem", "video"],
       campanha_status: ["rascunho", "em_andamento", "finalizada", "cancelada"],
-      campanha_tags_modo: ["any", "all"],
       disparo_status: ["pendente", "enviado", "falhou", "cancelado"],
       status_campanha: [
         "rascunho",

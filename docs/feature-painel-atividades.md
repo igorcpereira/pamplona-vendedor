@@ -1,3 +1,9 @@
+> **⚠️ OBSOLETO (2026-07-24).** Este documento descreve o MVP antigo (schema `dev`,
+> `titulo`, contato avulso, gatilhos, `atividades_atualizar_status`) — tudo **dropado**
+> pela migration `20260724140000_atividades_v1_limpeza.sql`. O modelo vigente (v1) está
+> nas migrations `20260724140100+` (pamplona-crm/supabase/migrations) e
+> `20260727200000_atividades_listar_unidade.sql` (pamplona-db). Front migrado em 2026-07-28.
+
 # Feature: Painel de Atividades (Agenda do Vendedor)
 
 **Branch:** `desenvolvimento`

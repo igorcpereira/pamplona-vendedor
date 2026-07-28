@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Phone, User, Clock, Sparkles, X, Loader2, MessageCircle } from "lucide-react";
+import { Check, Phone, User, Clock, Loader2, MessageCircle } from "lucide-react";
 import { parseISO } from "date-fns";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import type { Atividade, AtividadeStatus } from "@/hooks/useAtividades";
+import type { Atividade } from "@/hooks/useAtividades";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Props {
   atividade: Atividade;
-  onStatus: (status: AtividadeStatus) => void;
+  onConcluir: () => void;
   onAdiar: (novaData: string) => void;
   isUpdating?: boolean;
 }
@@ -26,19 +26,21 @@ const formatTelefone = (telefone: string | null): string | null => {
   return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
 };
 
+// `cancelada` fica: o vendedor não cancela (só conclui ou adia), mas a gestão
+// ainda cancela pelo CRM — e a atividade cancelada precisa aparecer certa no
+// filtro "Todas". `atrasada` vem do status_visivel calculado no servidor.
 const statusBadge: Record<string, { label: string; className: string }> = {
-  pendente: { label: "Pendente", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
-  feita: { label: "Feita", className: "bg-green-500/15 text-green-600 dark:text-green-400" },
-  adiada: { label: "Adiada", className: "bg-blue-500/15 text-blue-600 dark:text-blue-400" },
+  a_fazer: { label: "Pendente", className: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+  atrasada: { label: "Atrasada", className: "bg-destructive/15 text-destructive" },
+  concluida: { label: "Concluída", className: "bg-green-500/15 text-green-600 dark:text-green-400" },
   cancelada: { label: "Cancelada", className: "bg-muted text-muted-foreground" },
 };
 
-const AtividadeCard = ({ atividade, onStatus, onAdiar, isUpdating }: Props) => {
-  const contatoNome = atividade.cliente_nome || atividade.nome_contato;
-  const telefoneRaw = (atividade.telefone_contato || atividade.cliente_telefone || "").replace(/\D/g, "");
+const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) => {
+  const telefoneRaw = (atividade.cliente_telefone ?? "").replace(/\D/g, "");
   const telefone = telefoneRaw ? formatTelefone(telefoneRaw) : null;
-  const concluida = atividade.status === "feita" || atividade.status === "cancelada";
-  const badge = statusBadge[atividade.status] ?? statusBadge.pendente;
+  const encerrada = atividade.status === "concluida" || atividade.status === "cancelada";
+  const badge = statusBadge[atividade.status_visivel] ?? statusBadge.a_fazer;
 
   const [adiarOpen, setAdiarOpen] = useState(false);
   const [novaData, setNovaData] = useState<Date | undefined>();
@@ -55,34 +57,29 @@ const AtividadeCard = ({ atividade, onStatus, onAdiar, isUpdating }: Props) => {
   };
 
   return (
-    <Card className={cn("p-4", concluida && "opacity-60")}>
+    <Card className={cn("p-4", encerrada && "opacity-60")}>
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className={cn("font-semibold text-foreground", atividade.status === "feita" && "line-through")}>
-              {atividade.titulo}
+            <h4 className={cn("font-semibold text-foreground", atividade.status === "concluida" && "line-through")}>
+              {atividade.cliente_nome ?? atividade.tipo_nome}
             </h4>
             <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", badge.className)}>
               {badge.label}
             </Badge>
-            {atividade.origem === "gatilho" && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1">
-                <Sparkles className="h-2.5 w-2.5" />
-                Automática
-              </Badge>
-            )}
           </div>
+
+          {atividade.cliente_nome && (
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+              <User className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{atividade.tipo_nome}</span>
+            </div>
+          )}
 
           {atividade.descricao && (
             <p className="text-sm text-muted-foreground mt-1">{atividade.descricao}</p>
           )}
 
-          {contatoNome && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
-              <User className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{contatoNome}</span>
-            </div>
-          )}
           {telefone && (
             <div className="flex items-center gap-2 mt-2">
               <a
@@ -107,14 +104,14 @@ const AtividadeCard = ({ atividade, onStatus, onAdiar, isUpdating }: Props) => {
         </div>
 
         {/* Ações fixas (ícones) */}
-        {!concluida && (
+        {!encerrada && (
           <div className="flex shrink-0 gap-1.5">
             <Button
               type="button"
               size="icon"
               className="h-9 w-9 rounded-full bg-green-600 text-white hover:bg-green-700"
               disabled={isUpdating}
-              onClick={() => onStatus("feita")}
+              onClick={onConcluir}
               title="Concluir"
               aria-label="Concluir"
             >
@@ -132,18 +129,6 @@ const AtividadeCard = ({ atividade, onStatus, onAdiar, isUpdating }: Props) => {
             >
               <Clock className="h-4 w-4" />
             </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-9 w-9 rounded-full text-destructive border-destructive/40 hover:bg-destructive/10"
-              disabled={isUpdating}
-              onClick={() => onStatus("cancelada")}
-              title="Cancelar"
-              aria-label="Cancelar"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
         )}
       </div>
@@ -152,7 +137,9 @@ const AtividadeCard = ({ atividade, onStatus, onAdiar, isUpdating }: Props) => {
       <Dialog open={adiarOpen} onOpenChange={setAdiarOpen}>
         <DialogContent className="max-w-xs">
           <DialogTitle>Adiar atividade</DialogTitle>
-          <DialogDescription>Escolha a nova data para “{atividade.titulo}”.</DialogDescription>
+          <DialogDescription>
+            Escolha a nova data para “{atividade.cliente_nome ?? atividade.tipo_nome}”.
+          </DialogDescription>
           <div className="flex justify-center">
             <Calendar
               mode="single"

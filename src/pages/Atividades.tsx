@@ -1,36 +1,30 @@
 import { useMemo, useState } from "react";
 import { Plus, CalendarCheck2, Loader2 } from "lucide-react";
-import { parseISO, isToday, isTomorrow, isThisWeek, isBefore, startOfToday } from "date-fns";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { useAtividades, useAtualizarStatusAtividade, useAdiarAtividade, type Atividade, type AtividadeStatus } from "@/hooks/useAtividades";
+import { useAtividades, useConcluirAtividade, useAdiarAtividade, type Atividade } from "@/hooks/useAtividades";
+import { GRUPOS, grupoDe, hojeISO, somaDiasISO, type Grupo } from "@/lib/atividades";
 import AtividadeCard from "@/components/atividades/AtividadeCard";
 import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
 
 type Filtro = "ativas" | "todas";
 
-const GRUPOS = ["Atrasadas", "Hoje", "Amanhã", "Esta semana", "Mais tarde"] as const;
-type Grupo = (typeof GRUPOS)[number];
-
-const grupoDaData = (dataStr: string): Grupo => {
-  const d = parseISO(dataStr);
-  if (isToday(d)) return "Hoje";
-  if (isTomorrow(d)) return "Amanhã";
-  if (isBefore(d, startOfToday())) return "Atrasadas";
-  if (isThisWeek(d, { weekStartsOn: 1 })) return "Esta semana";
-  return "Mais tarde";
-};
-
 const Atividades = () => {
   const [filtro, setFiltro] = useState<Filtro>("ativas");
   const [dialogAberto, setDialogAberto] = useState(false);
+  const hoje = hojeISO();
 
-  const { data: atividades = [], isLoading } = useAtividades();
-  const atualizarStatus = useAtualizarStatusAtividade();
+  // "Ativas" = uma chamada só (o status_visivel separa as atrasadas).
+  // "Todas" inclui concluídas/canceladas — janela de 30 dias para não
+  // esbarrar no LIMIT 500 do servidor.
+  const { data: atividades = [], isLoading } = useAtividades(
+    filtro === "ativas" ? { status: "a_fazer" } : { de: somaDiasISO(hoje, -30) },
+  );
+  const concluir = useConcluirAtividade();
   const adiar = useAdiarAtividade();
 
   const onError = (err: unknown) =>
@@ -40,8 +34,8 @@ const Atividades = () => {
       variant: "destructive",
     });
 
-  const handleStatus = (id: string, status: AtividadeStatus) => {
-    atualizarStatus.mutate({ id, status }, { onError });
+  const handleConcluir = (id: string) => {
+    concluir.mutate({ id }, { onError });
   };
 
   const handleAdiar = (id: string, novaData: string) => {
@@ -54,22 +48,15 @@ const Atividades = () => {
     );
   };
 
-  const visiveis = useMemo(() => {
-    if (filtro === "ativas") {
-      return atividades.filter((a) => a.status === "pendente" || a.status === "adiada");
-    }
-    return atividades;
-  }, [atividades, filtro]);
-
   const grupos = useMemo(() => {
     const map = new Map<Grupo, Atividade[]>();
-    for (const a of visiveis) {
-      const g = grupoDaData(a.data);
+    for (const a of atividades) {
+      const g = grupoDe(a, hoje);
       if (!map.has(g)) map.set(g, []);
       map.get(g)!.push(a);
     }
     return GRUPOS.map((g) => ({ grupo: g, itens: map.get(g) ?? [] })).filter((x) => x.itens.length > 0);
-  }, [visiveis]);
+  }, [atividades, hoje]);
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
@@ -134,9 +121,9 @@ const Atividades = () => {
                   <AtividadeCard
                     key={a.id}
                     atividade={a}
-                    onStatus={(status) => handleStatus(a.id, status)}
+                    onConcluir={() => handleConcluir(a.id)}
                     onAdiar={(novaData) => handleAdiar(a.id, novaData)}
-                    isUpdating={atualizarStatus.isPending || adiar.isPending}
+                    isUpdating={concluir.isPending || adiar.isPending}
                   />
                 ))}
               </div>

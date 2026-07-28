@@ -204,10 +204,14 @@ Quem aponta para quem (FKs principais): `fichas.cliente_id→clientes`,
 `get_whatsapp_conversations_by_phone` `SD`, `get_whatsapp_messages_by_phone` `SD`,
 `normalize_phone`.
 
-### Atividades (feature em dev; API no public)
-`atividades_listar` `SD`, `atividades_criar` `SD` (fan-out), `atividades_atualizar_status` `SD`,
-`gatilhos_listar` `SD`, `gatilhos_salvar` `SD`, `atividades_gerar` `SD`
-(roda `dev.gerar_atividades`). Escopo: global vê tudo; não-global preso à unidade.
+### Atividades (modelo v1 — migrations `20260724140000+` no pamplona-crm e `20260727200000` no pamplona-db)
+`atividades_listar` `SD` (com `p_unidade_id` e `status_visivel`), `atividades_criar` `SD`
+(fan-out por responsável; retorna `grupo_id`), `atividades_concluir` `SD`,
+`atividades_adiar` `SD`, `atividades_cancelar` `SD`, `atividades_reatribuir` `SD` (só
+cargo global), `tipos_atividade_listar` `SD`, `tipos_atividade_salvar` `SD` (master/admin),
+`atividade_historico_cliente` `SD`. Escopo: vendedor só vê/age nas próprias.
+> O MVP antigo (schema `dev`, `atividades_atualizar_status`, `gatilhos_*`,
+> `atividades_gerar`) foi **dropado em 2026-07-24** (`20260724140000_atividades_v1_limpeza`).
 
 ### Admin de usuários
 `add_user_role`, `remove_user_role`, `update_user_role`, `set_user_ativo` (todas `SD`,
