@@ -106,12 +106,11 @@ Convenção: 🔑 PK, → FK. Datas `created_at/updated_at` (timestamptz) onde e
 | **whatsapp_auto_messages** | 🔑`id`, `profile_id`→profiles, `nome`, `mensagem`, `ativo` | Respostas automáticas por usuário. |
 | **whatsapp_mensagens_automaticas** | 🔑`id`, `unit_id`, `tipo` (boas_vindas/valorizacao), `mensagem`, `ativo` | Mensagens automáticas por unidade. |
 
-### 3.6 Atividades (v1 — no `public`; piloto Maringá)
+### 3.6 Atividades (feature em `dev` — ver §8)
 | Tabela | Colunas | Notas |
 |---|---|---|
-| **tipos_atividade** | 🔑`id`, `slug` (unique), `nome`, `exige_cliente` (bool), `ativo`, `ordem` | Catálogo cadastrável (Registros no CRM). Seed: casamento/sob_medida/aluguel/pedido_avulso/lembrete. |
-| **atividades** | 🔑`id`, `tipo_id`→tipos_atividade, `cliente_id`→clientes (null), `responsavel_id`→profiles (NOT NULL), `data`, `status` (a_fazer/concluida/cancelada), `descricao`, `ficha_id`→fichas (null), `pedido_id`→pedidos (null), `unidade_id`, `grupo_id`, `created_by` | Próximo contato. `atrasada` é **derivado** (a_fazer + data passada). |
-| **atividade_eventos** | 🔑`id`, `atividade_id`→atividades, `acao` (criada/concluida/adiada/cancelada/reatribuida), `autor_id`, `observacao`, `data_anterior`/`data_nova`, `resp_anterior`/`resp_novo`, `created_at` | Auditoria **append-only** (RLS nega UPDATE/DELETE). |
+| **dev.gatilhos** | 🔑`id`, `tipo`, `ativo`, `parametros` (jsonb), `unidade_id` (null=global), UNIQUE(tipo,unidade_id) | Regras configuráveis (catálogo de 6 tipos). |
+| **dev.atividades** | 🔑`id`, `titulo`, `descricao`, `data`, `status` (pendente/feita/adiada/cancelada), `origem` (manual/gatilho), `gatilho_id`→dev.gatilhos, `grupo_id`, `responsavel_id`→profiles (NOT NULL), `created_by`, `cliente_id`→clientes, `nome_contato`/`telefone_contato`, `unidade_id` | Lembrete interno (não envia nada). Reunião = 1 cópia por responsável (mesmo `grupo_id`). |
 
 ### 3.7 Auxiliares / infraestrutura
 | Tabela | Para quê |
@@ -161,7 +160,7 @@ campanhas ──< campanha_tags >── tags
 
 clientes ──< historico_whatsapp        (client_id; setado por trigger)
 
-tipos_atividade ──< atividades ──< atividade_eventos ;  atividades ──→ (clientes | profiles | fichas | pedidos | unidades)
+dev.gatilhos ──< dev.atividades ──→ (clientes | profiles | unidades)
 ```
 
 Quem aponta para quem (FKs principais): `fichas.cliente_id→clientes`,
@@ -205,12 +204,14 @@ Quem aponta para quem (FKs principais): `fichas.cliente_id→clientes`,
 `get_whatsapp_conversations_by_phone` `SD`, `get_whatsapp_messages_by_phone` `SD`,
 `normalize_phone`.
 
-### Atividades v1 (no public)
-`atividades_listar` `SD` (enriquecida + `status_visivel`), `atividades_criar` `SD` (fan-out;
-atribuição no servidor), `atividades_concluir`/`atividades_adiar`/`atividades_cancelar` `SD`,
-`atividades_reatribuir` `SD` (gestor+), `tipos_atividade_listar` `SD`,
-`tipos_atividade_salvar` `SD` (master/admin), `atividade_historico_cliente` `SD`
-Escopo: vendedor só as próprias; gestor+ tudo (filtra por vendedor). Piloto restrito a Maringá.
+### Atividades (modelo v1 — migrations `20260724140000+` no pamplona-crm e `20260727200000` no pamplona-db)
+`atividades_listar` `SD` (com `p_unidade_id` e `status_visivel`), `atividades_criar` `SD`
+(fan-out por responsável; retorna `grupo_id`), `atividades_concluir` `SD`,
+`atividades_adiar` `SD`, `atividades_cancelar` `SD`, `atividades_reatribuir` `SD` (só
+cargo global), `tipos_atividade_listar` `SD`, `tipos_atividade_salvar` `SD` (master/admin),
+`atividade_historico_cliente` `SD`. Escopo: vendedor só vê/age nas próprias.
+> O MVP antigo (schema `dev`, `atividades_atualizar_status`, `gatilhos_*`,
+> `atividades_gerar`) foi **dropado em 2026-07-24** (`20260724140000_atividades_v1_limpeza`).
 
 ### Admin de usuários
 `add_user_role`, `remove_user_role`, `update_user_role`, `set_user_ativo` (todas `SD`,
@@ -234,9 +235,8 @@ master/admin).
 | **campanhas / disparos / vendas_atribuidas** | master/admin/gestor (global) ou própria unidade | conforme cargo (ver migrations de campanhas) |
 | **historico_whatsapp** | aberto a authenticated | aberto a authenticated |
 | **clientes_import** | só master/admin | só master/admin |
-| **atividades** | responsável; ou (não-vendedor) `can_access_unidade` | só via RPCs `SD` |
-| **atividade_eventos** | via atividade acessível | **append-only** (sem UPDATE/DELETE) |
-| **tipos_atividade** | authenticated | master/admin |
+| **dev.atividades** | responsável ou `can_access_unidade` | franqueado+ / responsável |
+| **dev.gatilhos** | (via RPC) | franqueado+ |
 
 > A maioria das RPCs é `SD` e **ignora a RLS** — quem garante o escopo é a própria função.
 > Por isso o vendedor, ao usar telas que chamam RPCs, vê o que a RPC permitir (ex.: get_clientes
@@ -244,12 +244,14 @@ master/admin).
 
 ---
 
-## 8. Atividades v1 — RPCs (no `public`)
+## 8. Schema `dev` (feature Atividades, ainda não promovida)
 
-O schema `dev` foi **removido** (o MVP antigo de gatilhos foi descartado). A feature vive toda no
-`public` (tabelas `tipos_atividade`, `atividades`, `atividade_eventos` + RPCs `SECURITY DEFINER`).
-App vendedor (página Início) consome as RPCs; CRM só hospeda o cadastro de tipos (Registros).
-`fichas.is_noivo` permanece (reservado à fase 2). Ver `docs/feature-painel-atividades.md`.
+- Tabelas `dev.atividades` e `dev.gatilhos` + funções `dev.gerar_atividades`, `dev._intervalo`
+  vivem em `dev` (isolado, **não exposto no PostgREST**).
+- O frontend acessa via **RPCs no `public`** (`atividades_*`, `gatilhos_*`) que leem/escrevem
+  `dev.*` por dentro.
+- DDL completo e receita de promoção (`ALTER … SET SCHEMA public`) em
+  `supabase/dev/atividades_dev.sql`. Único toque no `public` até agora: coluna `fichas.is_noivo`.
 
 ---
 

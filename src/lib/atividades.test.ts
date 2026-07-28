@@ -1,165 +1,84 @@
 import { describe, it, expect } from "vitest";
-import { addDays, format } from "date-fns";
 import {
-  statusVisivel,
-  clienteObrigatorio,
-  podeCriarParaOutro,
-  podeReatribuir,
-  podeVerEquipe,
-  responsavelEfetivo,
-  podeAcessarAtividades,
-  grupoDaData,
-  validarNovaAtividade,
-  semErros,
-  UNIDADE_PILOTO_MARINGA,
+  hojeISO,
+  somaDiasISO,
+  dataCurta,
+  grupoDe,
+  proximoDiaUtilISO,
+  DATAS_RAPIDAS,
+  GRUPOS,
 } from "./atividades";
 
-const SELF = "00000000-0000-0000-0000-00000000aaaa";
-const OUTRO = "00000000-0000-0000-0000-00000000bbbb";
-const HOJE = "2026-07-24";
-const ONTEM = "2026-07-23";
-const AMANHA = "2026-07-25";
+const HOJE = "2026-07-28"; // terça-feira
 
-describe("statusVisivel (deriva 'atrasada')", () => {
-  it("a_fazer com data de ontem → atrasada", () => {
-    expect(statusVisivel("a_fazer", ONTEM, HOJE)).toBe("atrasada");
+describe("somaDiasISO (aritmética sem fuso)", () => {
+  it("soma dias simples", () => {
+    expect(somaDiasISO(HOJE, 1)).toBe("2026-07-29");
   });
-  it("a_fazer com data de hoje → a_fazer", () => {
-    expect(statusVisivel("a_fazer", HOJE, HOJE)).toBe("a_fazer");
+  it("vira o mês", () => {
+    expect(somaDiasISO(HOJE, 6)).toBe("2026-08-03");
   });
-  it("a_fazer com data de amanhã → a_fazer", () => {
-    expect(statusVisivel("a_fazer", AMANHA, HOJE)).toBe("a_fazer");
+  it("vira o ano", () => {
+    expect(somaDiasISO("2026-12-31", 1)).toBe("2027-01-01");
   });
-  it("concluída com data passada → concluída (nunca atrasada)", () => {
-    expect(statusVisivel("concluida", ONTEM, HOJE)).toBe("concluida");
-  });
-  it("cancelada → cancelada", () => {
-    expect(statusVisivel("cancelada", ONTEM, HOJE)).toBe("cancelada");
+  it("subtrai", () => {
+    expect(somaDiasISO("2026-08-01", -1)).toBe("2026-07-31");
   });
 });
 
-describe("clienteObrigatorio", () => {
-  it("lembrete → false", () => {
-    expect(clienteObrigatorio({ slug: "lembrete" })).toBe(false);
+describe("proximoDiaUtilISO (sábado é dia útil; domingo → segunda)", () => {
+  it("sábado fica sábado", () => {
+    expect(proximoDiaUtilISO("2026-08-01")).toBe("2026-08-01"); // sáb
   });
-  it("demais tipos → true", () => {
-    for (const slug of ["casamento", "sob_medida", "aluguel", "pedido_avulso"]) {
-      expect(clienteObrigatorio({ slug })).toBe(true);
+  it("domingo rola para segunda", () => {
+    expect(proximoDiaUtilISO("2026-08-02")).toBe("2026-08-03"); // dom → seg
+  });
+  it("dia de semana fica igual", () => {
+    expect(proximoDiaUtilISO("2026-07-28")).toBe("2026-07-28"); // ter
+  });
+});
+
+describe("DATAS_RAPIDAS resolvidas a partir de uma terça", () => {
+  it("nenhum preset cai em domingo", () => {
+    for (const a of DATAS_RAPIDAS) {
+      const iso = proximoDiaUtilISO(somaDiasISO(HOJE, a.dias));
+      const [ano, m, d] = iso.split("-").map(Number);
+      expect(new Date(Date.UTC(ano, m - 1, d)).getUTCDay()).not.toBe(0);
     }
   });
-  it("honra exige_cliente vindo do banco", () => {
-    expect(clienteObrigatorio({ slug: "lembrete", exige_cliente: true })).toBe(true);
-    expect(clienteObrigatorio({ slug: "aluguel", exige_cliente: false })).toBe(false);
-  });
-  it("tipo nulo → false", () => {
-    expect(clienteObrigatorio(null)).toBe(false);
+  it("sábado + 1 dia (amanhã) rola para segunda", () => {
+    // sábado 2026-08-01 + 1 = domingo → segunda 03/08
+    expect(proximoDiaUtilISO(somaDiasISO("2026-08-01", 1))).toBe("2026-08-03");
   });
 });
 
-describe("permissões por cargo", () => {
-  it("gestor/admin/master podem criar p/ outro, reatribuir e ver equipe", () => {
-    for (const role of ["gestor", "admin", "master"]) {
-      expect(podeCriarParaOutro(role)).toBe(true);
-      expect(podeReatribuir(role)).toBe(true);
-      expect(podeVerEquipe(role)).toBe(true);
-    }
+describe("grupoDe (usa status_visivel do servidor + datas ISO)", () => {
+  const base = { status_visivel: "a_fazer" as const };
+  it("atrasada vem do servidor, não da data", () => {
+    expect(grupoDe({ data: "2099-01-01", status_visivel: "atrasada" }, HOJE)).toBe("Atrasadas");
   });
-  it("vendedor/franqueado/administrativo não podem", () => {
-    for (const role of ["vendedor", "franqueado", "administrativo"]) {
-      expect(podeCriarParaOutro(role)).toBe(false);
-      expect(podeReatribuir(role)).toBe(false);
-      expect(podeVerEquipe(role)).toBe(false);
-    }
+  it("hoje", () => {
+    expect(grupoDe({ ...base, data: HOJE }, HOJE)).toBe("Hoje");
   });
-});
-
-describe("responsavelEfetivo", () => {
-  it("cargo global com escolhido → usa o escolhido", () => {
-    expect(responsavelEfetivo("gestor", SELF, OUTRO)).toBe(OUTRO);
+  it("amanhã", () => {
+    expect(grupoDe({ ...base, data: "2026-07-29" }, HOJE)).toBe("Amanhã");
   });
-  it("cargo global sem escolhido → self", () => {
-    expect(responsavelEfetivo("gestor", SELF, null)).toBe(SELF);
+  it("dentro de 7 dias → Esta semana", () => {
+    expect(grupoDe({ ...base, data: "2026-08-04" }, HOJE)).toBe("Esta semana");
   });
-  it("vendedor tentando escolher outro → FORÇA self", () => {
-    expect(responsavelEfetivo("vendedor", SELF, OUTRO)).toBe(SELF);
+  it("além de 7 dias → Mais tarde", () => {
+    expect(grupoDe({ ...base, data: "2026-08-05" }, HOJE)).toBe("Mais tarde");
+  });
+  it("GRUPOS cobre os 5 rótulos na ordem da tela", () => {
+    expect(GRUPOS).toEqual(["Atrasadas", "Hoje", "Amanhã", "Esta semana", "Mais tarde"]);
   });
 });
 
-describe("podeAcessarAtividades (gating do piloto)", () => {
-  it("vendedor de Maringá → true", () => {
-    expect(podeAcessarAtividades({ role: "vendedor", unidadeId: UNIDADE_PILOTO_MARINGA })).toBe(true);
+describe("formatação", () => {
+  it("dataCurta", () => {
+    expect(dataCurta("2026-07-28")).toBe("28/07");
   });
-  it("vendedor de outra unidade → false", () => {
-    expect(podeAcessarAtividades({ role: "vendedor", unidadeId: 99 })).toBe(false);
-  });
-  it("franqueado/administrativo de outra unidade → false", () => {
-    expect(podeAcessarAtividades({ role: "franqueado", unidadeId: 99 })).toBe(false);
-    expect(podeAcessarAtividades({ role: "administrativo", unidadeId: 99 })).toBe(false);
-  });
-  it("cargos globais → sempre true, mesmo fora de Maringá", () => {
-    for (const role of ["gestor", "admin", "master"]) {
-      expect(podeAcessarAtividades({ role, unidadeId: 99 })).toBe(true);
-    }
-  });
-});
-
-describe("grupoDaData", () => {
-  it("ontem → Atrasadas", () => {
-    expect(grupoDaData(ONTEM, HOJE)).toBe("Atrasadas");
-  });
-  it("hoje → Hoje", () => {
-    expect(grupoDaData(HOJE, HOJE)).toBe("Hoje");
-  });
-  it("amanhã → Amanhã", () => {
-    expect(grupoDaData(AMANHA, HOJE)).toBe("Amanhã");
-  });
-  it("dentro da mesma semana (Seg–Dom) → Esta semana", () => {
-    const seg = "2026-07-20"; // segunda-feira
-    const qui = "2026-07-23"; // mesma semana, +3
-    expect(grupoDaData(qui, seg)).toBe("Esta semana");
-  });
-  it("depois do fim da semana → Mais tarde", () => {
-    const seg = "2026-07-20";
-    const proxSeg = format(addDays(new Date(2026, 6, 20), 7), "yyyy-MM-dd"); // +7 = próxima semana
-    expect(grupoDaData(proxSeg, seg)).toBe("Mais tarde");
-  });
-  it("+30 dias → Mais tarde", () => {
-    const daqui30 = format(addDays(new Date(2026, 6, 24), 30), "yyyy-MM-dd");
-    expect(grupoDaData(daqui30, HOJE)).toBe("Mais tarde");
-  });
-});
-
-describe("validarNovaAtividade", () => {
-  const tipoCasamento = { slug: "casamento" };
-  const tipoLembrete = { slug: "lembrete" };
-
-  it("caso feliz (tipo com cliente) → sem erros", () => {
-    const erros = validarNovaAtividade({
-      tipo: tipoCasamento,
-      data: HOJE,
-      clienteId: "c1",
-      responsavelId: SELF,
-    });
-    expect(semErros(erros)).toBe(true);
-  });
-  it("lembrete sem cliente → sem erros", () => {
-    const erros = validarNovaAtividade({ tipo: tipoLembrete, data: HOJE, responsavelId: SELF });
-    expect(semErros(erros)).toBe(true);
-  });
-  it("tipo ≠ lembrete sem cliente → erro de cliente", () => {
-    const erros = validarNovaAtividade({ tipo: tipoCasamento, data: HOJE, responsavelId: SELF });
-    expect(erros.cliente).toBeTruthy();
-  });
-  it("sem tipo → erro de tipo", () => {
-    const erros = validarNovaAtividade({ data: HOJE, responsavelId: SELF });
-    expect(erros.tipo).toBeTruthy();
-  });
-  it("sem data → erro de data", () => {
-    const erros = validarNovaAtividade({ tipo: tipoLembrete, responsavelId: SELF });
-    expect(erros.data).toBeTruthy();
-  });
-  it("sem responsável → erro de responsável", () => {
-    const erros = validarNovaAtividade({ tipo: tipoLembrete, data: HOJE });
-    expect(erros.responsavel).toBeTruthy();
+  it("hojeISO devolve YYYY-MM-DD", () => {
+    expect(hojeISO()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

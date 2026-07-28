@@ -3,31 +3,53 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Database } from "@/integrations/supabase/types";
 
-// Linha enriquecida retornada por atividades_listar (RPC SECURITY DEFINER).
+// Linha retornada por atividades_listar (modelo v1, o mesmo do kanban do CRM).
 export type Atividade =
   Database["public"]["Functions"]["atividades_listar"]["Returns"][number];
 
-const KEY = "atividades";
-
-export interface AtividadeFiltros {
-  status?: string | null; // 'a_fazer' | 'concluida' | 'cancelada' | 'atrasada'
-  de?: string | null; // YYYY-MM-DD
-  ate?: string | null;
-  responsavelId?: string | null;
-  clienteId?: string | null;
+export interface TipoAtividadeAtivo {
+  id: string;
+  slug: string;
+  nome: string;
+  exige_cliente: boolean;
 }
 
-export function useAtividades(f: AtividadeFiltros = {}) {
+const ATIVIDADES_KEY = "atividades";
+
+/** Tipos ativos, para o seletor da criação. */
+export function useTiposAtividadeAtivos() {
+  return useQuery({
+    queryKey: ["tipos-atividade-ativos"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("tipos_atividade_listar");
+      if (error) throw error;
+      return (data ?? []) as TipoAtividadeAtivo[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+interface ListarFiltros {
+  status?: string | null;
+  de?: string | null; // YYYY-MM-DD
+}
+
+/**
+ * Sempre com `p_responsavel_id = user.id`: a página é "Minha agenda", e para um
+ * cargo global (a rota hoje é só master) a RPC devolveria a equipe inteira sem
+ * esse filtro. Para role vendedor o servidor já força o próprio uid de qualquer
+ * jeito. O `status_visivel` vem calculado do servidor (fuso de São Paulo).
+ */
+export function useAtividades(filtros: ListarFiltros = {}) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: [KEY, user?.id, f.status ?? null, f.de ?? null, f.ate ?? null, f.responsavelId ?? null, f.clienteId ?? null],
-    queryFn: async (): Promise<Atividade[]> => {
+    queryKey: [ATIVIDADES_KEY, user?.id, filtros.status ?? null, filtros.de ?? null],
+    queryFn: async () => {
+      if (!user?.id) return [] as Atividade[];
       const { data, error } = await supabase.rpc("atividades_listar", {
-        p_status: f.status ?? undefined,
-        p_de: f.de ?? undefined,
-        p_ate: f.ate ?? undefined,
-        p_responsavel_id: f.responsavelId ?? undefined,
-        p_cliente_id: f.clienteId ?? undefined,
+        p_responsavel_id: user.id,
+        p_status: filtros.status ?? undefined,
+        p_de: filtros.de ?? undefined,
       });
       if (error) throw error;
       return (data ?? []) as Atividade[];
@@ -37,51 +59,29 @@ export function useAtividades(f: AtividadeFiltros = {}) {
   });
 }
 
-export interface CriarAtividadeInput {
-  tipoId: string;
-  data: string; // YYYY-MM-DD
-  responsaveis?: string[] | null; // ignorado pelo servidor p/ cargos não-globais
-  clienteId?: string | null;
-  descricao?: string | null;
-  fichaId?: string | null;
-  pedidoId?: string | null;
-  unidadeId?: number | null;
-}
-
-export function useCriarAtividade() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (i: CriarAtividadeInput) => {
-      const { data, error } = await supabase.rpc("atividades_criar", {
-        p_tipo_id: i.tipoId,
-        p_data: i.data,
-        p_responsaveis: i.responsaveis ?? undefined,
-        p_cliente_id: i.clienteId ?? undefined,
-        p_descricao: i.descricao ?? undefined,
-        p_ficha_id: i.fichaId ?? undefined,
-        p_pedido_id: i.pedidoId ?? undefined,
-        p_unidade_id: i.unidadeId ?? undefined,
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
-  });
+/** Invalida a agenda inteira depois de qualquer mutação. */
+function useInvalidarAtividades() {
+  const queryClient = useQueryClient();
+  return () => queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
 }
 
 export function useConcluirAtividade() {
-  const qc = useQueryClient();
+  const invalidar = useInvalidarAtividades();
   return useMutation({
     mutationFn: async ({ id, obs }: { id: string; obs?: string | null }) => {
-      const { error } = await supabase.rpc("atividades_concluir", { p_id: id, p_obs: obs ?? undefined });
+      const { error } = await supabase.rpc("atividades_concluir", {
+        p_id: id,
+        p_obs: obs ?? undefined,
+      });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: invalidar,
   });
 }
 
+/** Reagenda para uma nova data (re-abre a atividade se estava encerrada). */
 export function useAdiarAtividade() {
-  const qc = useQueryClient();
+  const invalidar = useInvalidarAtividades();
   return useMutation({
     mutationFn: async ({ id, novaData, obs }: { id: string; novaData: string; obs?: string | null }) => {
       const { error } = await supabase.rpc("atividades_adiar", {
@@ -91,28 +91,36 @@ export function useAdiarAtividade() {
       });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: invalidar,
   });
 }
 
-export function useCancelarAtividade() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, motivo }: { id: string; motivo?: string | null }) => {
-      const { error } = await supabase.rpc("atividades_cancelar", { p_id: id, p_motivo: motivo ?? undefined });
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
-  });
+interface CriarAtividadeInput {
+  tipoId: string;
+  data: string; // YYYY-MM-DD
+  clienteId?: string | null;
+  descricao?: string | null;
 }
 
-export function useReatribuirAtividade() {
-  const qc = useQueryClient();
+/**
+ * Cria uma atividade para o próprio usuário. `p_responsaveis` e `p_unidade_id`
+ * ficam de fora de propósito: o servidor força o criador como responsável e a
+ * unidade sai de `profiles.unidade_id` (que o selectUnidade do AuthContext
+ * mantém em dia). O retorno é o grupo_id, não o id da atividade.
+ */
+export function useCriarAtividade() {
+  const invalidar = useInvalidarAtividades();
   return useMutation({
-    mutationFn: async ({ id, responsavelId }: { id: string; responsavelId: string }) => {
-      const { error } = await supabase.rpc("atividades_reatribuir", { p_id: id, p_responsavel_id: responsavelId });
+    mutationFn: async (input: CriarAtividadeInput) => {
+      const { data, error } = await supabase.rpc("atividades_criar", {
+        p_tipo_id: input.tipoId,
+        p_data: input.data,
+        p_cliente_id: input.clienteId ?? undefined,
+        p_descricao: input.descricao ?? undefined,
+      });
       if (error) throw error;
+      return data as string;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+    onSuccess: invalidar,
   });
 }

@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 import AtividadeCard from "./AtividadeCard";
 import type { Atividade } from "@/hooks/useAtividades";
 
+vi.mock("@/hooks/useHistoricoCliente", () => ({
+  useHistoricoCliente: () => ({ data: [], isLoading: false }),
+}));
+
 function makeAtividade(over: Partial<Atividade> = {}): Atividade {
   return {
     id: "at-1",
@@ -31,36 +35,84 @@ function makeAtividade(over: Partial<Atividade> = {}): Atividade {
 }
 
 describe("AtividadeCard — ações", () => {
-  it("concluir chama onConcluir com a observação", async () => {
+  it("concluir chama onConcluir direto", async () => {
     const onConcluir = vi.fn();
-    render(<AtividadeCard atividade={makeAtividade()} onConcluir={onConcluir} onAdiar={vi.fn()} onCancelar={vi.fn()} />);
+    render(<AtividadeCard atividade={makeAtividade()} onConcluir={onConcluir} onAdiar={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
-    await userEvent.type(screen.getByLabelText("Observação"), "falei com cliente");
-    await userEvent.click(screen.getByRole("button", { name: /confirmar/i }));
-    expect(onConcluir).toHaveBeenCalledWith("falei com cliente");
+    expect(onConcluir).toHaveBeenCalled();
   });
 
-  it("cancelar chama onCancelar com o motivo", async () => {
-    const onCancelar = vi.fn();
-    render(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={vi.fn()} onCancelar={onCancelar} />);
-    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    await userEvent.type(screen.getByLabelText("Observação"), "desistiu");
-    await userEvent.click(screen.getByRole("button", { name: /confirmar/i }));
-    expect(onCancelar).toHaveBeenCalledWith("desistiu");
-  });
-
-  it("adiar chama onAdiar com nova data", async () => {
+  it("adiar abre o calendário e confirma com a data pré-preenchida", async () => {
     const onAdiar = vi.fn();
-    render(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={onAdiar} onCancelar={vi.fn()} />);
+    render(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={onAdiar} />);
     await userEvent.click(screen.getByRole("button", { name: "Adiar" }));
-    // sem mudar o calendário, confirma com a data pré-preenchida (2030-01-10)
-    await userEvent.click(screen.getByRole("button", { name: /confirmar/i }));
-    expect(onAdiar).toHaveBeenCalledWith("2030-01-10", null);
+    // com o mini-modal aberto há dois botões "Adiar"; o de confirmação é o último
+    const botoes = screen.getAllByRole("button", { name: "Adiar" });
+    await userEvent.click(botoes[botoes.length - 1]);
+    expect(onAdiar).toHaveBeenCalledWith("2030-01-10");
   });
 
-  it("mostra o tipo como título e o status", () => {
-    render(<AtividadeCard atividade={makeAtividade({ status_visivel: "atrasada" })} onConcluir={vi.fn()} onAdiar={vi.fn()} onCancelar={vi.fn()} />);
+  it("NÃO existe botão de cancelar (cancelar é só pelo CRM)", () => {
+    render(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Cancelar" })).not.toBeInTheDocument();
+  });
+
+  it("encerrada (concluída) esconde as ações", () => {
+    render(
+      <AtividadeCard
+        atividade={makeAtividade({ status: "concluida", status_visivel: "concluida" })}
+        onConcluir={vi.fn()}
+        onAdiar={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: "Concluir" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Adiar" })).not.toBeInTheDocument();
+    expect(screen.getByText("Concluída")).toBeInTheDocument();
+  });
+
+  it("cancelada pelo CRM renderiza em leitura com o badge", () => {
+    render(
+      <AtividadeCard
+        atividade={makeAtividade({ status: "cancelada", status_visivel: "cancelada" })}
+        onConcluir={vi.fn()}
+        onAdiar={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Cancelada")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Concluir" })).not.toBeInTheDocument();
+  });
+});
+
+describe("AtividadeCard — exibição", () => {
+  it("título é o cliente; tipo vira subtítulo; badge de atrasada", () => {
+    render(
+      <AtividadeCard
+        atividade={makeAtividade({ status_visivel: "atrasada" })}
+        onConcluir={vi.fn()}
+        onAdiar={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Fulano")).toBeInTheDocument();
     expect(screen.getByText("Casamento")).toBeInTheDocument();
     expect(screen.getByText("Atrasada")).toBeInTheDocument();
+  });
+
+  it("sem cliente, o tipo assume o título e não há botão de histórico", () => {
+    render(
+      <AtividadeCard
+        atividade={makeAtividade({ cliente_id: null, cliente_nome: null, cliente_telefone: null })}
+        onConcluir={vi.fn()}
+        onAdiar={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("heading", { name: "Casamento" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Histórico do cliente" })).not.toBeInTheDocument();
+  });
+
+  it("com cliente, o histórico abre em dialog", async () => {
+    render(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Histórico do cliente" }));
+    expect(screen.getByText("Histórico do cliente")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum histórico para este cliente.")).toBeInTheDocument();
   });
 });

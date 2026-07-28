@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useLogAcesso } from "@/hooks/useLogAcesso";
-import { podeAcessarAtividades } from "@/lib/atividades";
 import Atividades from "./pages/Atividades";
 import ResumoMes from "./pages/ResumoMes";
 import NewRegistration from "./pages/NewRegistration";
@@ -32,15 +31,12 @@ const queryClient = new QueryClient({
   },
 });
 
-// Pagina "Inicio" (agenda de Atividades) — piloto: unidade Maringá + cargos globais.
+// Pagina "Inicio" (agenda de Atividades) e restrita ao papel master.
 // Demais usuarios sao redirecionados para o Resumo do mes.
 const InicioRoute = () => {
-  const { activeUnidade } = useAuth();
-  const liberado = podeAcessarAtividades({
-    role: activeUnidade?.role,
-    unidadeId: activeUnidade?.unidade.id ?? null,
-  });
-  return liberado ? <Atividades /> : <Navigate to="/resumo" replace />;
+  const { vinculos } = useAuth();
+  const isMaster = vinculos.some((v) => v.role === "master");
+  return isMaster ? <Atividades /> : <Navigate to="/resumo" replace />;
 };
 
 // Monitoramento de uso (logs_acesso) — precisa estar dentro do Router e do AuthProvider

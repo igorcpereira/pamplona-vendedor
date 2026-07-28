@@ -169,114 +169,6 @@ export type Database = {
           },
         ]
       }
-      campanha_tags: {
-        Row: {
-          campanha_id: string
-          tag_id: string
-        }
-        Insert: {
-          campanha_id: string
-          tag_id: string
-        }
-        Update: {
-          campanha_id?: string
-          tag_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "campanha_tags_campanha_id_fkey"
-            columns: ["campanha_id"]
-            isOneToOne: false
-            referencedRelation: "campanhas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "campanha_tags_tag_id_fkey"
-            columns: ["tag_id"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      campanhas: {
-        Row: {
-          created_at: string
-          criado_por: string
-          data_fim: string
-          data_inicio: string
-          finalizada_em: string | null
-          id: string
-          iniciada_em: string | null
-          intervalo_envio_minutos: number
-          janela_atribuicao_dias: number
-          midia_tipo: Database["public"]["Enums"]["campanha_midia_tipo"]
-          midia_url: string | null
-          nome: string
-          publico_estimado: number | null
-          status: Database["public"]["Enums"]["campanha_status"]
-          tags_modo: Database["public"]["Enums"]["campanha_tags_modo"]
-          texto: string
-          unidade_id: number
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          criado_por: string
-          data_fim: string
-          data_inicio?: string
-          finalizada_em?: string | null
-          id?: string
-          iniciada_em?: string | null
-          intervalo_envio_minutos?: number
-          janela_atribuicao_dias?: number
-          midia_tipo?: Database["public"]["Enums"]["campanha_midia_tipo"]
-          midia_url?: string | null
-          nome: string
-          publico_estimado?: number | null
-          status?: Database["public"]["Enums"]["campanha_status"]
-          tags_modo?: Database["public"]["Enums"]["campanha_tags_modo"]
-          texto: string
-          unidade_id: number
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          criado_por?: string
-          data_fim?: string
-          data_inicio?: string
-          finalizada_em?: string | null
-          id?: string
-          iniciada_em?: string | null
-          intervalo_envio_minutos?: number
-          janela_atribuicao_dias?: number
-          midia_tipo?: Database["public"]["Enums"]["campanha_midia_tipo"]
-          midia_url?: string | null
-          nome?: string
-          publico_estimado?: number | null
-          status?: Database["public"]["Enums"]["campanha_status"]
-          tags_modo?: Database["public"]["Enums"]["campanha_tags_modo"]
-          texto?: string
-          unidade_id?: number
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "campanhas_criado_por_fkey"
-            columns: ["criado_por"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "campanhas_unidade_id_fkey"
-            columns: ["unidade_id"]
-            isOneToOne: false
-            referencedRelation: "unidades"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       clientes: {
         Row: {
           alterar_nome: boolean | null
@@ -395,57 +287,6 @@ export type Database = {
           responsavel?: string | null
         }
         Relationships: []
-      }
-      disparos: {
-        Row: {
-          agendado_para: string
-          campanha_id: string
-          cliente_id: string
-          created_at: string
-          enviado_em: string | null
-          erro: string | null
-          id: string
-          status: Database["public"]["Enums"]["disparo_status"]
-          wpp_msg_id: string | null
-        }
-        Insert: {
-          agendado_para: string
-          campanha_id: string
-          cliente_id: string
-          created_at?: string
-          enviado_em?: string | null
-          erro?: string | null
-          id?: string
-          status?: Database["public"]["Enums"]["disparo_status"]
-          wpp_msg_id?: string | null
-        }
-        Update: {
-          agendado_para?: string
-          campanha_id?: string
-          cliente_id?: string
-          created_at?: string
-          enviado_em?: string | null
-          erro?: string | null
-          id?: string
-          status?: Database["public"]["Enums"]["disparo_status"]
-          wpp_msg_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "disparos_campanha_id_fkey"
-            columns: ["campanha_id"]
-            isOneToOne: false
-            referencedRelation: "campanhas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "disparos_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       fichas: {
         Row: {
@@ -1611,61 +1452,6 @@ export type Database = {
           },
         ]
       }
-      vendas_atribuidas: {
-        Row: {
-          campanha_id: string
-          created_at: string
-          dias_ate_conversao: number
-          disparo_em: string
-          disparo_id: string
-          ficha_id: string | null
-          id: string
-          venda_em: string
-        }
-        Insert: {
-          campanha_id: string
-          created_at?: string
-          dias_ate_conversao: number
-          disparo_em: string
-          disparo_id: string
-          ficha_id?: string | null
-          id?: string
-          venda_em: string
-        }
-        Update: {
-          campanha_id?: string
-          created_at?: string
-          dias_ate_conversao?: number
-          disparo_em?: string
-          disparo_id?: string
-          ficha_id?: string | null
-          id?: string
-          venda_em?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendas_atribuidas_campanha_id_fkey"
-            columns: ["campanha_id"]
-            isOneToOne: false
-            referencedRelation: "campanhas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendas_atribuidas_disparo_id_fkey"
-            columns: ["disparo_id"]
-            isOneToOne: false
-            referencedRelation: "disparos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendas_atribuidas_ficha_id_fkey"
-            columns: ["ficha_id"]
-            isOneToOne: false
-            referencedRelation: "fichas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       webhooks: {
         Row: {
           created_at: string
@@ -1898,6 +1684,7 @@ export type Database = {
           p_de?: string
           p_responsavel_id?: string
           p_status?: string
+          p_unidade_id?: number
         }
         Returns: {
           cliente_id: string
@@ -1924,10 +1711,6 @@ export type Database = {
       }
       atividades_reatribuir: {
         Args: { p_id: string; p_responsavel_id: string }
-        Returns: undefined
-      }
-      atribuir_venda_campanhas: {
-        Args: { _ficha_id: string }
         Returns: undefined
       }
       atualizar_ficha: {
@@ -1974,15 +1757,6 @@ export type Database = {
       can_access_unidade: {
         Args: { _target_unidade_id: number; _user_id: string }
         Returns: boolean
-      }
-      cancelar_campanha: { Args: { p_campanha_id: string }; Returns: undefined }
-      estimar_publico_campanha: {
-        Args: {
-          p_tag_ids: string[]
-          p_tags_modo: Database["public"]["Enums"]["campanha_tags_modo"]
-          p_unidade_id: number
-        }
-        Returns: number
       }
       excluir_ficha: { Args: { p_ficha_id: string }; Returns: undefined }
       get_clientes: {
@@ -2244,6 +2018,56 @@ export type Database = {
           vendedor_nome: string
         }[]
       }
+      get_relatorio_fin_mensal: {
+        Args: { _dim?: string; _unidade_id?: number }
+        Returns: {
+          ano: number
+          dim_key: string
+          dim_nome: string
+          mes: number
+          valor: number
+        }[]
+      }
+      get_relatorio_fin_por_dim: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _dim?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          dim_key: string
+          dim_nome: string
+          qtd: number
+          tipo: string
+          valor: number
+        }[]
+      }
+      get_relatorio_fin_por_item: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          tipo_item: string
+          valor: number
+        }[]
+      }
+      get_relatorio_fin_temporal: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _dim?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          bucket: number
+          bucket_tipo: string
+          dim_key: string
+          valor: number
+        }[]
+      }
       get_relatorio_itens_avulsos: {
         Args: {
           _data_fim?: string
@@ -2258,6 +2082,21 @@ export type Database = {
           unidade_id: number
           valor_unitario: number
           vendedor_id: string
+        }[]
+      }
+      get_relatorio_pecas_agg: {
+        Args: {
+          _data_fim?: string
+          _data_inicio?: string
+          _unidade_id?: number
+        }
+        Returns: {
+          chave: string
+          dimensao: string
+          quantidade: number
+          sob_medida: boolean
+          tipo: string
+          valor: number
         }[]
       }
       get_relatorio_pedidos: {
@@ -2371,15 +2210,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      iniciar_campanha: {
-        Args: { p_campanha_id: string }
-        Returns: {
-          agendado_ate: string
-          campanha_id: string
-          publico_estimado: number
-          status: Database["public"]["Enums"]["campanha_status"]
-        }[]
-      }
       is_gestor_ou_acima: { Args: never; Returns: boolean }
       is_master_or_admin: { Args: never; Returns: boolean }
       is_unidade_piloto: { Args: { p_unidade_id: number }; Returns: boolean }
@@ -2488,10 +2318,14 @@ export type Database = {
       marcar_ficha_paga: { Args: { p_ficha_id: string }; Returns: undefined }
       next_business_time: { Args: { p_ts: string }; Returns: string }
       normalize_phone: { Args: { input: string }; Returns: string }
+      parse_valor_ptbr: { Args: { _v: string }; Returns: number }
       parse_valor_to_numeric: { Args: { v: string }; Returns: number }
-      reagendar_disparos_campanha: {
-        Args: { p_campanha_id: string }
-        Returns: number
+      precos_estimados_itens_avulsos: {
+        Args: never
+        Returns: {
+          preco: number
+          tipo_item: string
+        }[]
       }
       relatorio_diario_londrina: {
         Args: never
@@ -2616,7 +2450,6 @@ export type Database = {
         | "administrativo"
       campanha_midia_tipo: "nenhum" | "imagem" | "video"
       campanha_status: "rascunho" | "em_andamento" | "finalizada" | "cancelada"
-      campanha_tags_modo: "any" | "all"
       disparo_status: "pendente" | "enviado" | "falhou" | "cancelado"
       status_campanha:
         | "rascunho"
@@ -2771,7 +2604,6 @@ export const Constants = {
       ],
       campanha_midia_tipo: ["nenhum", "imagem", "video"],
       campanha_status: ["rascunho", "em_andamento", "finalizada", "cancelada"],
-      campanha_tags_modo: ["any", "all"],
       disparo_status: ["pendente", "enviado", "falhou", "cancelado"],
       status_campanha: [
         "rascunho",
