@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, CalendarIcon, Search, X, CheckCircle2, ChevronLeft, User, UserX } from "lucide-react";
+import { Loader2, CalendarIcon, Search, X, CheckCircle2, ChevronLeft, User, UserPlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn, normalizarTelefone, formatarTelefoneInput } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { useClientes } from "@/hooks/useClientes";
 import { useUltimosClientes } from "@/hooks/useUltimosClientes";
 import { useCriarAtividade, useTiposAtividadeAtivos } from "@/hooks/useAtividades";
@@ -22,25 +25,37 @@ interface Props {
 }
 
 type ClienteSel = { id: string; nome: string } | null;
+type Modo = "cliente" | "pre";
 
 /**
- * Criação em 2 passos: (1) cliente — atalhos com os últimos lançamentos do
- * vendedor, busca, ou seguir sem cliente; (2) tipo + data (atalhos de dia útil
- * + calendário) + observação. Responsável e unidade são decididos no servidor
- * (atividades_criar). Sem cliente, só tipos com exige_cliente=false.
+ * Criação em 2 passos: (1) cliente — busca, atalhos com os últimos lançamentos
+ * do vendedor, ou "Pré Cadastro" (possível cliente: nome + telefone, que vira
+ * cliente de verdade no salvar via edge criar-cliente, com dedup por telefone);
+ * (2) tipo + data da atividade (atalhos de dia útil + calendário) + data do
+ * evento opcional + observação. Responsável e unidade são decididos no servidor
+ * (atividades_criar).
  */
 const NovaAtividadeDialog = ({ open, onClose }: Props) => {
   const criar = useCriarAtividade();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: tipos } = useTiposAtividadeAtivos();
   const { data: recentes, isLoading: recentesLoading } = useUltimosClientes();
   const hoje = hojeISO();
 
   const [passo, setPasso] = useState<1 | 2>(1);
+  const [modo, setModo] = useState<Modo>("cliente");
   const [clienteSel, setClienteSel] = useState<ClienteSel>(null);
+  // Pré cadastro (possível cliente)
+  const [preNome, setPreNome] = useState("");
+  const [preTelefone, setPreTelefone] = useState(""); // só dígitos no estado
+  const [salvando, setSalvando] = useState(false);
+
   const [tipoId, setTipoId] = useState("");
-  // Data trafega como string ISO; o objeto Date vive só dentro do Calendar.
+  // Datas trafegam como string ISO; o objeto Date vive só dentro do Calendar.
   const [data, setData] = useState<string>(hojeISO());
   const [calAberto, setCalAberto] = useState(false);
+  const [dataEvento, setDataEvento] = useState(""); // "" = sem data de evento
   const [descricao, setDescricao] = useState("");
 
   const [busca, setBusca] = useState("");
@@ -51,13 +66,6 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
     () => ((clientesPages?.pages?.[0] ?? []) as { id: string; nome: string; telefone: string | null }[]).slice(0, 8),
     [clientesPages],
   );
-
-  // Sem cliente, só tipos que dispensam cliente (Lembrete).
-  const tiposDisponiveis = useMemo(
-    () => (tipos ?? []).filter((t) => (clienteSel ? true : !t.exige_cliente)),
-    [tipos, clienteSel],
-  );
-  const exigeCliente = !!tipos?.find((t) => t.id === tipoId)?.exige_cliente;
 
   // Atalhos de data já resolvidos em dia útil (sábado conta; domingo → segunda).
   const atalhosData = useMemo(
@@ -74,22 +82,61 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
   useEffect(() => {
     if (!open) return;
     setPasso(1);
+    setModo("cliente");
     setClienteSel(null);
+    setPreNome("");
+    setPreTelefone("");
     setTipoId("");
     setDescricao("");
     setData(hojeISO());
+    setDataEvento("");
     setCalAberto(false);
     setBusca("");
     setBuscaAtiva("");
   }, [open]);
 
-  const escolherCliente = (c: ClienteSel) => {
+  const escolherCliente = (c: NonNullable<ClienteSel>) => {
+    setModo("cliente");
     setClienteSel(c);
-    // Voltou, trocou para "sem cliente" e o tipo escolhido exige? Limpa.
-    if (!c && tipoId && tipos?.find((t) => t.id === tipoId)?.exige_cliente) setTipoId("");
     setBusca("");
     setBuscaAtiva("");
     setPasso(2);
+  };
+
+  const abrirPreCadastro = () => {
+    setModo("pre");
+    setClienteSel(null);
+    setPasso(2);
+  };
+
+  const exigeCliente = !!tipos?.find((t) => t.id === tipoId)?.exige_cliente;
+
+  /**
+   * Cria (ou reaproveita) o cliente do pré-cadastro via edge criar-cliente —
+   * o dedup é por telefone: número já cadastrado devolve o cliente existente.
+   * Erros não-2xx vêm com o corpo escondido em err.context (padrão do
+   * EditarFichaV3).
+   */
+  const criarClientePre = async (telefoneNormalizado: string): Promise<string> => {
+    const { data: resposta, error } = await supabase.functions.invoke("criar-cliente", {
+      body: {
+        nome: preNome.trim(),
+        telefone: telefoneNormalizado,
+        vendedor_id: user?.id,
+      },
+    });
+    if (error || !resposta?.cliente_id) {
+      let mensagem = resposta?.error || error?.message || "Falha ao criar o cliente.";
+      const ctx = (error as { context?: Response } | null)?.context;
+      if (ctx && typeof ctx.json === "function") {
+        try {
+          const corpo = await ctx.json();
+          if (corpo?.error) mensagem = corpo.error;
+        } catch { /* mantém a mensagem que já temos */ }
+      }
+      throw new Error(mensagem);
+    }
+    return resposta.cliente_id as string;
   };
 
   const salvar = async () => {
@@ -101,20 +148,40 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
       toast({ title: "Escolha a data.", variant: "destructive" });
       return;
     }
-    if (exigeCliente && !clienteSel) {
+
+    let telefoneNormalizado: string | null = null;
+    if (modo === "pre") {
+      if (!preNome.trim()) {
+        toast({ title: "Informe o nome do possível cliente.", variant: "destructive" });
+        return;
+      }
+      telefoneNormalizado = normalizarTelefone(preTelefone);
+      if (!telefoneNormalizado) {
+        toast({ title: "Telefone inválido.", description: "Informe DDD + número (ex.: 44 99999-8888).", variant: "destructive" });
+        return;
+      }
+    } else if (exigeCliente && !clienteSel) {
       const nome = tipos?.find((t) => t.id === tipoId)?.nome ?? "escolhido";
       toast({ title: `O tipo "${nome}" exige um cliente.`, variant: "destructive" });
       return;
     }
 
+    setSalvando(true);
     try {
+      let clienteId = clienteSel?.id ?? null;
+      if (modo === "pre" && telefoneNormalizado) {
+        clienteId = await criarClientePre(telefoneNormalizado);
+        queryClient.invalidateQueries({ queryKey: ["clientes"] });
+      }
+
       await criar.mutateAsync({
         tipoId,
         data,
-        clienteId: clienteSel?.id ?? null,
+        clienteId,
         descricao: descricao.trim() || null,
+        dataEvento: dataEvento || null,
       });
-      toast({ title: "Atividade criada!" });
+      toast({ title: modo === "pre" ? "Cliente pré-cadastrado e atividade criada!" : "Atividade criada!" });
       onClose();
     } catch (err) {
       toast({
@@ -122,8 +189,12 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
         description: err instanceof Error ? err.message : "Tente novamente.",
         variant: "destructive",
       });
+    } finally {
+      setSalvando(false);
     }
   };
+
+  const ocupado = salvando || criar.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -201,19 +272,21 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => escolherCliente(null)}
+                onClick={abrirPreCadastro}
               >
-                <UserX className="h-4 w-4 mr-2" />
-                Continuar sem cliente
+                <UserPlus className="h-4 w-4 mr-2" />
+                Pré Cadastro
               </Button>
             </div>
           </>
         ) : (
           <>
             <DialogTitle>Nova atividade</DialogTitle>
-            <DialogDescription>Passo 2 de 2 — tipo e data</DialogDescription>
+            <DialogDescription>
+              {modo === "pre" ? "Passo 2 de 2 — pré cadastro, tipo e data" : "Passo 2 de 2 — tipo e data"}
+            </DialogDescription>
 
-            {/* Cliente escolhido + voltar */}
+            {/* Cliente escolhido (ou pré cadastro) + voltar */}
             <div className="flex items-center gap-2 rounded-md border border-border px-2 py-1.5">
               <Button
                 type="button"
@@ -225,25 +298,54 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              {clienteSel ? (
+              {modo === "pre" ? (
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <UserPlus className="h-4 w-4 shrink-0" />
+                  Pré Cadastro
+                </span>
+              ) : clienteSel ? (
                 <span className="flex items-center gap-1.5 text-sm min-w-0">
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
                   <span className="truncate">{clienteSel.nome}</span>
                 </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <UserX className="h-4 w-4 shrink-0" />
-                  Sem cliente
-                </span>
-              )}
+              ) : null}
             </div>
 
             <div className="space-y-4">
+              {/* Pré cadastro: dados do possível cliente */}
+              {modo === "pre" && (
+                <div className="space-y-3 rounded-md border border-border p-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="preNome">Nome *</Label>
+                    <Input
+                      id="preNome"
+                      value={preNome}
+                      onChange={(e) => setPreNome(e.target.value)}
+                      placeholder="Nome do possível cliente"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="preTelefone">Telefone *</Label>
+                    <Input
+                      id="preTelefone"
+                      type="tel"
+                      inputMode="numeric"
+                      value={formatarTelefoneInput(preTelefone)}
+                      onChange={(e) => setPreTelefone(e.target.value.replace(/\D/g, ""))}
+                      placeholder="(44) 9 9999-8888"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Se o telefone já for de um cliente, a atividade é vinculada a ele.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Tipo */}
               <div className="space-y-2">
                 <Label>Tipo *</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  {tiposDisponiveis.map((t) => (
+                  {(tipos ?? []).map((t) => (
                     <button
                       key={t.id}
                       type="button"
@@ -259,14 +361,9 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
                     </button>
                   ))}
                 </div>
-                {!clienteSel && (
-                  <p className="text-xs text-muted-foreground">
-                    Sem cliente, só tipos de lembrete ficam disponíveis.
-                  </p>
-                )}
               </div>
 
-              {/* Data */}
+              {/* Data da atividade */}
               <div className="space-y-2">
                 <Label>Data *</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -325,6 +422,31 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
                 )}
               </div>
 
+              {/* Data do evento (opcional, distinta da data da atividade) */}
+              <div className="space-y-2">
+                <Label htmlFor="novaAtvDataEvento">Data do evento (opcional)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="novaAtvDataEvento"
+                    type="date"
+                    value={dataEvento}
+                    onChange={(e) => setDataEvento(e.target.value)}
+                    className="flex-1"
+                  />
+                  {dataEvento && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDataEvento("")}
+                      aria-label="Limpar data do evento"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
               {/* Observação */}
               <div className="space-y-2">
                 <Label htmlFor="novaAtvObs">Observação (opcional)</Label>
@@ -344,12 +466,12 @@ const NovaAtividadeDialog = ({ open, onClose }: Props) => {
                 variant="outline"
                 className="flex-1"
                 onClick={onClose}
-                disabled={criar.isPending}
+                disabled={ocupado}
               >
                 Cancelar
               </Button>
-              <Button type="button" className="flex-1" onClick={salvar} disabled={criar.isPending}>
-                {criar.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <Button type="button" className="flex-1" onClick={salvar} disabled={ocupado}>
+                {ocupado && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Criar
               </Button>
             </div>

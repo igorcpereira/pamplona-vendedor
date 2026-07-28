@@ -109,6 +109,18 @@ describe("AtividadeCard — exibição", () => {
     expect(screen.queryByRole("button", { name: "Histórico do cliente" })).not.toBeInTheDocument();
   });
 
+  it("mostra a data do evento quando presente", () => {
+    render(
+      <AtividadeCard
+        atividade={makeAtividade({ data_evento: "2026-12-25" } as Partial<Atividade>)}
+        onConcluir={vi.fn()}
+        onAdiar={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Evento:/)).toBeInTheDocument();
+    expect(screen.getByText("25/12")).toBeInTheDocument();
+  });
+
   it("com cliente, o histórico abre em dialog", async () => {
     render(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Histórico do cliente" }));

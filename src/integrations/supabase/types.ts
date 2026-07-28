@@ -74,6 +74,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           data: string
+          data_evento: string | null
           descricao: string | null
           ficha_id: string | null
           grupo_id: string | null
@@ -90,6 +91,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data: string
+          data_evento?: string | null
           descricao?: string | null
           ficha_id?: string | null
           grupo_id?: string | null
@@ -106,6 +108,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           data?: string
+          data_evento?: string | null
           descricao?: string | null
           ficha_id?: string | null
           grupo_id?: string | null
@@ -1668,6 +1671,7 @@ export type Database = {
         Args: {
           p_cliente_id?: string
           p_data: string
+          p_data_evento?: string
           p_descricao?: string
           p_ficha_id?: string
           p_pedido_id?: string
@@ -1693,6 +1697,7 @@ export type Database = {
           created_at: string
           created_by: string
           data: string
+          data_evento: string
           descricao: string
           ficha_id: string
           grupo_id: string

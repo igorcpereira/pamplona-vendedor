@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { dataCurta } from "@/lib/atividades";
 import type { Atividade } from "@/hooks/useAtividades";
 import HistoricoCliente from "@/components/atividades/HistoricoCliente";
 import { format } from "date-fns";
@@ -88,6 +89,12 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
                 </button>
               )}
             </div>
+          )}
+
+          {atividade.data_evento && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Evento: <span className="font-medium text-foreground">{dataCurta(atividade.data_evento)}</span>
+            </p>
           )}
 
           {atividade.descricao && (

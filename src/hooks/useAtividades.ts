@@ -100,6 +100,8 @@ interface CriarAtividadeInput {
   data: string; // YYYY-MM-DD
   clienteId?: string | null;
   descricao?: string | null;
+  /** Data do evento do cliente (festa/casamento), distinta da data da atividade. */
+  dataEvento?: string | null; // YYYY-MM-DD
 }
 
 /**
@@ -117,6 +119,7 @@ export function useCriarAtividade() {
         p_data: input.data,
         p_cliente_id: input.clienteId ?? undefined,
         p_descricao: input.descricao ?? undefined,
+        p_data_evento: input.dataEvento ?? undefined,
       });
       if (error) throw error;
       return data as string;
