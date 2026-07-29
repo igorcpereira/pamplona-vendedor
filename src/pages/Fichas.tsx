@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { capitalizarNome, podeEditarFicha } from "@/lib/utils";
+import { capitalizarNome, normalizarBusca, podeEditarFicha } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import Logo from "@/components/Logo";
 import FiltrosFichas from "@/components/FiltrosFichas";
@@ -443,15 +443,16 @@ const Fichas = () => {
     }
   };
 
-  // Filtragem da aba "pendente": mescla pendente + erro (busca client-side)
+  // Filtragem da aba "pendente": mescla pendente + erro (busca client-side,
+  // sem case nem acento — mesmo comportamento das RPCs com sem_acento()).
   const filteredCards = useMemo(() => {
-    const termo = searchText.trim().toLowerCase();
+    const termo = normalizarBusca(searchText.trim());
     return cards.filter(card => {
       const statusMatch = card.status === "pendente" || card.status === "erro";
       if (!statusMatch) return false;
       if (!termo) return true;
-      const nomeMatch = card.nome_cliente?.toLowerCase().includes(termo);
-      const codigoMatch = card.codigo_ficha?.toLowerCase().includes(termo);
+      const nomeMatch = normalizarBusca(card.nome_cliente ?? "").includes(termo);
+      const codigoMatch = normalizarBusca(card.codigo_ficha ?? "").includes(termo);
       return !!(nomeMatch || codigoMatch);
     });
   }, [cards, searchText]);
