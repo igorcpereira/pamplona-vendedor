@@ -1,7 +1,9 @@
-import { Home, Users, Plus, ClipboardList, BarChart3, FlaskConical } from "lucide-react";
+import { CalendarCheck2, Users, Plus, ClipboardList, BarChart3, FlaskConical } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useFichas } from "@/hooks/useFichas";
+import { useAtividades } from "@/hooks/useAtividades";
+import { hojeISO } from "@/lib/atividades";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -10,13 +12,17 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const { vinculos } = useAuth();
   const { data: fichas = [] } = useFichas();
+  // Badge de Atividades: o que está para hoje (inclui atrasadas — continuam
+  // sendo trabalho de hoje). Abertas com data até hoje, do próprio usuário.
+  const { data: atividadesAbertas = [] } = useAtividades({ status: "a_fazer", ate: hojeISO() });
 
   const isMaster = vinculos.some(v => v.role === 'master');
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;
+  const atividadesHoje = atividadesAbertas.length;
 
   const navItems = [
     { icon: BarChart3, label: "Resumo", path: "/resumo" },
-    ...(isMaster ? [{ icon: Home, label: "Início", path: "/" }] : []),
+    { icon: CalendarCheck2, label: "Atividades", path: "/" },
     { icon: Users, label: "Clientes", path: "/clientes" },
     { icon: ClipboardList, label: "Fichas", path: "/fichas" },
     { icon: Plus, label: "Novo", path: "/novo" },
@@ -30,7 +36,9 @@ const BottomNav = () => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
 
-          const showBadge = item.path === "/fichas" && fichasPendentes > 0;
+          const badgeCount =
+            item.path === "/fichas" ? fichasPendentes :
+            item.path === "/" ? atividadesHoje : 0;
 
           return (
             <button
@@ -45,12 +53,12 @@ const BottomNav = () => {
             >
               <div className="relative">
                 <Icon className="w-6 h-6" />
-                {showBadge && (
+                {badgeCount > 0 && (
                   <Badge
                     variant="destructive"
                     className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-xs"
                   >
-                    {fichasPendentes}
+                    {badgeCount}
                   </Badge>
                 )}
               </div>

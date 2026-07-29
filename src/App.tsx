@@ -1,9 +1,9 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useLogAcesso } from "@/hooks/useLogAcesso";
 import Atividades from "./pages/Atividades";
@@ -31,13 +31,9 @@ const queryClient = new QueryClient({
   },
 });
 
-// Pagina "Inicio" (agenda de Atividades) e restrita ao papel master.
-// Demais usuarios sao redirecionados para o Resumo do mes.
-const InicioRoute = () => {
-  const { vinculos } = useAuth();
-  const isMaster = vinculos.some((v) => v.role === "master");
-  return isMaster ? <Atividades /> : <Navigate to="/resumo" replace />;
-};
+// Pagina "Atividades" (agenda) — liberada para todos os usuarios no go-live
+// de 2026-07-29 (antes era restrita a master durante a validacao).
+const InicioRoute = () => <Atividades />;
 
 // Monitoramento de uso (logs_acesso) — precisa estar dentro do Router e do AuthProvider
 const LogAcesso = () => {

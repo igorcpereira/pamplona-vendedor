@@ -60,7 +60,7 @@ const Atividades = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
-      <Header title="Início" />
+      <Header title="Atividades" />
 
       {/* Logo de fundo */}
       <div className="fixed inset-0 flex items-center justify-center pointer-events-none opacity-5 z-0">

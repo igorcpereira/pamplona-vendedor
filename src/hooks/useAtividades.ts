@@ -31,7 +31,8 @@ export function useTiposAtividadeAtivos() {
 
 interface ListarFiltros {
   status?: string | null;
-  de?: string | null; // YYYY-MM-DD
+  de?: string | null;  // YYYY-MM-DD
+  ate?: string | null; // YYYY-MM-DD (inclusivo)
 }
 
 /**
@@ -43,13 +44,14 @@ interface ListarFiltros {
 export function useAtividades(filtros: ListarFiltros = {}) {
   const { user } = useAuth();
   return useQuery({
-    queryKey: [ATIVIDADES_KEY, user?.id, filtros.status ?? null, filtros.de ?? null],
+    queryKey: [ATIVIDADES_KEY, user?.id, filtros.status ?? null, filtros.de ?? null, filtros.ate ?? null],
     queryFn: async () => {
       if (!user?.id) return [] as Atividade[];
       const { data, error } = await supabase.rpc("atividades_listar", {
         p_responsavel_id: user.id,
         p_status: filtros.status ?? undefined,
         p_de: filtros.de ?? undefined,
+        p_ate: filtros.ate ?? undefined,
       });
       if (error) throw error;
       return (data ?? []) as Atividade[];
