@@ -1718,6 +1718,10 @@ export type Database = {
         Args: { p_id: string; p_responsavel_id: string }
         Returns: undefined
       }
+      atividades_registrar_whatsapp: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       atualizar_ficha: {
         Args: {
           p_data_devolucao?: string

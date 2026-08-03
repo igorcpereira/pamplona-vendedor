@@ -8,6 +8,7 @@ const ACAO_LABEL: Record<string, string> = {
   adiada: "adiou",
   cancelada: "cancelou",
   reatribuida: "reatribuiu",
+  whatsapp: "abriu o WhatsApp em",
 };
 
 function fmt(iso?: string | null) {

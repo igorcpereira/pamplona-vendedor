@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { dataCurta } from "@/lib/atividades";
 import type { Atividade } from "@/hooks/useAtividades";
 import HistoricoCliente from "@/components/atividades/HistoricoCliente";
@@ -116,6 +117,11 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded-full bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700"
                 title="Abrir no WhatsApp"
+                // Fire-and-forget: registra o clique no histórico sem atrasar
+                // a abertura do WhatsApp (e sem quebrar nada se falhar).
+                onClick={() => {
+                  void supabase.rpc("atividades_registrar_whatsapp", { p_id: atividade.id });
+                }}
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 WhatsApp
