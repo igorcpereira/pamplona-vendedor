@@ -10,11 +10,20 @@ import { useAuth } from "@/contexts/AuthContext";
 const BottomNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { vinculos } = useAuth();
+  const { vinculos, activeUnidade, profile } = useAuth();
   const { data: fichas = [] } = useFichas();
+
   // Badge de Atividades: o que está para hoje (inclui atrasadas — continuam
-  // sendo trabalho de hoje). Abertas com data até hoje, do próprio usuário.
-  const { data: atividadesAbertas = [] } = useAtividades({ status: "a_fazer", ate: hojeISO() });
+  // sendo trabalho de hoje). Para cargo global, soma a UNIDADE em que o usuário
+  // está alocado (profiles.unidade_id); sem unidade real alocada, cai no escopo
+  // pessoal para não contar a rede inteira. A agenda em si segue pessoal.
+  const ehGlobal = ['gestor', 'admin', 'master'].includes(activeUnidade?.role ?? '');
+  const unidadeAlocada = profile?.unidade_id && profile.unidade_id !== 3 ? profile.unidade_id : null;
+  const { data: atividadesAbertas = [] } = useAtividades({
+    status: "a_fazer",
+    ate: hojeISO(),
+    unidadeId: ehGlobal ? unidadeAlocada : null,
+  });
 
   const isMaster = vinculos.some(v => v.role === 'master');
   const fichasPendentes = fichas.filter(f => f.status === 'pendente').length;

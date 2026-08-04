@@ -162,7 +162,8 @@ function ResumoUnidadeView() {
   // RPC recebe datas 'YYYY-MM-DD' (fim exclusivo)
   const { data: resumos = [] } = useResumoUnidades(dataLocalISO(inicio), dataLocalISO(fim));
 
-  const [unidadeId, setUnidadeId] = useState<number | null>(null);
+  // 'todas' agrega as unidades no front — a RPC já devolve uma linha por unidade.
+  const [unidadeId, setUnidadeId] = useState<number | 'todas' | null>(null);
 
   // Default: unidade em que o usuário está alocado (se real), senão a primeira
   useEffect(() => {
@@ -174,7 +175,25 @@ function ResumoUnidadeView() {
     setUnidadeId(alocada);
   }, [unidades, unidadeId, profile?.unidade_id]);
 
-  const resumo = resumos.find(r => r.unidade_id === unidadeId);
+  const resumo = unidadeId === 'todas'
+    ? resumos.reduce((acc, r) => ({
+        total_fichas: acc.total_fichas + Number(r.total_fichas ?? 0),
+        total_provas: acc.total_provas + Number(r.total_provas ?? 0),
+        avulsa_valor: acc.avulsa_valor + Number(r.avulsa_valor ?? 0),
+        avulsa_qtd: acc.avulsa_qtd + Number(r.avulsa_qtd ?? 0),
+        venda_valor: acc.venda_valor + Number(r.venda_valor ?? 0),
+        venda_qtd: acc.venda_qtd + Number(r.venda_qtd ?? 0),
+        sob_medida_valor: acc.sob_medida_valor + Number(r.sob_medida_valor ?? 0),
+        sob_medida_qtd: acc.sob_medida_qtd + Number(r.sob_medida_qtd ?? 0),
+        aluguel_valor: acc.aluguel_valor + Number(r.aluguel_valor ?? 0),
+        aluguel_qtd: acc.aluguel_qtd + Number(r.aluguel_qtd ?? 0),
+        total_valor: acc.total_valor + Number(r.total_valor ?? 0),
+      }), {
+        total_fichas: 0, total_provas: 0, avulsa_valor: 0, avulsa_qtd: 0,
+        venda_valor: 0, venda_qtd: 0, sob_medida_valor: 0, sob_medida_qtd: 0,
+        aluguel_valor: 0, aluguel_qtd: 0, total_valor: 0,
+      })
+    : resumos.find(r => r.unidade_id === unidadeId);
 
   return (
     <div className="min-h-screen bg-background pb-20 relative">
@@ -199,13 +218,14 @@ function ResumoUnidadeView() {
             <TituloPeriodo periodo={periodo} onToggle={() => setPeriodo(p => p === 'mes' ? 'dia' : 'mes')} />
             <Select
               value={unidadeId !== null ? String(unidadeId) : undefined}
-              onValueChange={(v) => setUnidadeId(Number(v))}
+              onValueChange={(v) => setUnidadeId(v === 'todas' ? 'todas' : Number(v))}
             >
               <SelectTrigger className="w-44 h-8 text-sm">
                 <Building2 className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
                 <SelectValue placeholder="Unidade" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="todas">Todas as unidades</SelectItem>
                 {unidades.map((u) => (
                   <SelectItem key={u.id} value={String(u.id)}>{u.nome}</SelectItem>
                 ))}

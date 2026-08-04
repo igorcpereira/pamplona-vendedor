@@ -33,22 +33,30 @@ interface ListarFiltros {
   status?: string | null;
   de?: string | null;  // YYYY-MM-DD
   ate?: string | null; // YYYY-MM-DD (inclusivo)
+  /**
+   * Escopo de UNIDADE em vez de pessoal: envia `p_unidade_id` e omite o
+   * `p_responsavel_id` — para cargo global a RPC devolve a unidade inteira.
+   * Usado pelo badge do gestor no BottomNav; a agenda continua pessoal.
+   */
+  unidadeId?: number | null;
 }
 
 /**
- * Sempre com `p_responsavel_id = user.id`: a página é "Minha agenda", e para um
- * cargo global (a rota hoje é só master) a RPC devolveria a equipe inteira sem
- * esse filtro. Para role vendedor o servidor já força o próprio uid de qualquer
+ * Sem `unidadeId`, sempre com `p_responsavel_id = user.id`: a página é "Minha
+ * agenda", e para um cargo global a RPC devolveria a equipe inteira sem esse
+ * filtro. Para role vendedor o servidor já força o próprio uid de qualquer
  * jeito. O `status_visivel` vem calculado do servidor (fuso de São Paulo).
  */
 export function useAtividades(filtros: ListarFiltros = {}) {
   const { user } = useAuth();
+  const unidadeId = filtros.unidadeId ?? null;
   return useQuery({
-    queryKey: [ATIVIDADES_KEY, user?.id, filtros.status ?? null, filtros.de ?? null, filtros.ate ?? null],
+    queryKey: [ATIVIDADES_KEY, user?.id, filtros.status ?? null, filtros.de ?? null, filtros.ate ?? null, unidadeId],
     queryFn: async () => {
       if (!user?.id) return [] as Atividade[];
       const { data, error } = await supabase.rpc("atividades_listar", {
-        p_responsavel_id: user.id,
+        p_responsavel_id: unidadeId !== null ? undefined : user.id,
+        p_unidade_id: unidadeId ?? undefined,
         p_status: filtros.status ?? undefined,
         p_de: filtros.de ?? undefined,
         p_ate: filtros.ate ?? undefined,
