@@ -1238,21 +1238,30 @@ export type Database = {
       relacao_cliente_tag: {
         Row: {
           created_at: string
+          created_by: string | null
+          ficha_id: string | null
           id: number
           id_cliente: string | null
           id_tag: string | null
+          unidade_id: number | null
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
+          ficha_id?: string | null
           id?: number
           id_cliente?: string | null
           id_tag?: string | null
+          unidade_id?: number | null
         }
         Update: {
           created_at?: string
+          created_by?: string | null
+          ficha_id?: string | null
           id?: number
           id_cliente?: string | null
           id_tag?: string | null
+          unidade_id?: number | null
         }
         Relationships: [
           {

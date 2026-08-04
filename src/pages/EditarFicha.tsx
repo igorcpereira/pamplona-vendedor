@@ -419,7 +419,10 @@ export default function EditarFicha() {
         if (tagIds.length > 0) {
           const relacoes = tagIds.map(tagId => ({
             id_cliente: clienteId,
-            id_tag: tagId
+            id_tag: tagId,
+            created_by: user?.id ?? null,
+            ficha_id: id ?? null,
+            unidade_id: ficha?.unidade_id ?? null,
           }));
 
           const { error: insertRelacoesError } = await supabase

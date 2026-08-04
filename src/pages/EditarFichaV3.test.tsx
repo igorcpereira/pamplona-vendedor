@@ -66,17 +66,31 @@ vi.mock("@/hooks/useTiposItemAvulso", () => ({
   useTiposItemAvulso: () => ({ data: [] }),
 }));
 
+const TAG_PADRAO = { id: "00000000-0000-0000-0000-00000000ta91", nome: "cliente vip", padrao: true, ativa: true, cor: "#000" };
+vi.mock("@/hooks/useTagsAtivas", () => ({
+  useTagsAtivas: () => ({ data: [TAG_PADRAO] }),
+}));
+
+// Rastreia inserts por tabela — para afirmar que NÃO houve escrita em
+// relacao_cliente_tag no caso do descarte.
+const insertCalls: string[] = [];
+
 // Chainable mínimo do supabase-js: todo método encadeável retorna o próprio
 // objeto; `.single()`/`await` resolvem para o resultado configurado.
-function makeChain(result: { data: unknown; error: unknown }) {
+function makeChain(table: string, result: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {};
   const ret = () => chain;
   Object.assign(chain, {
     select: ret,
     eq: ret,
+    neq: ret,
     order: ret,
     in: ret,
+    limit: ret,
     delete: ret,
+    update: ret,
+    upsert: ret,
+    insert: () => { insertCalls.push(table); return chain; },
     single: () => Promise.resolve(result),
     maybeSingle: () => Promise.resolve(result),
     then: (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve),
@@ -88,11 +102,13 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     from: (table: string) =>
       makeChain(
+        table,
         table === "fichas"
           ? { data: fichaMock, error: null }
           : { data: [], error: null }
       ),
     rpc: rpcMock,
+    auth: { getUser: () => Promise.resolve({ data: { user: { id: USER_A } } }) },
     channel: () => ({
       on: () => ({ subscribe: () => ({}) }),
     }),
@@ -137,6 +153,7 @@ beforeEach(() => {
   authState.user = { id: USER_A };
   authState.activeUnidade = { role: "vendedor" };
   rpcMock.mockClear();
+  insertCalls.length = 0;
 });
 
 describe("EditarFichaV3 — dono da ficha", () => {
@@ -155,6 +172,25 @@ describe("EditarFichaV3 — dono da ficha", () => {
     await renderFicha();
 
     expect(await screen.findByRole("button", { name: "Atualizar Ficha" })).toBeInTheDocument();
+  });
+});
+
+describe("EditarFichaV3 — tags sem cliente (descarte avisado)", () => {
+  it("salvar com tags e sem telefone: avisa 'Tags não salvas' e não insere vínculo", async () => {
+    fichaMock = baseFicha({ vendedor_id: USER_A, status: "ativa", telefone_cliente: null, cliente_id: null });
+    const { toast } = await import("@/hooks/use-toast");
+    await renderFicha();
+
+    // Seleciona a tag padrão e salva
+    await userEvent.click(await screen.findByRole("button", { name: "cliente vip" }));
+    await userEvent.click(screen.getByRole("button", { name: "Atualizar Ficha" }));
+
+    await waitFor(() => {
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Tags não salvas" })
+      );
+    });
+    expect(insertCalls).not.toContain("relacao_cliente_tag");
   });
 });
 

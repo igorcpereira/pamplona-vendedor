@@ -690,7 +690,8 @@ export default function EditarFichaV3() {
 
       // Sincroniza tags do cliente por id — só relações; tag nova não nasce
       // mais aqui (a seleção vem de tags existentes e a RLS de `tags` bloqueia
-      // escrita fora da gestão).
+      // escrita fora da gestão). Cada vínculo grava autor/ficha/unidade para
+      // os indicadores de tagueamento.
       if (clienteId) {
         const idsDesejados = Array.from(new Set(formData.tags.map(t => t.id)));
 
@@ -704,17 +705,46 @@ export default function EditarFichaV3() {
 
         const inserir = idsDesejados.filter(id => !idsAtuais.has(id));
         if (inserir.length > 0) {
-          await supabase
+          const { error: tagsErro } = await supabase
             .from('relacao_cliente_tag')
-            .insert(inserir.map(id_tag => ({ id_cliente: clienteId, id_tag })));
+            .insert(inserir.map(id_tag => ({
+              id_cliente: clienteId,
+              id_tag,
+              created_by: user?.id ?? null,
+              ficha_id: id ?? null,
+              unidade_id: ficha?.unidade_id ?? null,
+            })));
+          if (tagsErro) {
+            toast({
+              title: "Não foi possível salvar as tags",
+              description: "A ficha foi salva, mas as tags do cliente não. Tente de novo.",
+              variant: "destructive",
+            });
+          }
         }
 
         const removerIds = (relacoesAtuais ?? [])
           .filter(r => r.id_tag && !idsDesejadosSet.has(r.id_tag))
           .map(r => r.id);
         if (removerIds.length > 0) {
-          await supabase.from('relacao_cliente_tag').delete().in('id', removerIds);
+          const { error: removerErro } = await supabase
+            .from('relacao_cliente_tag').delete().in('id', removerIds);
+          if (removerErro) {
+            toast({
+              title: "Não foi possível remover tags",
+              description: "A ficha foi salva, mas a remoção de tags falhou. Tente de novo.",
+              variant: "destructive",
+            });
+          }
         }
+      } else if (formData.tags.length > 0) {
+        // Ficha sem cliente: as tags não têm onde ser gravadas — avisa em vez
+        // de descartar em silêncio (auditoria de 04/08).
+        toast({
+          title: "Tags não salvas",
+          description: "A ficha não tem cliente vinculado. Informe o telefone do cliente para salvar as tags.",
+          variant: "destructive",
+        });
       }
 
       queryClient.invalidateQueries({ queryKey: ['fichas-processadas'] });

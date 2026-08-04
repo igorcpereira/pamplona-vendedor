@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     // --------------------------------------------------------
     const { data: fichaAtual } = await supabase
       .from('fichas')
-      .select('status')
+      .select('status, unidade_id')
       .eq('id', ficha_id)
       .single()
 
@@ -145,15 +145,21 @@ Deno.serve(async (req) => {
     // Etapa 4 — Salvar tags (acumula — nunca remove)
     // --------------------------------------------------------
     if (Array.isArray(tags) && tags.length > 0) {
+      // Coluna é id_cliente (não cliente_id) e o unique é (id_cliente, id_tag) —
+      // os nomes errados faziam esta etapa falhar em silêncio desde sempre.
+      // Autoria: roda com service role, então created_by precisa vir explícito.
       const vinculos = tags.map((id_tag: string) => ({
-        cliente_id: resolvedClienteId,
+        id_cliente: resolvedClienteId,
         id_tag,
+        created_by: user_id,
+        ficha_id,
+        unidade_id: fichaAtual?.unidade_id ?? null,
       }))
 
       // Ignora duplicatas silenciosamente
       await supabase
         .from('relacao_cliente_tag')
-        .upsert(vinculos, { onConflict: 'cliente_id,id_tag', ignoreDuplicates: true })
+        .upsert(vinculos, { onConflict: 'id_cliente,id_tag', ignoreDuplicates: true })
       // Falha em tags não aborta o salvamento — ficha já foi salva na Etapa 3
     }
 
