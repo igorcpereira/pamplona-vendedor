@@ -422,7 +422,8 @@ export default function EditarFicha() {
             id_tag: tagId,
             created_by: user?.id ?? null,
             ficha_id: id ?? null,
-            unidade_id: ficha?.unidade_id ?? null,
+            unidade_id: ficha?.unidade_id
+              ?? (profile?.unidade_id && profile.unidade_id !== 3 ? profile.unidade_id : null),
           }));
 
           const { error: insertRelacoesError } = await supabase
