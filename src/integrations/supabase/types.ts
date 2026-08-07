@@ -1289,6 +1289,7 @@ export type Database = {
           nome: string
           padrao: boolean
           unidade_id: number | null
+          categoria: string
         }
         Insert: {
           ativa?: boolean
@@ -1298,6 +1299,7 @@ export type Database = {
           nome: string
           padrao?: boolean
           unidade_id?: number | null
+          categoria?: string
         }
         Update: {
           ativa?: boolean
@@ -1307,6 +1309,7 @@ export type Database = {
           nome?: string
           padrao?: boolean
           unidade_id?: number | null
+          categoria?: string
         }
         Relationships: [
           {
