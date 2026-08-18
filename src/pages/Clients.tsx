@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
-import { Users, Phone, ChevronRight, Search, Loader2, UserCheck, MessageCircle } from "lucide-react";
+import { Users, Phone, ChevronRight, Search, Loader2, UserCheck, MessageCircle, CalendarPlus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import Logo from "@/components/Logo";
 import { useClientes } from "@/hooks/useClientes";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatarTelefone, normalizarTelefone } from "@/lib/utils";
+import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
 
 const Clients = () => {
   const navigate = useNavigate();
@@ -17,6 +18,8 @@ const Clients = () => {
   const [termoBusca, setTermoBusca] = useState("");
   const [debouncedTermo, setDebouncedTermo] = useState("");
   const [apenasMeus, setApenasMeus] = useState(false);
+  // Cliente escolhido para "Nova atividade" (abre o dialog direto no passo 2).
+  const [clienteAtividade, setClienteAtividade] = useState<{ id: string; nome: string } | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -161,6 +164,19 @@ const Clients = () => {
                           <MessageCircle className="w-5 h-5" />
                         </Button>
                       )}
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-full text-primary hover:bg-primary/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setClienteAtividade({ id: cliente.id, nome: cliente.nome });
+                        }}
+                        aria-label={`Nova atividade para ${cliente.nome}`}
+                      >
+                        <CalendarPlus className="w-5 h-5" />
+                      </Button>
                       <ChevronRight className="w-5 h-5 text-muted-foreground" />
                     </div>
                   </div>
@@ -179,6 +195,11 @@ const Clients = () => {
 
       </main>
 
+      <NovaAtividadeDialog
+        open={!!clienteAtividade}
+        onClose={() => setClienteAtividade(null)}
+        clienteInicial={clienteAtividade}
+      />
       <BottomNav />
     </div>
   );

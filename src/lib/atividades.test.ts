@@ -5,8 +5,11 @@ import {
   dataCurta,
   grupoDe,
   proximoDiaUtilISO,
+  resumoCarteira,
   DATAS_RAPIDAS,
   GRUPOS,
+  RECENCIA_ATALHOS,
+  TIPOS_CLIENTE,
 } from "./atividades";
 
 const HOJE = "2026-07-28"; // terça-feira
@@ -80,5 +83,28 @@ describe("formatação", () => {
   });
   it("hojeISO devolve YYYY-MM-DD", () => {
     expect(hojeISO()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("resumoCarteira (descrição automática do lote da carteira)", () => {
+  it("sem filtro nenhum", () => {
+    expect(resumoCarteira({}, [])).toBe("Minha carteira: todos os meus clientes");
+  });
+  it("tipos + tags + recência de atendimento", () => {
+    expect(
+      resumoCarteira(
+        { tipos: ["venda", "aluguel"], recenciaCampo: "atendimento", recenciaAte: "2026-04-29" },
+        ["Advogado"],
+      ),
+    ).toBe("Minha carteira: Venda/Aluguel · tags Advogado · sem atendimento desde 29/04");
+  });
+  it("recência de venda usa a palavra compra", () => {
+    expect(resumoCarteira({ recenciaCampo: "venda", recenciaAte: "2026-01-10" }, [])).toBe(
+      "Minha carteira: sem compra desde 10/01",
+    );
+  });
+  it("constantes dos filtros existem e batem com o servidor", () => {
+    expect(RECENCIA_ATALHOS.map((r) => r.dias)).toEqual([30, 90, 180, 365]);
+    expect(TIPOS_CLIENTE.map((t) => t.key)).toEqual(["venda", "aluguel", "sob_medida", "ajuste", "avulso"]);
   });
 });

@@ -72,7 +72,11 @@ export function useAtividades(filtros: ListarFiltros = {}) {
 /** Invalida a agenda inteira depois de qualquer mutação. */
 function useInvalidarAtividades() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: [ATIVIDADES_KEY] });
+    // A timeline do cliente exibe a observação da conclusão na hora.
+    void queryClient.invalidateQueries({ queryKey: ["historico-cliente"] });
+  };
 }
 
 export function useConcluirAtividade() {
@@ -112,6 +116,69 @@ interface CriarAtividadeInput {
   descricao?: string | null;
   /** Data do evento do cliente (festa/casamento), distinta da data da atividade. */
   dataEvento?: string | null; // YYYY-MM-DD
+}
+
+// ── Minha carteira (criação em grupo para si) ────────────────────────────────
+
+/** Filtros da carteira — subconjunto de clientes_segmento (unidade e dono são do servidor). */
+export interface CarteiraFiltros {
+  /** Cliente com QUALQUER uma das tags. */
+  tagIds?: string[];
+  /** 'venda' | 'aluguel' | 'sob_medida' | 'ajuste' | 'avulso' — pelo menos um. */
+  tipos?: string[];
+  recenciaCampo?: "venda" | "atendimento" | null;
+  recenciaDe?: string | null;  // YYYY-MM-DD
+  recenciaAte?: string | null; // YYYY-MM-DD
+}
+
+function carteiraParaRpc(f: CarteiraFiltros) {
+  return {
+    p_tag_ids: f.tagIds && f.tagIds.length > 0 ? f.tagIds : undefined,
+    p_tipos: f.tipos && f.tipos.length > 0 ? f.tipos : undefined,
+    p_recencia_campo: f.recenciaCampo ?? undefined,
+    p_recencia_de: f.recenciaDe ?? undefined,
+    p_recencia_ate: f.recenciaAte ?? undefined,
+  };
+}
+
+/** Prévia: quantos clientes da MINHA carteira caem nos filtros (debounce no chamador). */
+export function useCarteiraPrevia(filtros: CarteiraFiltros | null) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["carteira-previa", user?.id, filtros],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("atividades_carteira_previa", carteiraParaRpc(filtros!));
+      if (error) throw error;
+      return data as unknown as { total: number };
+    },
+    enabled: !!user?.id && filtros !== null,
+    staleTime: 30 * 1000,
+  });
+}
+
+interface CriarLoteCarteiraInput {
+  tipoId: string;
+  data: string; // YYYY-MM-DD
+  filtros: CarteiraFiltros;
+  descricao?: string | null;
+}
+
+/** Cria 1 atividade por cliente da carteira filtrada — todas para o próprio usuário. */
+export function useCriarLoteCarteira() {
+  const invalidar = useInvalidarAtividades();
+  return useMutation({
+    mutationFn: async (input: CriarLoteCarteiraInput) => {
+      const { data, error } = await supabase.rpc("atividades_criar_lote_carteira", {
+        p_tipo_id: input.tipoId,
+        p_data: input.data,
+        ...carteiraParaRpc(input.filtros),
+        p_descricao: input.descricao ?? undefined,
+      });
+      if (error) throw error;
+      return data as unknown as { grupo_id: string; criadas: number };
+    },
+    onSuccess: invalidar,
+  });
 }
 
 /**

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,7 @@ import { ptBR } from "date-fns/locale";
 
 interface Props {
   atividade: Atividade;
-  onConcluir: () => void;
+  onConcluir: (obs?: string | null) => void;
   onAdiar: (novaData: string) => void;
   isUpdating?: boolean;
 }
@@ -48,6 +49,8 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
   const [adiarOpen, setAdiarOpen] = useState(false);
   const [novaData, setNovaData] = useState<Date | undefined>();
   const [historicoOpen, setHistoricoOpen] = useState(false);
+  const [concluirOpen, setConcluirOpen] = useState(false);
+  const [obsConcluir, setObsConcluir] = useState("");
 
   const abrirAdiar = () => {
     setNovaData(atividade.data ? parseISO(atividade.data) : new Date());
@@ -58,6 +61,16 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
     if (!novaData) return;
     onAdiar(format(novaData, "yyyy-MM-dd"));
     setAdiarOpen(false);
+  };
+
+  const abrirConcluir = () => {
+    setObsConcluir("");
+    setConcluirOpen(true);
+  };
+
+  const confirmarConcluir = () => {
+    onConcluir(obsConcluir.trim() || null);
+    setConcluirOpen(false);
   };
 
   return (
@@ -138,7 +151,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
               size="icon"
               className="h-9 w-9 rounded-full bg-green-600 text-white hover:bg-green-700"
               disabled={isUpdating}
-              onClick={onConcluir}
+              onClick={abrirConcluir}
               title="Concluir"
               aria-label="Concluir"
             >
@@ -159,6 +172,35 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
           </div>
         )}
       </div>
+
+      {/* Mini-modal para concluir com observação opcional */}
+      <Dialog open={concluirOpen} onOpenChange={setConcluirOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogTitle>Concluir atividade</DialogTitle>
+          <DialogDescription>
+            “{atividade.cliente_nome ?? atividade.tipo_nome}”
+          </DialogDescription>
+          <Textarea
+            value={obsConcluir}
+            onChange={(e) => setObsConcluir(e.target.value)}
+            placeholder="O que aconteceu? (opcional)"
+            rows={3}
+          />
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setConcluirOpen(false)} disabled={isUpdating}>
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1 bg-green-600 text-white hover:bg-green-700"
+              onClick={confirmarConcluir}
+              disabled={isUpdating}
+            >
+              {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Concluir
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Mini-modal para reagendar */}
       <Dialog open={adiarOpen} onOpenChange={setAdiarOpen}>

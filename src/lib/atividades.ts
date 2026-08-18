@@ -54,6 +54,49 @@ export const DATAS_RAPIDAS = [
   { label: "Próximo semestre", dias: 150 },
 ] as const;
 
+/** Atalhos de recência da carteira: "sem contato há N+ dias" → recenciaAte = hoje − N. */
+export const RECENCIA_ATALHOS = [
+  { label: "30 dias", dias: 30 },
+  { label: "90 dias", dias: 90 },
+  { label: "180 dias", dias: 180 },
+  { label: "1 ano", dias: 365 },
+] as const;
+
+/** Rótulos dos tipos de cliente nos filtros da carteira (chaves = vw_atendimentos.tipo). */
+export const TIPOS_CLIENTE = [
+  { key: "venda", label: "Venda" },
+  { key: "aluguel", label: "Aluguel" },
+  { key: "sob_medida", label: "Sob medida" },
+  { key: "ajuste", label: "Ajuste" },
+  { key: "avulso", label: "Avulso" },
+] as const;
+
+/**
+ * Resumo humano dos filtros da carteira — vira a descrição automática das
+ * atividades quando o vendedor não escreve nada (portado do resumoSegmento
+ * do CRM, sem a parte de ticket que a UI do app não expõe).
+ */
+export function resumoCarteira(
+  f: {
+    tipos?: string[];
+    recenciaCampo?: string | null;
+    recenciaDe?: string | null;
+    recenciaAte?: string | null;
+  },
+  nomesTags: string[],
+): string {
+  const partes: string[] = [];
+  if (f.tipos && f.tipos.length > 0) {
+    partes.push(f.tipos.map((t) => TIPOS_CLIENTE.find((x) => x.key === t)?.label ?? t).join("/"));
+  }
+  if (nomesTags.length > 0) partes.push(`tags ${nomesTags.join(", ")}`);
+  const campo = f.recenciaCampo === "venda" ? "compra" : "atendimento";
+  if (f.recenciaAte && !f.recenciaDe) partes.push(`sem ${campo} desde ${dataCurta(f.recenciaAte)}`);
+  else if (f.recenciaDe && !f.recenciaAte) partes.push(`${campo} a partir de ${dataCurta(f.recenciaDe)}`);
+  else if (f.recenciaDe && f.recenciaAte) partes.push(`${campo} entre ${dataCurta(f.recenciaDe)} e ${dataCurta(f.recenciaAte)}`);
+  return partes.length > 0 ? `Minha carteira: ${partes.join(" · ")}` : "Minha carteira: todos os meus clientes";
+}
+
 /** Seções da agenda, na ordem de exibição. */
 export const GRUPOS = ["Atrasadas", "Hoje", "Amanhã", "Esta semana", "Mais tarde"] as const;
 export type Grupo = (typeof GRUPOS)[number];

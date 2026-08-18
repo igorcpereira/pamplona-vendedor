@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, CalendarCheck2, Loader2 } from "lucide-react";
+import { Plus, CalendarCheck2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
@@ -13,10 +13,23 @@ import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
 
 type Filtro = "ativas" | "todas";
 
+// Grupos futuros nascem minimizados para não poluir a agenda (pedido da
+// Pamplona, ata 13/08); Atrasadas e Hoje ficam sempre abertas.
+const GRUPOS_RECOLHIVEIS: Grupo[] = ["Amanhã", "Esta semana", "Mais tarde"];
+
 const Atividades = () => {
   const [filtro, setFiltro] = useState<Filtro>("ativas");
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [expandidos, setExpandidos] = useState<Set<Grupo>>(new Set());
   const hoje = hojeISO();
+
+  const alternarGrupo = (g: Grupo) =>
+    setExpandidos((prev) => {
+      const s = new Set(prev);
+      if (s.has(g)) s.delete(g);
+      else s.add(g);
+      return s;
+    });
 
   // "Ativas" = uma chamada só (o status_visivel separa as atrasadas).
   // "Todas" inclui concluídas/canceladas — janela de 30 dias para não
@@ -34,8 +47,8 @@ const Atividades = () => {
       variant: "destructive",
     });
 
-  const handleConcluir = (id: string) => {
-    concluir.mutate({ id }, { onError });
+  const handleConcluir = (id: string, obs?: string | null) => {
+    concluir.mutate({ id, obs }, { onError });
   };
 
   const handleAdiar = (id: string, novaData: string) => {
@@ -106,29 +119,47 @@ const Atividades = () => {
             </p>
           </div>
         ) : (
-          grupos.map(({ grupo, itens }) => (
-            <section key={grupo} className="space-y-2">
-              <h3
-                className={cn(
-                  "text-xs font-semibold uppercase tracking-wide",
-                  grupo === "Atrasadas" ? "text-destructive" : "text-muted-foreground",
+          grupos.map(({ grupo, itens }) => {
+            const recolhivel = GRUPOS_RECOLHIVEIS.includes(grupo);
+            const aberto = !recolhivel || expandidos.has(grupo);
+            return (
+              <section key={grupo} className="space-y-2">
+                {recolhivel ? (
+                  <button
+                    type="button"
+                    onClick={() => alternarGrupo(grupo)}
+                    className="flex w-full items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                    aria-expanded={aberto}
+                  >
+                    {aberto ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                    {grupo} <span className="opacity-60">({itens.length})</span>
+                  </button>
+                ) : (
+                  <h3
+                    className={cn(
+                      "text-xs font-semibold uppercase tracking-wide",
+                      grupo === "Atrasadas" ? "text-destructive" : "text-muted-foreground",
+                    )}
+                  >
+                    {grupo} <span className="opacity-60">({itens.length})</span>
+                  </h3>
                 )}
-              >
-                {grupo} <span className="opacity-60">({itens.length})</span>
-              </h3>
-              <div className="space-y-2">
-                {itens.map((a) => (
-                  <AtividadeCard
-                    key={a.id}
-                    atividade={a}
-                    onConcluir={() => handleConcluir(a.id)}
-                    onAdiar={(novaData) => handleAdiar(a.id, novaData)}
-                    isUpdating={concluir.isPending || adiar.isPending}
-                  />
-                ))}
-              </div>
-            </section>
-          ))
+                {aberto && (
+                  <div className="space-y-2">
+                    {itens.map((a) => (
+                      <AtividadeCard
+                        key={a.id}
+                        atividade={a}
+                        onConcluir={(obs) => handleConcluir(a.id, obs)}
+                        onAdiar={(novaData) => handleAdiar(a.id, novaData)}
+                        isUpdating={concluir.isPending || adiar.isPending}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })
         )}
       </main>
 

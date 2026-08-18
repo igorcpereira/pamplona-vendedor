@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Calendar, DollarSign, Save, Loader2, Scissors, Package, User } from "lucide-react";
+import { ArrowLeft, Calendar, CalendarPlus, DollarSign, Save, Loader2, Scissors, Package, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,8 @@ import { useLanificios } from "@/hooks/useLanificios";
 import { useTiposItemAvulso } from "@/hooks/useTiposItemAvulso";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
+import HistoricoCliente from "@/components/atividades/HistoricoCliente";
+import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
 
 type ProvaInfo = { id: string; created_at: string };
 type ItemResumo = { tipo_item: string; quantidade: number };
@@ -33,6 +35,7 @@ export default function ClienteDetalhes() {
   const [pedidosByFichaId, setPedidosByFichaId] = useState<Map<string, PedidoResumo[]>>(new Map());
   const [vendedorNomes, setVendedorNomes] = useState<Map<string, string>>(new Map());
   const [formData, setFormData] = useState({ nome: "", telefone: "" });
+  const [novaAtividadeAberta, setNovaAtividadeAberta] = useState(false);
   const { data: lanificios = [] } = useLanificios();
   const { data: tiposItem = [] } = useTiposItemAvulso();
 
@@ -242,6 +245,22 @@ export default function ClienteDetalhes() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Atividades do cliente (timeline + criação rápida) */}
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Atividades</h3>
+              <Button size="sm" variant="outline" onClick={() => setNovaAtividadeAberta(true)}>
+                <CalendarPlus className="h-4 w-4 mr-1" />
+                Nova atividade
+              </Button>
+            </div>
+            <Card>
+              <CardContent className="p-4 max-h-80 overflow-y-auto">
+                {id && <HistoricoCliente clienteId={id} />}
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Histórico de Fichas */}
           <div className="space-y-4">
@@ -507,6 +526,13 @@ export default function ClienteDetalhes() {
         </div>
       </main>
 
+      {cliente && (
+        <NovaAtividadeDialog
+          open={novaAtividadeAberta}
+          onClose={() => setNovaAtividadeAberta(false)}
+          clienteInicial={{ id: cliente.id, nome: cliente.nome }}
+        />
+      )}
       <BottomNav />
     </div>
   );

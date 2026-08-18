@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { Atividade } from "@/hooks/useAtividades";
 
 let atividadesMock: Atividade[] = [];
@@ -53,5 +54,24 @@ describe("Início — agenda de atividades", () => {
     render(<Atividades />);
     expect(screen.getByRole("button", { name: "Ativas" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Todas" })).toBeInTheDocument();
+  });
+
+  it("grupo futuro nasce recolhido e expande no toque", async () => {
+    atividadesMock = [make({ data: "2099-01-01", status_visivel: "a_fazer" })];
+    render(<Atividades />);
+    // header do grupo visível, cards escondidos
+    const cabecalho = screen.getByRole("button", { name: /Mais tarde/ });
+    expect(cabecalho).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Aluguel")).not.toBeInTheDocument();
+    await userEvent.click(cabecalho);
+    expect(cabecalho).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
+  });
+
+  it("Atrasadas e Hoje não são recolhíveis (cards sempre visíveis)", () => {
+    atividadesMock = [make()]; // atrasada
+    render(<Atividades />);
+    expect(screen.queryByRole("button", { name: /Atrasadas/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Aluguel")).toBeInTheDocument();
   });
 });

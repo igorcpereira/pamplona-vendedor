@@ -35,11 +35,30 @@ function makeAtividade(over: Partial<Atividade> = {}): Atividade {
 }
 
 describe("AtividadeCard — ações", () => {
-  it("concluir chama onConcluir direto", async () => {
+  it("concluir abre o mini-dialog e confirma sem observação (obs = null)", async () => {
     const onConcluir = vi.fn();
     render(<AtividadeCard atividade={makeAtividade()} onConcluir={onConcluir} onAdiar={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
-    expect(onConcluir).toHaveBeenCalled();
+    // dialog aberto: nada foi concluído ainda
+    expect(onConcluir).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText("O que aconteceu? (opcional)")).toBeInTheDocument();
+    // com o mini-modal aberto há dois botões "Concluir"; o de confirmação é o último
+    const botoes = screen.getAllByRole("button", { name: "Concluir" });
+    await userEvent.click(botoes[botoes.length - 1]);
+    expect(onConcluir).toHaveBeenCalledWith(null);
+  });
+
+  it("concluir com observação repassa o texto", async () => {
+    const onConcluir = vi.fn();
+    render(<AtividadeCard atividade={makeAtividade()} onConcluir={onConcluir} onAdiar={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    await userEvent.type(
+      screen.getByPlaceholderText("O que aconteceu? (opcional)"),
+      "enviei o orçamento, cliente vai analisar",
+    );
+    const botoes = screen.getAllByRole("button", { name: "Concluir" });
+    await userEvent.click(botoes[botoes.length - 1]);
+    expect(onConcluir).toHaveBeenCalledWith("enviei o orçamento, cliente vai analisar");
   });
 
   it("adiar abre o calendário e confirma com a data pré-preenchida", async () => {

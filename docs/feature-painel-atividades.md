@@ -4,6 +4,18 @@
 **Data:** 2026-07-24 (banco) · 2026-07-28 (fronts). Substitui o MVP antigo (schema `dev` +
 gatilhos), que foi **descartado e dropado** (`20260724140000_atividades_v1_limpeza.sql`).
 
+> **Adições de 2026-08-17 (quick wins da reunião Pamplona 13/08):**
+> concluir no app abre mini-dialog com observação opcional; grupos futuros
+> (Amanhã/Esta semana/Mais tarde) minimizados em accordion; botão "Nova atividade"
+> nos cards da tela Clientes e na tela de detalhes do cliente (dialog abre no passo 2
+> via prop `clienteInicial`); seção "Atividades" (timeline) em ClienteDetalhes e painel
+> "Atividades" no FichasClienteSheet do CRM; **modo "Minha carteira"** no
+> NovaAtividadeDialog — filtros tags/tipo/recência sobre a própria carteira
+> (`atividades_carteira_previa`) e criação em massa para si
+> (`atividades_criar_lote_carteira`), migration `20260817150000_carteira_vendedor.sql`
+> no pamplona-db (clientes_segmento ganhou `p_dono_id`; vendedor só enxerga a própria
+> carteira). Bug do lote do gestor corrigido em `20260817130000_lote_dono_gestor.sql`.
+
 > Documento vivo. Reflete o que está implementado. Houve duas implementações paralelas do
 > front do vendedor (24/07 no branch `desenvolvimento` e 28/07 sobre `main`); a de 28/07
 > prevaleceu, com os testes e o histórico de cliente aproveitados da primeira.

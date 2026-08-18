@@ -5,9 +5,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import NovaAtividadeDialog from "./NovaAtividadeDialog";
 
 const mockCriar = vi.fn(() => Promise.resolve("g1"));
+const mockCriarLote = vi.fn(() => Promise.resolve({ grupo_id: "g2", criadas: 5 }));
 const mockToast = vi.fn();
 const mockInvoke = vi.fn();
 let recentesMock: { id: string; nome: string }[] = [];
+let previaMock: { total: number } | undefined = { total: 5 };
 
 vi.mock("@/hooks/use-toast", () => ({ toast: (...a: unknown[]) => mockToast(...a) }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "u1" } }) }));
@@ -20,8 +22,18 @@ vi.mock("@/hooks/useClientes", () => ({
 vi.mock("@/hooks/useUltimosClientes", () => ({
   useUltimosClientes: () => ({ data: recentesMock, isLoading: false }),
 }));
+vi.mock("@/hooks/useTagsAtivas", () => ({
+  useTagsAtivas: () => ({
+    data: [
+      { id: "tag-adv", nome: "Advogado", padrao: true },
+      { id: "tag-med", nome: "Médico", padrao: false },
+    ],
+  }),
+}));
 vi.mock("@/hooks/useAtividades", () => ({
   useCriarAtividade: () => ({ mutateAsync: mockCriar, isPending: false }),
+  useCriarLoteCarteira: () => ({ mutateAsync: mockCriarLote, isPending: false }),
+  useCarteiraPrevia: () => ({ data: previaMock, isFetching: false }),
   useTiposAtividadeAtivos: () => ({
     data: [
       { id: "t-cas", slug: "casamento", nome: "Casamento", exige_cliente: true },
@@ -30,20 +42,22 @@ vi.mock("@/hooks/useAtividades", () => ({
   }),
 }));
 
-function renderDialog() {
+function renderDialog(props: { clienteInicial?: { id: string; nome: string } } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <NovaAtividadeDialog open onClose={vi.fn()} />
+      <NovaAtividadeDialog open onClose={vi.fn()} {...props} />
     </QueryClientProvider>,
   );
 }
 
 beforeEach(() => {
   mockCriar.mockClear();
+  mockCriarLote.mockClear();
   mockToast.mockClear();
   mockInvoke.mockReset();
   recentesMock = [{ id: "c1", nome: "Fulano" }, { id: "c2", nome: "Beltrano" }];
+  previaMock = { total: 5 };
 });
 
 describe("NovaAtividadeDialog — passo 1 (cliente)", () => {
@@ -133,5 +147,68 @@ describe("NovaAtividadeDialog — passo 2 (comum)", () => {
     await userEvent.click(screen.getByRole("button", { name: /Fulano/ }));
     await userEvent.click(screen.getByRole("button", { name: "Voltar para a escolha do cliente" }));
     expect(screen.getByText("Passo 1 de 2 — quem é o cliente?")).toBeInTheDocument();
+  });
+});
+
+describe("NovaAtividadeDialog — clienteInicial (tela Clientes)", () => {
+  it("abre direto no passo 2 com o cliente escolhido e sem seletor de modo", () => {
+    renderDialog({ clienteInicial: { id: "c9", nome: "Cicrana" } });
+    expect(screen.getByText("Passo 2 de 2 — tipo e data")).toBeInTheDocument();
+    expect(screen.getByText("Cicrana")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Minha carteira/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("NovaAtividadeDialog — modo Minha carteira", () => {
+  it("mostra filtros, prévia e cria o lote com os filtros escolhidos", async () => {
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: /Minha carteira/ }));
+    expect(screen.getByText("Passo 1 de 2 — filtre a sua carteira")).toBeInTheDocument();
+
+    // tag em destaque + tipo de cliente + recência
+    await userEvent.click(screen.getByRole("button", { name: "Advogado" }));
+    await userEvent.click(screen.getByRole("button", { name: "Venda" }));
+    await userEvent.click(screen.getByRole("button", { name: "90 dias+" }));
+
+    // prévia mockada
+    expect(screen.getByText(/clientes da sua carteira/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(screen.getByText("Passo 2 de 2 — tipo e data")).toBeInTheDocument();
+    expect(screen.getByText("5 clientes selecionados")).toBeInTheDocument();
+    // sem campo de data do evento no fluxo da carteira
+    expect(screen.queryByLabelText("Data do evento (opcional)")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Casamento" }));
+    await userEvent.click(screen.getByRole("button", { name: "Criar atividades" }));
+
+    expect(mockCriarLote).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tipoId: "t-cas",
+        filtros: expect.objectContaining({
+          tagIds: ["tag-adv"],
+          tipos: ["venda"],
+          recenciaCampo: "atendimento",
+        }),
+        descricao: expect.stringContaining("Minha carteira"),
+      }),
+    );
+  });
+
+  it("busca acha tag fora do destaque", async () => {
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: /Minha carteira/ }));
+    expect(screen.queryByRole("button", { name: "Médico" })).not.toBeInTheDocument();
+    await userEvent.type(screen.getByPlaceholderText("Buscar outras tags…"), "méd");
+    await userEvent.click(screen.getByRole("button", { name: "Médico" }));
+    // depois de escolhida, vira chip selecionado no destaque
+    expect(screen.getByRole("button", { name: "Médico" })).toBeInTheDocument();
+  });
+
+  it("com prévia zerada, o Continuar fica bloqueado", async () => {
+    previaMock = { total: 0 };
+    renderDialog();
+    await userEvent.click(screen.getByRole("button", { name: /Minha carteira/ }));
+    expect(screen.getByRole("button", { name: "Continuar" })).toBeDisabled();
   });
 });
