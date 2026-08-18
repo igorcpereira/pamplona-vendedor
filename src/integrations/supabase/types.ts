@@ -216,6 +216,51 @@ export type Database = {
           },
         ]
       }
+      clientes_antigos: {
+        Row: {
+          alterar_nome: boolean | null
+          arquivado_em: string
+          created_at: string
+          id: string
+          msgs_whatsapp: number
+          nome: string
+          tags: Json
+          telefone: string | null
+          tipo_atendimento: string | null
+          unidade_id: number | null
+          updated_at: string
+          vendedor_id: string | null
+        }
+        Insert: {
+          alterar_nome?: boolean | null
+          arquivado_em?: string
+          created_at: string
+          id: string
+          msgs_whatsapp?: number
+          nome: string
+          tags?: Json
+          telefone?: string | null
+          tipo_atendimento?: string | null
+          unidade_id?: number | null
+          updated_at: string
+          vendedor_id?: string | null
+        }
+        Update: {
+          alterar_nome?: boolean | null
+          arquivado_em?: string
+          created_at?: string
+          id?: string
+          msgs_whatsapp?: number
+          nome?: string
+          tags?: Json
+          telefone?: string | null
+          tipo_atendimento?: string | null
+          unidade_id?: number | null
+          updated_at?: string
+          vendedor_id?: string | null
+        }
+        Relationships: []
+      }
       clientes_import: {
         Row: {
           data: string | null
@@ -1265,6 +1310,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "relacao_cliente_tag_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "relacao_cliente_tag_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "relacao_cliente_tag_id_cliente_fkey"
             columns: ["id_cliente"]
             isOneToOne: false
@@ -1278,38 +1337,45 @@ export type Database = {
             referencedRelation: "tags"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "relacao_cliente_tag_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tags: {
         Row: {
           ativa: boolean
+          categoria: string
           cor: string
           created_at: string
           id: string
           nome: string
           padrao: boolean
           unidade_id: number | null
-          categoria: string
         }
         Insert: {
           ativa?: boolean
+          categoria?: string
           cor?: string
           created_at?: string
           id?: string
           nome: string
           padrao?: boolean
           unidade_id?: number | null
-          categoria?: string
         }
         Update: {
           ativa?: boolean
+          categoria?: string
           cor?: string
           created_at?: string
           id?: string
           nome?: string
           padrao?: boolean
           unidade_id?: number | null
-          categoria?: string
         }
         Relationships: [
           {
@@ -1642,7 +1708,112 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vw_atendimentos: {
+        Row: {
+          cliente_id: string | null
+          data: string | null
+          tipo: string | null
+          unidade_id: number | null
+          valor: number | null
+          vendedor_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          data?: string | null
+          tipo?: never
+          unidade_id?: number | null
+          valor?: never
+          vendedor_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          data?: string | null
+          tipo?: never
+          unidade_id?: number | null
+          valor?: never
+          vendedor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_cliente_unidade: {
+        Row: {
+          atendimentos: number | null
+          avulsos: number | null
+          cliente_id: string | null
+          dono_id: string | null
+          fichas_ajuste: number | null
+          fichas_aluguel: number | null
+          fichas_sob_medida: number | null
+          fichas_venda: number | null
+          primeiro_atendimento: string | null
+          ultima_venda: string | null
+          ultimo_atendimento: string | null
+          unidade_id: number | null
+          valor_avulsos: number | null
+          valor_fichas: number | null
+          valor_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_cliente_unidade_vendedor: {
+        Row: {
+          avulsos: number | null
+          cliente_id: string | null
+          fichas: number | null
+          primeiro_atendimento: string | null
+          ultimo_atendimento: string | null
+          unidade_id: number | null
+          valor_avulsos: number | null
+          valor_fichas: number | null
+          vendedor_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fichas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fichas_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       _atividade_pode_agir: { Args: { p_id: string }; Returns: boolean }
@@ -1675,6 +1846,21 @@ export type Database = {
         Args: { p_id: string; p_motivo?: string }
         Returns: undefined
       }
+      atividades_carteira_previa: {
+        Args: {
+          p_recencia_ate?: string
+          p_recencia_campo?: string
+          p_recencia_de?: string
+          p_tag_ids?: string[]
+          p_ticket_ate?: string
+          p_ticket_de?: string
+          p_ticket_escopo?: string
+          p_ticket_max?: number
+          p_ticket_min?: number
+          p_tipos?: string[]
+        }
+        Returns: Json
+      }
       atividades_concluir: {
         Args: { p_id: string; p_obs?: string }
         Returns: undefined
@@ -1692,6 +1878,43 @@ export type Database = {
           p_unidade_id?: number
         }
         Returns: string
+      }
+      atividades_criar_lote: {
+        Args: {
+          p_data: string
+          p_descricao?: string
+          p_recencia_ate?: string
+          p_recencia_campo?: string
+          p_recencia_de?: string
+          p_tag_ids?: string[]
+          p_ticket_ate?: string
+          p_ticket_de?: string
+          p_ticket_escopo?: string
+          p_ticket_max?: number
+          p_ticket_min?: number
+          p_tipo_id: string
+          p_tipos?: string[]
+          p_unidade_id: number
+        }
+        Returns: Json
+      }
+      atividades_criar_lote_carteira: {
+        Args: {
+          p_data: string
+          p_descricao?: string
+          p_recencia_ate?: string
+          p_recencia_campo?: string
+          p_recencia_de?: string
+          p_tag_ids?: string[]
+          p_ticket_ate?: string
+          p_ticket_de?: string
+          p_ticket_escopo?: string
+          p_ticket_max?: number
+          p_ticket_min?: number
+          p_tipo_id: string
+          p_tipos?: string[]
+        }
+        Returns: Json
       }
       atividades_listar: {
         Args: {
@@ -1726,6 +1949,54 @@ export type Database = {
           updated_at: string
         }[]
       }
+      atividades_listar_encerradas: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+          p_unidade_id?: number
+        }
+        Returns: {
+          cliente_id: string
+          cliente_nome: string
+          cliente_telefone: string
+          created_at: string
+          created_by: string
+          data: string
+          data_evento: string
+          descricao: string
+          ficha_id: string
+          grupo_id: string
+          id: string
+          pedido_id: string
+          responsavel_id: string
+          responsavel_nome: string
+          status: string
+          status_visivel: string
+          tipo_id: string
+          tipo_nome: string
+          tipo_slug: string
+          total: number
+          unidade_id: number
+          updated_at: string
+        }[]
+      }
+      atividades_lote_previa: {
+        Args: {
+          p_recencia_ate?: string
+          p_recencia_campo?: string
+          p_recencia_de?: string
+          p_tag_ids?: string[]
+          p_ticket_ate?: string
+          p_ticket_de?: string
+          p_ticket_escopo?: string
+          p_ticket_max?: number
+          p_ticket_min?: number
+          p_tipos?: string[]
+          p_unidade_id: number
+        }
+        Returns: Json
+      }
       atividades_reatribuir: {
         Args: { p_id: string; p_responsavel_id: string }
         Returns: undefined
@@ -1733,6 +2004,23 @@ export type Database = {
       atividades_registrar_whatsapp: {
         Args: { p_id: string }
         Returns: undefined
+      }
+      atividades_resultados: {
+        Args: { p_unidade_id?: number }
+        Returns: {
+          adiadas_7d: number
+          adiadas_hoje: number
+          adiadas_ontem: number
+          chave: string
+          concluidas_7d: number
+          concluidas_hoje: number
+          concluidas_ontem: number
+          criadas_7d: number
+          criadas_hoje: number
+          criadas_ontem: number
+          escopo: string
+          nome: string
+        }[]
       }
       atualizar_ficha: {
         Args: {
@@ -1779,11 +2067,42 @@ export type Database = {
         Args: { _target_unidade_id: number; _user_id: string }
         Returns: boolean
       }
+      clientes_segmento: {
+        Args: {
+          p_dono_id?: string
+          p_recencia_ate?: string
+          p_recencia_campo?: string
+          p_recencia_de?: string
+          p_tag_ids?: string[]
+          p_ticket_ate?: string
+          p_ticket_de?: string
+          p_ticket_escopo?: string
+          p_ticket_max?: number
+          p_ticket_min?: number
+          p_tipos?: string[]
+          p_unidade_id: number
+        }
+        Returns: {
+          atendimentos: number
+          cliente_id: string
+          dono_id: string
+          ticket_medio: number
+          ultima_venda: string
+          ultimo_atendimento: string
+          valor_total: number
+        }[]
+      }
       excluir_ficha: { Args: { p_ficha_id: string }; Returns: undefined }
       get_clientes: {
         Args: {
+          _dir?: string
+          _ltv_max?: number
+          _ltv_min?: number
+          _order_by?: string
           _page?: number
           _search?: string
+          _ultima_venda_ate?: string
+          _ultima_venda_de?: string
           _unidade_id?: number
           _vendedor_id?: string
         }
@@ -1797,6 +2116,7 @@ export type Database = {
           telefone: string
           tipo_atendimento: string
           total_count: number
+          ultima_venda: string
           unidade_id: number
           unidade_nome: string
           updated_at: string
@@ -1907,6 +2227,8 @@ export type Database = {
         Args: {
           p_data_fim?: string
           p_data_inicio?: string
+          p_dir?: string
+          p_order_by?: string
           p_page?: number
           p_page_size?: number
           p_search?: string
@@ -2144,11 +2466,13 @@ export type Database = {
         }
         Returns: {
           ativa: boolean
+          categoria: string
           clientes_count: number
           cor: string
           created_at: string
           id: string
           nome: string
+          padrao: boolean
           unidade_id: number
           unidade_nome: string
         }[]
@@ -2230,6 +2554,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      ind_dias_acesso: {
+        Args: { p_ate: string; p_de: string }
+        Returns: {
+          app: string
+          dia: string
+          ultimo: string
+          user_id: string
+        }[]
       }
       is_gestor_ou_acima: { Args: never; Returns: boolean }
       is_master_or_admin: { Args: never; Returns: boolean }
@@ -2412,6 +2745,7 @@ export type Database = {
           venda: number
         }[]
       }
+      sem_acento: { Args: { texto: string }; Returns: string }
       set_user_ativo: {
         Args: { _ativo: boolean; _user_id: string }
         Returns: undefined
