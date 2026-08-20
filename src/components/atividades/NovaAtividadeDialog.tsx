@@ -19,6 +19,7 @@ import { useTagsAtivas } from "@/hooks/useTagsAtivas";
 import {
   useCriarAtividade,
   useTiposAtividadeAtivos,
+  tiposAvulsos,
   useCarteiraPrevia,
   useCriarLoteCarteira,
   type CarteiraFiltros,
@@ -53,7 +54,9 @@ const NovaAtividadeDialog = ({ open, onClose, clienteInicial }: Props) => {
   const criarLote = useCriarLoteCarteira();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { data: tipos } = useTiposAtividadeAtivos();
+  const { data: todosOsTipos } = useTiposAtividadeAtivos();
+  // Só tipo avulso aqui: os do funil nascem da oportunidade, não deste diálogo.
+  const tipos = useMemo(() => tiposAvulsos(todosOsTipos), [todosOsTipos]);
   const { data: recentes, isLoading: recentesLoading } = useUltimosClientes();
   const { data: tagsAtivas } = useTagsAtivas();
   const hoje = hojeISO();

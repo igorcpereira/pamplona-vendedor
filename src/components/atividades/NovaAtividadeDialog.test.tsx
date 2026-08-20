@@ -36,10 +36,14 @@ vi.mock("@/hooks/useAtividades", () => ({
   useCarteiraPrevia: () => ({ data: previaMock, isFetching: false }),
   useTiposAtividadeAtivos: () => ({
     data: [
-      { id: "t-cas", slug: "casamento", nome: "Casamento", exige_cliente: true },
-      { id: "t-lem", slug: "lembrete", nome: "Lembrete", exige_cliente: false },
+      { id: "t-cas", slug: "casamento", nome: "Casamento", exige_cliente: true, permite_avulso: true },
+      { id: "t-lem", slug: "lembrete", nome: "Lembrete", exige_cliente: false, permite_avulso: true },
+      // Tipo de funil: o diálogo NÃO deve oferecer.
+      { id: "t-fun", slug: "contato", nome: "Contato", exige_cliente: true, permite_avulso: false },
     ],
   }),
+  tiposAvulsos: (tipos?: { permite_avulso: boolean }[]) =>
+    (tipos ?? []).filter((t) => t.permite_avulso),
 }));
 
 function renderDialog(props: { clienteInicial?: { id: string; nome: string } } = {}) {

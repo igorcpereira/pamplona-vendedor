@@ -12,6 +12,17 @@ export interface TipoAtividadeAtivo {
   slug: string;
   nome: string;
   exige_cliente: boolean;
+  /** false = tipo de funil: só nasce dentro de uma oportunidade. */
+  permite_avulso: boolean;
+}
+
+/**
+ * Tipos que o vendedor pode escolher ao criar atividade solta ou lote. Os do
+ * funil ficam de fora: o banco recusa (trigger trg_atividade_valida_tipo_avulso)
+ * e oferecê-los seria só um caminho para o erro.
+ */
+export function tiposAvulsos(tipos: TipoAtividadeAtivo[] | undefined) {
+  return (tipos ?? []).filter((t) => t.permite_avulso);
 }
 
 const ATIVIDADES_KEY = "atividades";

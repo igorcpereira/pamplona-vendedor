@@ -17,6 +17,8 @@ vi.mock("@/hooks/useAtividades", () => ({
   useAtividades: () => ({ data: atividadesMock, isLoading: false }),
   useConcluirAtividade: () => ({ mutate: vi.fn(), isPending: false }),
   useAdiarAtividade: () => ({ mutate: vi.fn(), isPending: false }),
+  useTiposAtividadeAtivos: () => ({ data: [] }),
+  tiposAvulsos: () => [],
 }));
 
 import Atividades from "./Atividades";
