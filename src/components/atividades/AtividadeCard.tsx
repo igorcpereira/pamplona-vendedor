@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Check, Phone, User, Clock, Loader2, MessageCircle, History } from "lucide-react";
 import { parseISO } from "date-fns";
 import { Card } from "@/components/ui/card";
@@ -12,12 +13,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { dataCurta } from "@/lib/atividades";
 import type { Atividade } from "@/hooks/useAtividades";
 import HistoricoCliente from "@/components/atividades/HistoricoCliente";
+import ConcluirComDesfecho, { type Desfecho } from "@/components/atividades/ConcluirComDesfecho";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+const TIPO_NEGOCIACAO_LABEL: Record<string, string> = {
+  noivo: "Noivo",
+  sob_medida: "Sob medida",
+  avulsa: "Avulsa",
+};
+
 interface Props {
   atividade: Atividade;
-  onConcluir: (obs?: string | null) => void;
+  onConcluir: (
+    obs?: string | null,
+    desfecho?: string | null,
+    payload?: Record<string, string>,
+  ) => void;
   onAdiar: (novaData: string) => void;
   isUpdating?: boolean;
 }
@@ -41,6 +53,9 @@ const statusBadge: Record<string, { label: string; className: string }> = {
 };
 
 const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) => {
+  // Vem de funil_etapas via atividades_listar; vazio = atividade avulsa (ou
+  // card já encerrado, quando o servidor deixa de mandar os desfechos).
+  const desfechos = (atividade.desfechos as unknown as Desfecho[] | null) ?? [];
   const telefoneRaw = (atividade.cliente_telefone ?? "").replace(/\D/g, "");
   const telefone = telefoneRaw ? formatTelefone(telefoneRaw) : null;
   const encerrada = atividade.status === "concluida" || atividade.status === "cancelada";
@@ -49,6 +64,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
   const [adiarOpen, setAdiarOpen] = useState(false);
   const [novaData, setNovaData] = useState<Date | undefined>();
   const [historicoOpen, setHistoricoOpen] = useState(false);
+  const navigate = useNavigate();
   const [concluirOpen, setConcluirOpen] = useState(false);
   const [obsConcluir, setObsConcluir] = useState("");
 
@@ -84,6 +100,18 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
             <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", badge.className)}>
               {badge.label}
             </Badge>
+            {/* Selo do funil: o vendedor não vê kanban, mas sabe que a atividade
+                faz parte de uma negociação e em que ponto ela está. */}
+            {atividade.oportunidade_id && (
+              <Badge
+                variant="outline"
+                className="text-[10px] px-1.5 py-0 border-primary/40 text-primary"
+                title="Esta atividade faz parte de uma oportunidade"
+              >
+                {TIPO_NEGOCIACAO_LABEL[atividade.oportunidade_tipo ?? ""] ?? "Funil"}
+                {atividade.oportunidade_etapa_rotulo ? ` · ${atividade.oportunidade_etapa_rotulo}` : ""}
+              </Badge>
+            )}
           </div>
 
           {atividade.cliente_nome && (
@@ -173,32 +201,52 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
         )}
       </div>
 
-      {/* Mini-modal para concluir com observação opcional */}
+      {/* Concluir: com desfecho quando a atividade é de oportunidade (é o
+          desfecho que move o funil), só observação quando é avulsa. */}
       <Dialog open={concluirOpen} onOpenChange={setConcluirOpen}>
         <DialogContent className="max-w-xs">
           <DialogTitle>Concluir atividade</DialogTitle>
           <DialogDescription>
             “{atividade.cliente_nome ?? atividade.tipo_nome}”
           </DialogDescription>
-          <Textarea
-            value={obsConcluir}
-            onChange={(e) => setObsConcluir(e.target.value)}
-            placeholder="O que aconteceu? (opcional)"
-            rows={3}
-          />
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setConcluirOpen(false)} disabled={isUpdating}>
-              Cancelar
-            </Button>
-            <Button
-              className="flex-1 bg-green-600 text-white hover:bg-green-700"
-              onClick={confirmarConcluir}
-              disabled={isUpdating}
-            >
-              {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Concluir
-            </Button>
-          </div>
+
+          {desfechos.length > 0 ? (
+            <ConcluirComDesfecho
+              desfechos={desfechos}
+              isUpdating={isUpdating}
+              onConcluir={({ desfecho, obs, payload }) => {
+                onConcluir(obs, desfecho, payload);
+                setConcluirOpen(false);
+              }}
+              onLancarFicha={() => {
+                setConcluirOpen(false);
+                navigate("/novo");
+              }}
+              onCancelar={() => setConcluirOpen(false)}
+            />
+          ) : (
+            <>
+              <Textarea
+                value={obsConcluir}
+                onChange={(e) => setObsConcluir(e.target.value)}
+                placeholder="O que aconteceu? (opcional)"
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setConcluirOpen(false)} disabled={isUpdating}>
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-green-600 text-white hover:bg-green-700"
+                  onClick={confirmarConcluir}
+                  disabled={isUpdating}
+                >
+                  {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Concluir
+                </Button>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -82,10 +82,22 @@ function useInvalidarAtividades() {
 export function useConcluirAtividade() {
   const invalidar = useInvalidarAtividades();
   return useMutation({
-    mutationFn: async ({ id, obs }: { id: string; obs?: string | null }) => {
+    mutationFn: async (
+      { id, obs, desfecho, payload }: {
+        id: string;
+        obs?: string | null;
+        desfecho?: string | null;
+        /** Campos do formulário do desfecho (vendedor, tipo, datas). */
+        payload?: Record<string, string>;
+      },
+    ) => {
       const { error } = await supabase.rpc("atividades_concluir", {
         p_id: id,
         p_obs: obs ?? undefined,
+        // Em atividade de oportunidade o desfecho é obrigatório e é ele que
+        // move o funil — quem decide a etapa é a RPC, lendo funil_etapas.
+        p_desfecho: desfecho ?? undefined,
+        p_payload: (payload ?? {}) as never,
       });
       if (error) throw error;
     },

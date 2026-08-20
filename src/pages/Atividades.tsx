@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, CalendarCheck2, Loader2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, CalendarCheck2, Loader2, ChevronDown, ChevronRight, Target } from "lucide-react";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import Logo from "@/components/Logo";
@@ -10,6 +10,7 @@ import { useAtividades, useConcluirAtividade, useAdiarAtividade, type Atividade 
 import { GRUPOS, grupoDe, hojeISO, somaDiasISO, type Grupo } from "@/lib/atividades";
 import AtividadeCard from "@/components/atividades/AtividadeCard";
 import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
+import NovaOportunidadeDialog from "@/components/atividades/NovaOportunidadeDialog";
 
 type Filtro = "ativas" | "todas";
 
@@ -20,6 +21,7 @@ const GRUPOS_RECOLHIVEIS: Grupo[] = ["Amanhã", "Esta semana", "Mais tarde"];
 const Atividades = () => {
   const [filtro, setFiltro] = useState<Filtro>("ativas");
   const [dialogAberto, setDialogAberto] = useState(false);
+  const [oportunidadeAberta, setOportunidadeAberta] = useState(false);
   const [expandidos, setExpandidos] = useState<Set<Grupo>>(new Set());
   const hoje = hojeISO();
 
@@ -47,8 +49,13 @@ const Atividades = () => {
       variant: "destructive",
     });
 
-  const handleConcluir = (id: string, obs?: string | null) => {
-    concluir.mutate({ id, obs }, { onError });
+  const handleConcluir = (
+    id: string,
+    obs?: string | null,
+    desfecho?: string | null,
+    payload?: Record<string, string>,
+  ) => {
+    concluir.mutate({ id, obs, desfecho, payload }, { onError });
   };
 
   const handleAdiar = (id: string, novaData: string) => {
@@ -83,10 +90,16 @@ const Atividades = () => {
       <main className="px-4 py-6 max-w-md mx-auto space-y-4 relative z-10">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-foreground">Minha agenda</h2>
-          <Button size="sm" onClick={() => setDialogAberto(true)}>
-            <Plus className="h-4 w-4 mr-1" />
-            Nova
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setOportunidadeAberta(true)}>
+              <Target className="h-4 w-4 mr-1" />
+              Oportunidade
+            </Button>
+            <Button size="sm" onClick={() => setDialogAberto(true)}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nova
+            </Button>
+          </div>
         </div>
 
         {/* Filtro */}
@@ -150,7 +163,7 @@ const Atividades = () => {
                       <AtividadeCard
                         key={a.id}
                         atividade={a}
-                        onConcluir={(obs) => handleConcluir(a.id, obs)}
+                        onConcluir={(obs, desfecho, payload) => handleConcluir(a.id, obs, desfecho, payload)}
                         onAdiar={(novaData) => handleAdiar(a.id, novaData)}
                         isUpdating={concluir.isPending || adiar.isPending}
                       />
@@ -164,6 +177,10 @@ const Atividades = () => {
       </main>
 
       <NovaAtividadeDialog open={dialogAberto} onClose={() => setDialogAberto(false)} />
+      {/* Monta só quando abre: fechado não faz sentido rodar a busca de clientes. */}
+      {oportunidadeAberta && (
+        <NovaOportunidadeDialog open onClose={() => setOportunidadeAberta(false)} />
+      )}
       <BottomNav />
     </div>
   );
