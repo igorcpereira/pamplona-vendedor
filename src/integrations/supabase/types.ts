@@ -76,11 +76,14 @@ export type Database = {
           data: string
           data_evento: string | null
           descricao: string | null
+          desfecho: string | null
           ficha_id: string | null
           grupo_id: string | null
           id: string
+          oportunidade_id: string | null
+          papel_destino: string | null
           pedido_id: string | null
-          responsavel_id: string
+          responsavel_id: string | null
           status: string
           tipo_id: string
           unidade_id: number | null
@@ -93,11 +96,14 @@ export type Database = {
           data: string
           data_evento?: string | null
           descricao?: string | null
+          desfecho?: string | null
           ficha_id?: string | null
           grupo_id?: string | null
           id?: string
+          oportunidade_id?: string | null
+          papel_destino?: string | null
           pedido_id?: string | null
-          responsavel_id: string
+          responsavel_id?: string | null
           status?: string
           tipo_id: string
           unidade_id?: number | null
@@ -110,11 +116,14 @@ export type Database = {
           data?: string
           data_evento?: string | null
           descricao?: string | null
+          desfecho?: string | null
           ficha_id?: string | null
           grupo_id?: string | null
           id?: string
+          oportunidade_id?: string | null
+          papel_destino?: string | null
           pedido_id?: string | null
-          responsavel_id?: string
+          responsavel_id?: string | null
           status?: string
           tipo_id?: string
           unidade_id?: number | null
@@ -140,6 +149,13 @@ export type Database = {
             columns: ["ficha_id"]
             isOneToOne: false
             referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atividades_oportunidade_id_fkey"
+            columns: ["oportunidade_id"]
+            isOneToOne: false
+            referencedRelation: "oportunidades"
             referencedColumns: ["id"]
           },
           {
@@ -825,6 +841,39 @@ export type Database = {
           },
         ]
       }
+      funil_etapas: {
+        Row: {
+          ativa: boolean
+          atividades: Json
+          created_at: string
+          desfechos: Json
+          etapa: number
+          id: string
+          rotulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          atividades?: Json
+          created_at?: string
+          desfechos?: Json
+          etapa: number
+          id?: string
+          rotulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          atividades?: Json
+          created_at?: string
+          desfechos?: Json
+          etapa?: number
+          id?: string
+          rotulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       historico_whatsapp: {
         Row: {
           client_id: string | null
@@ -1134,6 +1183,154 @@ export type Database = {
         }
         Relationships: []
       }
+      oportunidade_logs: {
+        Row: {
+          acao: string
+          atividade_id: string | null
+          autor_id: string | null
+          created_at: string
+          de_etapa: number | null
+          id: string
+          observacao: string | null
+          oportunidade_id: string
+          para_etapa: number | null
+        }
+        Insert: {
+          acao: string
+          atividade_id?: string | null
+          autor_id?: string | null
+          created_at?: string
+          de_etapa?: number | null
+          id?: string
+          observacao?: string | null
+          oportunidade_id: string
+          para_etapa?: number | null
+        }
+        Update: {
+          acao?: string
+          atividade_id?: string | null
+          autor_id?: string | null
+          created_at?: string
+          de_etapa?: number | null
+          id?: string
+          observacao?: string | null
+          oportunidade_id?: string
+          para_etapa?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oportunidade_logs_atividade_id_fkey"
+            columns: ["atividade_id"]
+            isOneToOne: false
+            referencedRelation: "atividades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidade_logs_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidade_logs_oportunidade_id_fkey"
+            columns: ["oportunidade_id"]
+            isOneToOne: false
+            referencedRelation: "oportunidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      oportunidades: {
+        Row: {
+          cliente_id: string
+          created_at: string
+          created_by: string | null
+          data_evento: string | null
+          etapa: number
+          etapa_alterada_em: string
+          ficha_id: string | null
+          id: string
+          motivo_perda: string | null
+          responsavel_id: string | null
+          status: string
+          temperatura: string | null
+          tipo_negociacao: string | null
+          unidade_id: number
+          updated_at: string
+        }
+        Insert: {
+          cliente_id: string
+          created_at?: string
+          created_by?: string | null
+          data_evento?: string | null
+          etapa?: number
+          etapa_alterada_em?: string
+          ficha_id?: string | null
+          id?: string
+          motivo_perda?: string | null
+          responsavel_id?: string | null
+          status?: string
+          temperatura?: string | null
+          tipo_negociacao?: string | null
+          unidade_id: number
+          updated_at?: string
+        }
+        Update: {
+          cliente_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_evento?: string | null
+          etapa?: number
+          etapa_alterada_em?: string
+          ficha_id?: string | null
+          id?: string
+          motivo_perda?: string | null
+          responsavel_id?: string | null
+          status?: string
+          temperatura?: string | null
+          tipo_negociacao?: string | null
+          unidade_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "oportunidades_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_ficha_id_fkey"
+            columns: ["ficha_id"]
+            isOneToOne: false
+            referencedRelation: "fichas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "oportunidades_unidade_id_fkey"
+            columns: ["unidade_id"]
+            isOneToOne: false
+            referencedRelation: "unidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pedidos: {
         Row: {
           created_at: string
@@ -1395,6 +1592,7 @@ export type Database = {
           id: string
           nome: string
           ordem: number
+          permite_avulso: boolean
           slug: string
           updated_at: string
         }
@@ -1405,6 +1603,7 @@ export type Database = {
           id?: string
           nome: string
           ordem?: number
+          permite_avulso?: boolean
           slug: string
           updated_at?: string
         }
@@ -1415,6 +1614,7 @@ export type Database = {
           id?: string
           nome?: string
           ordem?: number
+          permite_avulso?: boolean
           slug?: string
           updated_at?: string
         }
@@ -1821,6 +2021,19 @@ export type Database = {
         Args: { p_ignore: string[]; p_new: Json; p_old: Json }
         Returns: Json
       }
+      _funil_resolver_data: {
+        Args: { p_payload: Json; p_quando: Json }
+        Returns: string
+      }
+      _oportunidade_cancelar_pendentes: {
+        Args: { p_motivo: string; p_op_id: string }
+        Returns: number
+      }
+      _oportunidade_gerar_atividades: {
+        Args: { p_etapa: number; p_op_id: string; p_payload?: Json }
+        Returns: number
+      }
+      _oportunidade_pode_gerir: { Args: { p_id: string }; Returns: boolean }
       atividade_historico_cliente: {
         Args: { p_cliente_id: string }
         Returns: {
@@ -1862,7 +2075,12 @@ export type Database = {
         Returns: Json
       }
       atividades_concluir: {
-        Args: { p_id: string; p_obs?: string }
+        Args: {
+          p_desfecho?: string
+          p_id: string
+          p_obs?: string
+          p_payload?: Json
+        }
         Returns: undefined
       }
       atividades_criar: {
@@ -1934,9 +2152,16 @@ export type Database = {
           data: string
           data_evento: string
           descricao: string
+          desfecho: string
+          desfechos: Json
           ficha_id: string
           grupo_id: string
           id: string
+          oportunidade_etapa: number
+          oportunidade_etapa_rotulo: string
+          oportunidade_id: string
+          oportunidade_tipo: string
+          papel_destino: string
           pedido_id: string
           responsavel_id: string
           responsavel_nome: string
@@ -2093,6 +2318,18 @@ export type Database = {
         }[]
       }
       excluir_ficha: { Args: { p_ficha_id: string }; Returns: undefined }
+      funil_etapas_listar: { Args: never; Returns: Json }
+      funil_etapas_salvar: {
+        Args: {
+          p_ativa?: boolean
+          p_atividades: Json
+          p_desfechos: Json
+          p_etapa: number
+          p_id: string
+          p_rotulo: string
+        }
+        Returns: string
+      }
       get_clientes: {
         Args: {
           _dir?: string
@@ -2672,6 +2909,43 @@ export type Database = {
       marcar_ficha_paga: { Args: { p_ficha_id: string }; Returns: undefined }
       next_business_time: { Args: { p_ts: string }; Returns: string }
       normalize_phone: { Args: { input: string }; Returns: string }
+      oportunidades_criar: {
+        Args: {
+          p_cliente_id: string
+          p_data_evento?: string
+          p_responsavel_id?: string
+          p_tipo_negociacao?: string
+          p_unidade_id?: number
+        }
+        Returns: string
+      }
+      oportunidades_detalhe: { Args: { p_id: string }; Returns: Json }
+      oportunidades_encerrar: {
+        Args: { p_id: string; p_motivo: string }
+        Returns: undefined
+      }
+      oportunidades_listar: {
+        Args: {
+          p_responsavel_id?: string
+          p_status?: string
+          p_tipo?: string
+          p_unidade_id?: number
+        }
+        Returns: Json
+      }
+      oportunidades_mover: {
+        Args: {
+          p_id: string
+          p_obs?: string
+          p_para_etapa: number
+          p_payload?: Json
+        }
+        Returns: undefined
+      }
+      oportunidades_reatribuir: {
+        Args: { p_id: string; p_responsavel_id: string }
+        Returns: undefined
+      }
       parse_valor_ptbr: { Args: { _v: string }; Returns: number }
       parse_valor_to_numeric: { Args: { v: string }; Returns: number }
       precos_estimados_itens_avulsos: {
@@ -2754,6 +3028,10 @@ export type Database = {
         Args: { _is_teste: boolean; _user_id: string }
         Returns: undefined
       }
+      tags_mesclar: {
+        Args: { p_destino_id: string; p_origem_ids: string[] }
+        Returns: Json
+      }
       tipos_atividade_listar: {
         Args: never
         Returns: {
@@ -2763,6 +3041,7 @@ export type Database = {
           id: string
           nome: string
           ordem: number
+          permite_avulso: boolean
           slug: string
           updated_at: string
         }[]
@@ -2780,6 +3059,7 @@ export type Database = {
           p_id: string
           p_nome: string
           p_ordem?: number
+          p_permite_avulso?: boolean
           p_slug: string
         }
         Returns: string
