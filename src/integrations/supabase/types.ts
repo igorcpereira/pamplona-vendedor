@@ -2052,7 +2052,12 @@ export type Database = {
         }[]
       }
       atividades_adiar: {
-        Args: { p_id: string; p_nova_data: string; p_obs?: string }
+        Args: {
+          p_id: string
+          p_nova_data: string
+          p_nova_hora?: string
+          p_obs?: string
+        }
         Returns: undefined
       }
       atividades_cancelar: {
@@ -2147,6 +2152,8 @@ export type Database = {
           cliente_id: string
           cliente_nome: string
           cliente_telefone: string
+          compromisso_data: string
+          compromisso_hora: string
           created_at: string
           created_by: string
           data: string
@@ -2156,6 +2163,7 @@ export type Database = {
           desfechos: Json
           ficha_id: string
           grupo_id: string
+          hora: string
           id: string
           oportunidade_etapa: number
           oportunidade_etapa_rotulo: string
@@ -2329,6 +2337,14 @@ export type Database = {
           p_rotulo: string
         }
         Returns: string
+      }
+      funil_vendedores_atribuiveis: {
+        Args: { p_unidade_id: number }
+        Returns: {
+          escopo: string
+          id: string
+          nome: string
+        }[]
       }
       get_clientes: {
         Args: {

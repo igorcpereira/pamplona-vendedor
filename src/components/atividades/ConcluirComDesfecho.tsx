@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel,
+  SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { hojeISO, somaDiasISO } from "@/lib/atividades";
-import { useVendedoresUnidade } from "@/hooks/useVendedoresUnidade";
+import { useVendedoresAtribuiveis } from "@/hooks/useVendedoresAtribuiveis";
+import HoraSelect from "@/components/atividades/HoraSelect";
 
 /**
  * Conclusão de atividade do funil. O desfecho escolhido decide quais campos
@@ -24,7 +26,8 @@ export type AtalhoData = "agora" | "hoje" | "amanha" | "definir";
 export interface Desfecho {
   slug: string;
   rotulo: string;
-  destino: { tipo: "etapa" | "repetir" | "perdida" | "ficha"; etapa?: number };
+  /** manter = conclui a atividade sem tocar no card (ex.: cliente confirmou). */
+  destino: { tipo: "etapa" | "repetir" | "perdida" | "ficha" | "manter"; etapa?: number };
   campos?: string[];
   tipos?: string[];
   atalhos_data?: AtalhoData[];
@@ -53,6 +56,8 @@ interface Props {
   desfechos: Desfecho[];
   /** Tipo que o card já tem: quando presente, o formulário não pergunta de novo. */
   tipoAtual?: string | null;
+  /** Unidade do card — é ela que decide quem pode receber a oportunidade. */
+  unidadeId?: number | null;
   isUpdating?: boolean;
   onConcluir: (args: {
     desfecho: string;
@@ -64,16 +69,19 @@ interface Props {
 }
 
 const ConcluirComDesfecho = ({
-  desfechos, tipoAtual, isUpdating, onConcluir, onLancarFicha, onCancelar,
+  desfechos, tipoAtual, unidadeId, isUpdating, onConcluir, onLancarFicha, onCancelar,
 }: Props) => {
   const [slug, setSlug] = useState<string | null>(null);
   const [obs, setObs] = useState("");
   const [datas, setDatas] = useState<Record<string, string>>({});
   const [atalhos, setAtalhos] = useState<Record<string, AtalhoData>>({});
+  const [hora, setHora] = useState("");
   const [vendedor, setVendedor] = useState("");
   const [tipo, setTipo] = useState("");
 
-  const { data: vendedores = [] } = useVendedoresUnidade();
+  const { data: vendedores = [] } = useVendedoresAtribuiveis(unidadeId);
+  const daUnidade = vendedores.filter((v) => v.escopo === "unidade");
+  const daRede = vendedores.filter((v) => v.escopo === "rede");
 
   const escolhido = useMemo(
     () => desfechos.find((d) => d.slug === slug) ?? null,
@@ -85,6 +93,13 @@ const ConcluirComDesfecho = ({
     .filter((c) => c !== "tipo_negociacao" || !tipoAtual);
   const camposData = campos.filter((c) => c.startsWith("data"));
   const ehFicha = escolhido?.destino.tipo === "ficha";
+  const ehPerdida = escolhido?.destino.tipo === "perdida";
+  /**
+   * O quadro "Próxima atividade" só aparece quando há algo a datar ou decidir
+   * sobre o passo seguinte. Perda e ficha não têm próximo.
+   */
+  const temProximo = !ehFicha && (camposData.length > 0
+    || campos.includes("vendedor") || campos.includes("tipo_negociacao"));
 
   // Troca de desfecho: campos limpos, com o primeiro atalho já marcado.
   useEffect(() => {
@@ -99,6 +114,7 @@ const ConcluirComDesfecho = ({
     }
     setAtalhos(proxAtalhos);
     setDatas(proxDatas);
+    setHora("");
   }, [escolhido]);
 
   const faltando = useMemo(() => {
@@ -108,15 +124,17 @@ const ConcluirComDesfecho = ({
       if (campo === "data_evento") continue;
       if (!datas[campo]) return `Informe a ${CAMPO_DATA_LABEL[campo]?.toLowerCase() ?? campo}`;
     }
+    if (campos.includes("hora_atendimento") && !hora) return "Informe a hora";
     if (campos.includes("vendedor") && !vendedor) return "Escolha o vendedor";
     if (campos.includes("tipo_negociacao") && !tipo) return "Escolha o tipo";
     return null;
-  }, [escolhido, ehFicha, campos, camposData, datas, vendedor, tipo]);
+  }, [escolhido, ehFicha, campos, camposData, datas, hora, vendedor, tipo]);
 
   const confirmar = () => {
     if (!escolhido || faltando) return;
     const payload: Record<string, string> = {};
     for (const campo of camposData) if (datas[campo]) payload[campo] = datas[campo];
+    if (hora) payload.hora_atendimento = hora;
     if (vendedor) payload.vendedor = vendedor;
     if (tipo) payload.tipo_negociacao = tipo;
     onConcluir({ desfecho: escolhido.slug, obs: obs.trim() || null, payload });
@@ -124,8 +142,11 @@ const ConcluirComDesfecho = ({
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground">Como terminou?</p>
+      {/* Quadro 1 — o que já aconteceu. */}
+      <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          O que você fez?
+        </p>
         <div className="grid gap-1.5">
           {desfechos.map((d) => (
             <Button
@@ -139,7 +160,22 @@ const ConcluirComDesfecho = ({
             </Button>
           ))}
         </div>
-      </div>
+
+        {/* No destino ficha nada é registrado aqui: o relato vai na ficha. */}
+        {!ehFicha && (
+          <div className="space-y-1.5">
+            <Label className="text-xs">
+              Descritivo{ehPerdida ? " (vira o motivo da perda)" : ""}
+            </Label>
+            <Textarea
+              value={obs}
+              onChange={(e) => setObs(e.target.value)}
+              placeholder="O que aconteceu?"
+              rows={3}
+            />
+          </div>
+        )}
+      </section>
 
       {ehFicha && (
         <p className="text-xs rounded-md border border-green-600/40 bg-green-500/10 p-2.5">
@@ -148,8 +184,20 @@ const ConcluirComDesfecho = ({
         </p>
       )}
 
-      {escolhido && !ehFicha && (
-        <>
+      {ehPerdida && (
+        <p className="text-xs rounded-md border border-destructive/40 bg-destructive/5 p-2.5">
+          A oportunidade é encerrada como perdida e sai do quadro. As atividades pendentes dela
+          são canceladas — não há próxima.
+        </p>
+      )}
+
+      {/* Quadro 2 — o que vem depois. */}
+      {escolhido && temProximo && (
+        <section className="space-y-3 rounded-lg border p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Próxima atividade
+          </p>
+
           {camposData.map((campo) => (
             <div key={campo} className="space-y-1.5">
               <Label className="text-xs">
@@ -183,28 +231,45 @@ const ConcluirComDesfecho = ({
                   onChange={(e) => setDatas((s) => ({ ...s, [campo]: e.target.value }))}
                 />
               )}
+              {/* A hora anda junto da data a que pertence — atendimento é o
+                  único compromisso do funil marcado em horário. */}
+              {campo === "data_atendimento" && campos.includes("hora_atendimento") && (
+                <div className="space-y-1.5 pt-1">
+                  <Label className="text-xs">Hora</Label>
+                  <HoraSelect value={hora} onChange={setHora} />
+                </div>
+              )}
             </div>
           ))}
 
           {campos.includes("vendedor") && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Vendedor que vai atender</Label>
+              <Label className="text-xs">Quem vai atender</Label>
               <Select value={vendedor} onValueChange={setVendedor}>
                 <SelectTrigger><SelectValue placeholder="Escolha o vendedor" /></SelectTrigger>
                 <SelectContent>
-                  {vendedores.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
-                  ))}
+                  {daUnidade.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Desta unidade</SelectLabel>
+                      {daUnidade.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
+                  {daRede.length > 0 && (
+                    <SelectGroup>
+                      <SelectLabel>Gestores da rede</SelectLabel>
+                      {daRede.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>
+                      ))}
+                    </SelectGroup>
+                  )}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Pode ser você mesmo.</p>
+              <p className="text-xs text-muted-foreground">
+                Só quem atende esta unidade — pode ser você mesmo.
+              </p>
             </div>
-          )}
-
-          {!!tipoAtual && (escolhido.campos ?? []).includes("tipo_negociacao") && (
-            <p className="text-xs text-muted-foreground">
-              Tipo já definido na abertura da oportunidade.
-            </p>
           )}
 
           {campos.includes("tipo_negociacao") && (
@@ -229,17 +294,19 @@ const ConcluirComDesfecho = ({
               </div>
             </div>
           )}
-        </>
+
+          {!!tipoAtual && (escolhido.campos ?? []).includes("tipo_negociacao") && (
+            <p className="text-xs text-muted-foreground">
+              Tipo já definido na abertura da oportunidade.
+            </p>
+          )}
+        </section>
       )}
 
-      <Textarea
-        value={obs}
-        onChange={(e) => setObs(e.target.value)}
-        placeholder={escolhido?.destino.tipo === "perdida"
-          ? "Por que perdeu? (vira o motivo)"
-          : "O que aconteceu? (opcional)"}
-        rows={3}
-      />
+      {/* O que falta sai do rótulo do botão e vira aviso: o botão diz o que faz. */}
+      {escolhido && !ehFicha && faltando && (
+        <p className="text-xs text-muted-foreground">{faltando}</p>
+      )}
 
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1" onClick={onCancelar} disabled={isUpdating}>
@@ -257,7 +324,7 @@ const ConcluirComDesfecho = ({
             disabled={!!faltando || isUpdating}
           >
             {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            {faltando ?? "Concluir"}
+            Concluir
           </Button>
         )}
       </div>

@@ -7,10 +7,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import HoraSelect from "@/components/atividades/HoraSelect";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { dataCurta } from "@/lib/atividades";
+import { dataCurta, horaCurta } from "@/lib/atividades";
 import type { Atividade } from "@/hooks/useAtividades";
 import HistoricoCliente from "@/components/atividades/HistoricoCliente";
 import ConcluirComDesfecho, { type Desfecho } from "@/components/atividades/ConcluirComDesfecho";
@@ -30,7 +32,8 @@ interface Props {
     desfecho?: string | null,
     payload?: Record<string, string>,
   ) => void;
-  onAdiar: (novaData: string) => void;
+  /** A hora só vem quando a atividade tem horário — a RPC recusa sem ela. */
+  onAdiar: (novaData: string, novaHora?: string | null) => void;
   isUpdating?: boolean;
 }
 
@@ -63,6 +66,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
 
   const [adiarOpen, setAdiarOpen] = useState(false);
   const [novaData, setNovaData] = useState<Date | undefined>();
+  const [novaHora, setNovaHora] = useState("");
   const [historicoOpen, setHistoricoOpen] = useState(false);
   const navigate = useNavigate();
   const [concluirOpen, setConcluirOpen] = useState(false);
@@ -70,12 +74,15 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
 
   const abrirAdiar = () => {
     setNovaData(atividade.data ? parseISO(atividade.data) : new Date());
+    // Começa na hora atual: quando só o dia muda, não obriga a redigitar.
+    setNovaHora(atividade.hora ? atividade.hora.slice(0, 5) : "");
     setAdiarOpen(true);
   };
 
   const confirmarAdiar = () => {
     if (!novaData) return;
-    onAdiar(format(novaData, "yyyy-MM-dd"));
+    if (atividade.hora && !novaHora) return;
+    onAdiar(format(novaData, "yyyy-MM-dd"), novaHora || null);
     setAdiarOpen(false);
   };
 
@@ -100,6 +107,14 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
             <Badge variant="secondary" className={cn("text-[10px] px-1.5 py-0", badge.className)}>
               {badge.label}
             </Badge>
+            {/* Compromisso com hora marcada: na agenda o dia já é o cabeçalho,
+                então o horário é o que o vendedor precisa ler no card. */}
+            {horaCurta(atividade.hora) && (
+              <span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground tabular-nums">
+                <Clock className="h-3.5 w-3.5" />
+                {horaCurta(atividade.hora)}
+              </span>
+            )}
             {/* Selo do funil: o vendedor não vê kanban, mas sabe que a atividade
                 faz parte de uma negociação e em que ponto ela está. */}
             {atividade.oportunidade_id && (
@@ -136,6 +151,17 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
           {atividade.data_evento && (
             <p className="text-sm text-muted-foreground mt-1">
               Evento: <span className="font-medium text-foreground">{dataCurta(atividade.data_evento)}</span>
+            </p>
+          )}
+
+          {/* Quem confirma precisa dizer o horário ao cliente — a atividade dela
+              não tem hora própria, então mostra a do atendimento. */}
+          {atividade.compromisso_data && (
+            <p className="text-sm text-muted-foreground mt-1">
+              Atendimento: <span className="font-medium text-foreground tabular-nums">
+                {dataCurta(atividade.compromisso_data)}
+                {horaCurta(atividade.compromisso_hora) ? ` às ${horaCurta(atividade.compromisso_hora)}` : ''}
+              </span>
             </p>
           )}
 
@@ -204,7 +230,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
       {/* Concluir: com desfecho quando a atividade é de oportunidade (é o
           desfecho que move o funil), só observação quando é avulsa. */}
       <Dialog open={concluirOpen} onOpenChange={setConcluirOpen}>
-        <DialogContent className="max-w-xs">
+        <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogTitle>Concluir atividade</DialogTitle>
           <DialogDescription>
             “{atividade.cliente_nome ?? atividade.tipo_nome}”
@@ -214,6 +240,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
             <ConcluirComDesfecho
               desfechos={desfechos}
               tipoAtual={atividade.oportunidade_tipo}
+              unidadeId={atividade.unidade_id}
               isUpdating={isUpdating}
               onConcluir={({ desfecho, obs, payload }) => {
                 onConcluir(obs, desfecho, payload);
@@ -227,12 +254,18 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
             />
           ) : (
             <>
-              <Textarea
-                value={obsConcluir}
-                onChange={(e) => setObsConcluir(e.target.value)}
-                placeholder="O que aconteceu? (opcional)"
-                rows={3}
-              />
+              {/* Avulsa não tem próximo passo definido: só o quadro 1. */}
+              <section className="space-y-3 rounded-lg border bg-muted/30 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  O que você fez?
+                </p>
+                <Textarea
+                  value={obsConcluir}
+                  onChange={(e) => setObsConcluir(e.target.value)}
+                  placeholder="O que aconteceu? (opcional)"
+                  rows={3}
+                />
+              </section>
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setConcluirOpen(false)} disabled={isUpdating}>
                   Cancelar
@@ -256,7 +289,9 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
         <DialogContent className="max-w-xs">
           <DialogTitle>Adiar atividade</DialogTitle>
           <DialogDescription>
-            Escolha a nova data para “{atividade.cliente_nome ?? atividade.tipo_nome}”.
+            {atividade.hora
+              ? `Escolha a nova data e a nova hora para “${atividade.cliente_nome ?? atividade.tipo_nome}”.`
+              : `Escolha a nova data para “${atividade.cliente_nome ?? atividade.tipo_nome}”.`}
           </DialogDescription>
           <div className="flex justify-center">
             <Calendar
@@ -267,11 +302,23 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
               locale={ptBR}
             />
           </div>
+          {/* Dia novo com hora velha é erro que só aparece com o cliente na
+              porta: quem tem horário remarca os dois. */}
+          {atividade.hora && (
+            <div className="space-y-1.5">
+              <Label htmlFor="novaHora" className="text-xs">Nova hora</Label>
+              <HoraSelect id="novaHora" value={novaHora} onChange={setNovaHora} />
+            </div>
+          )}
           <div className="flex gap-2">
             <Button variant="outline" className="flex-1" onClick={() => setAdiarOpen(false)} disabled={isUpdating}>
               Cancelar
             </Button>
-            <Button className="flex-1" onClick={confirmarAdiar} disabled={!novaData || isUpdating}>
+            <Button
+              className="flex-1"
+              onClick={confirmarAdiar}
+              disabled={!novaData || (!!atividade.hora && !novaHora) || isUpdating}
+            >
               {isUpdating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Adiar
             </Button>

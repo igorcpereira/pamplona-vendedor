@@ -63,9 +63,9 @@ const Atividades = () => {
     concluir.mutate({ id, obs, desfecho, payload }, { onError });
   };
 
-  const handleAdiar = (id: string, novaData: string) => {
+  const handleAdiar = (id: string, novaData: string, novaHora?: string | null) => {
     adiar.mutate(
-      { id, novaData },
+      { id, novaData, novaHora },
       {
         onError,
         onSuccess: () => toast({ title: "Atividade adiada!" }),
@@ -171,7 +171,7 @@ const Atividades = () => {
                         key={a.id}
                         atividade={a}
                         onConcluir={(obs, desfecho, payload) => handleConcluir(a.id, obs, desfecho, payload)}
-                        onAdiar={(novaData) => handleAdiar(a.id, novaData)}
+                        onAdiar={(novaData, novaHora) => handleAdiar(a.id, novaData, novaHora)}
                         isUpdating={concluir.isPending || adiar.isPending}
                       />
                     ))}

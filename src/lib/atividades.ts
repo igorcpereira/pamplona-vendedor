@@ -32,6 +32,12 @@ export function dataCurta(iso: string): string {
   return `${d}/${m}`;
 }
 
+/** "14:30:00" (o time do Postgres) vira "14:30". */
+export function horaCurta(hora: string | null | undefined): string | null {
+  if (!hora) return null;
+  return hora.slice(0, 5);
+}
+
 /** 0=domingo … 6=sábado, sem passar por fuso (UTC puro só para o cálculo). */
 function diaSemanaISO(iso: string): number {
   const [a, m, d] = iso.split("-").map(Number);

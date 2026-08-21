@@ -120,10 +120,16 @@ export function useConcluirAtividade() {
 export function useAdiarAtividade() {
   const invalidar = useInvalidarAtividades();
   return useMutation({
-    mutationFn: async ({ id, novaData, obs }: { id: string; novaData: string; obs?: string | null }) => {
+    mutationFn: async ({ id, novaData, novaHora, obs }: {
+      id: string; novaData: string;
+      /** Obrigatória quando a atividade tem horário — a RPC recusa sem ela. */
+      novaHora?: string | null;
+      obs?: string | null;
+    }) => {
       const { error } = await supabase.rpc("atividades_adiar", {
         p_id: id,
         p_nova_data: novaData,
+        p_nova_hora: novaHora ?? undefined,
         p_obs: obs ?? undefined,
       });
       if (error) throw error;

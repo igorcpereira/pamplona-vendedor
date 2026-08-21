@@ -8,8 +8,10 @@ import type { Atividade } from "@/hooks/useAtividades";
 vi.mock("@/hooks/useHistoricoCliente", () => ({
   useHistoricoCliente: () => ({ data: [], isLoading: false }),
 }));
-vi.mock("@/hooks/useVendedoresUnidade", () => ({
-  useVendedoresUnidade: () => ({ data: [{ id: "v-1", nome: "Davi" }] }),
+vi.mock("@/hooks/useVendedoresAtribuiveis", () => ({
+  useVendedoresAtribuiveis: () => ({
+    data: [{ id: "v-1", nome: "Davi", escopo: "unidade" }],
+  }),
 }));
 
 /** O card navega para /novo no desfecho de ficha: precisa de Router. */
@@ -67,8 +69,8 @@ describe("AtividadeCard — oportunidade", () => {
     renderCard(<AtividadeCard atividade={comFunil()} onConcluir={onConcluir} onAdiar={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
 
-    // Sem desfecho escolhido não há o que confirmar: o botão diz o que falta.
-    expect(screen.getByRole("button", { name: "Escolha como terminou" })).toBeDisabled();
+    // Sem desfecho escolhido não há o que confirmar: o botão fica travado.
+    expect(screen.getAllByRole("button", { name: "Concluir" }).at(-1)!).toBeDisabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Orçamento enviado" }));
     await userEvent.click(screen.getAllByRole("button", { name: "Concluir" }).at(-1)!);
@@ -78,7 +80,8 @@ describe("AtividadeCard — oportunidade", () => {
   it("atividade avulsa não oferece desfecho", async () => {
     renderCard(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
-    expect(screen.queryByText("Como terminou?")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("O que aconteceu? (opcional)")).toBeInTheDocument();
+    expect(screen.queryByText("Próxima atividade")).not.toBeInTheDocument();
   });
 });
 
@@ -116,7 +119,32 @@ describe("AtividadeCard — ações", () => {
     // com o mini-modal aberto há dois botões "Adiar"; o de confirmação é o último
     const botoes = screen.getAllByRole("button", { name: "Adiar" });
     await userEvent.click(botoes[botoes.length - 1]);
-    expect(onAdiar).toHaveBeenCalledWith("2030-01-10");
+    // Atividade de dia inteiro: hora vai nula.
+    expect(onAdiar).toHaveBeenCalledWith("2030-01-10", null);
+  });
+
+  it("adiar compromisso com hora exige a hora nova e a repassa", async () => {
+    const onAdiar = vi.fn();
+    renderCard(
+      <AtividadeCard
+        atividade={makeAtividade({ hora: "14:30:00" } as Partial<Atividade>)}
+        onConcluir={vi.fn()}
+        onAdiar={onAdiar}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Adiar" }));
+
+    // Vem pré-preenchida com a hora atual: trocar só o dia não obriga a escolher.
+    const hora = screen.getByLabelText("Nova hora");
+    expect(hora).toHaveTextContent("14:30");
+
+    // Grade de 15 minutos: 16:45 existe, 16:47 não.
+    await userEvent.click(hora);
+    expect(screen.queryByRole("option", { name: "16:47" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("option", { name: "16:45" }));
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Adiar" }).at(-1)!);
+    expect(onAdiar).toHaveBeenCalledWith("2030-01-10", "16:45");
   });
 
   it("NÃO existe botão de cancelar (cancelar é só pelo CRM)", () => {
