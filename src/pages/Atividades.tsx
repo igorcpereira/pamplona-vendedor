@@ -11,6 +11,8 @@ import { GRUPOS, grupoDe, hojeISO, somaDiasISO, type Grupo } from "@/lib/ativida
 import AtividadeCard from "@/components/atividades/AtividadeCard";
 import NovaAtividadeDialog from "@/components/atividades/NovaAtividadeDialog";
 import NovaOportunidadeDialog from "@/components/atividades/NovaOportunidadeDialog";
+import { useAuth } from "@/contexts/AuthContext";
+import { podeVerFunil } from "@/lib/beta";
 
 type Filtro = "ativas" | "todas";
 
@@ -22,6 +24,9 @@ const Atividades = () => {
   const [filtro, setFiltro] = useState<Filtro>("ativas");
   const [dialogAberto, setDialogAberto] = useState(false);
   const [oportunidadeAberta, setOportunidadeAberta] = useState(false);
+  const { profile } = useAuth();
+  /** Beta: só conta de teste abre oportunidade pelo app. */
+  const noBetaDoFunil = podeVerFunil(profile);
   const [expandidos, setExpandidos] = useState<Set<Grupo>>(new Set());
   const hoje = hojeISO();
 
@@ -91,10 +96,12 @@ const Atividades = () => {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-foreground">Minha agenda</h2>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => setOportunidadeAberta(true)}>
-              <Target className="h-4 w-4 mr-1" />
-              Oportunidade
-            </Button>
+            {noBetaDoFunil && (
+              <Button size="sm" variant="outline" onClick={() => setOportunidadeAberta(true)}>
+                <Target className="h-4 w-4 mr-1" />
+                Oportunidade
+              </Button>
+            )}
             <Button size="sm" onClick={() => setDialogAberto(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Nova
