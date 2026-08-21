@@ -213,6 +213,7 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
           {desfechos.length > 0 ? (
             <ConcluirComDesfecho
               desfechos={desfechos}
+              tipoAtual={atividade.oportunidade_tipo}
               isUpdating={isUpdating}
               onConcluir={({ desfecho, obs, payload }) => {
                 onConcluir(obs, desfecho, payload);

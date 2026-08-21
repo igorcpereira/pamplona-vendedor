@@ -51,6 +51,8 @@ function dataDoAtalho(a: AtalhoData): string | null {
 
 interface Props {
   desfechos: Desfecho[];
+  /** Tipo que o card já tem: quando presente, o formulário não pergunta de novo. */
+  tipoAtual?: string | null;
   isUpdating?: boolean;
   onConcluir: (args: {
     desfecho: string;
@@ -62,7 +64,7 @@ interface Props {
 }
 
 const ConcluirComDesfecho = ({
-  desfechos, isUpdating, onConcluir, onLancarFicha, onCancelar,
+  desfechos, tipoAtual, isUpdating, onConcluir, onLancarFicha, onCancelar,
 }: Props) => {
   const [slug, setSlug] = useState<string | null>(null);
   const [obs, setObs] = useState("");
@@ -77,7 +79,10 @@ const ConcluirComDesfecho = ({
     () => desfechos.find((d) => d.slug === slug) ?? null,
     [desfechos, slug],
   );
-  const campos = escolhido?.campos ?? [];
+  // O tipo é perguntado só quando o card ainda não tem: quem abriu a
+  // oportunidade pode já ter definido, e perguntar de novo é ruído.
+  const campos = (escolhido?.campos ?? [])
+    .filter((c) => c !== "tipo_negociacao" || !tipoAtual);
   const camposData = campos.filter((c) => c.startsWith("data"));
   const ehFicha = escolhido?.destino.tipo === "ficha";
 
@@ -194,6 +199,12 @@ const ConcluirComDesfecho = ({
               </Select>
               <p className="text-xs text-muted-foreground">Pode ser você mesmo.</p>
             </div>
+          )}
+
+          {!!tipoAtual && (escolhido.campos ?? []).includes("tipo_negociacao") && (
+            <p className="text-xs text-muted-foreground">
+              Tipo já definido na abertura da oportunidade.
+            </p>
           )}
 
           {campos.includes("tipo_negociacao") && (
