@@ -656,7 +656,14 @@ export default function EditarFichaV3() {
         sapato_tipo: formData.sapato_tipo || null,
         // Pago é mão-única: uma vez pago, não volta a "não pago" por esta tela.
         pago: ficha?.pago ? true : formData.pago,
-        cliente_id: clienteId,
+        // `clienteId` só é resolvido quando há telefone no formulário. Sem esta
+        // guarda, salvar uma ficha sem telefone DESVINCULARIA o cliente que ela
+        // já tinha — e ficha lançada pela foto de uma atividade do funil nasce
+        // vinculada ao cliente do card antes de qualquer telefone existir. O
+        // gatilho de ganho desiste quando cliente_id é null, então o card
+        // ficaria aberto para sempre. Desvincular nunca foi a intenção de quem
+        // apagou o telefone; manter o vínculo é o comportamento seguro.
+        cliente_id: clienteId ?? ficha?.cliente_id ?? null,
         status: novoStatus,
         updated_at: new Date().toISOString(),
       };

@@ -35,6 +35,11 @@ const NewRegistration = () => {
    * Quando o lançamento vem de uma atividade do funil, o card viaja no state e é
    * gravado na ficha. Sem isso o vínculo dependeria do telefone digitado casar
    * com o cliente da oportunidade — que é justamente onde ele falhava.
+   *
+   * Hoje nenhuma tela chega aqui por esse caminho: o LancarFichaDialog tira a
+   * foto dentro do próprio modal da atividade, levando também o `cliente_id` do
+   * card — que esta tela não tem como saber. Mantido porque a ficha lançada
+   * daqui continua fechando o card certo, e porque o vínculo só faz bem.
    */
   const { state } = useLocation() as { state?: { oportunidadeId?: string } };
   const oportunidadeId = state?.oportunidadeId ?? null;

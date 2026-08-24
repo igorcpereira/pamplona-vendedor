@@ -195,6 +195,17 @@ async function processarBackground(
   let uploadOk = false
   let base64: string | null = null
 
+  // Cadastro que a ficha já tinha ao nascer. Quando ela veio de uma atividade
+  // do funil, `cliente_id`, `nome_cliente` e `telefone_cliente` são do cliente
+  // do card — escolhidos por quem está atendendo, não lidos do papel. É a
+  // leitura que sustenta a guarda da etapa 6. Serve também a checagem de
+  // duplicata (etapa 5.5), que antes buscava a unidade por conta própria.
+  const { data: fichaAtual } = await supabase
+    .from('fichas')
+    .select('unidade_id, cliente_id, nome_cliente, telefone_cliente')
+    .eq('id', fichaId)
+    .single()
+
   // Etapas 3 + 4 — Upload e base64 em paralelo
   const [uploadResult, base64Result] = await Promise.allSettled([
     // Etapa 3 — Upload no Storage
@@ -264,11 +275,6 @@ async function processarBackground(
   const numeroFicha = String(ocrResult.numero_ficha ?? '').trim() || null
   if (numeroFicha) {
     // Unidade da ficha atual — a checagem de duplicata é restrita a ela.
-    const { data: fichaAtual } = await supabase
-      .from('fichas')
-      .select('unidade_id')
-      .eq('id', fichaId)
-      .single()
     const unidadeAtual = fichaAtual?.unidade_id ?? null
 
     let dupSel = supabase
@@ -307,12 +313,32 @@ async function processarBackground(
     return
   }
 
-  // Etapa 6 — Busca cliente por telefone
+  // Etapa 6 — Ficha nascida de um card não deixa o OCR mexer no cadastro.
+  // Nome e telefone vieram do cliente da oportunidade; a letra da ficha de
+  // papel é a fonte MENOS confiável que existe para telefone. Deixar o OCR
+  // sobrescrever custaria caro nos dois sentidos: lendo null, apagaria o
+  // telefone — e o save seguinte devolveria `cliente_id` a null, deixando o
+  // card aberto para sempre; lendo um dígito errado, o `criar-cliente` da tela
+  // de edição atualizaria o cliente REAL do card com o número errado, porque
+  // para ficha já vinculada ele faz update por id. O vendedor continua podendo
+  // corrigir os dois campos na tela antes de salvar (a ficha ainda é
+  // 'pendente', então o bloqueio de troca de telefone não vale ainda).
+  if (fichaAtual?.cliente_id) {
+    dbFields.nome_cliente =
+      (fichaAtual.nome_cliente as string | null) ?? dbFields.nome_cliente
+    dbFields.telefone_cliente =
+      (fichaAtual.telefone_cliente as string | null) ?? dbFields.telefone_cliente
+  }
+
+  // Etapa 6 — Busca cliente por telefone.
+  // Só faz sentido para ficha órfã: se ela já nasceu com dono (veio de um
+  // card), sugerir outro cliente lido do papel é convite ao duplicado — que é
+  // exatamente o que o vínculo com a oportunidade veio resolver.
   let clienteEncontrado = false
   let clienteSugeridoId: string | null = null
   let clienteSugeridoNome: string | null = null
 
-  if (dbFields.telefone_cliente) {
+  if (!fichaAtual?.cliente_id && dbFields.telefone_cliente) {
     const { data: cliente } = await supabase
       .from('clientes')
       .select('id, nome')
@@ -379,6 +405,17 @@ Deno.serve(async (req) => {
     // Card do funil, quando a foto foi tirada de dentro de uma atividade: a
     // ficha nasce ligada à oportunidade e o gatilho fecha o card ao promovê-la.
     const oportunidadeId   = formData.get('oportunidade_id') as string | null
+    // ...e ligada ao CLIENTE do card, que era o pedaço que faltava. Sem isto o
+    // dono da ficha só aparecia no fim, resolvido pelo telefone que o OCR
+    // conseguisse ler do papel — e telefone que não casa faz o `criar-cliente`
+    // abrir um cliente novo, deixando a ficha do cliente errado enquanto o card
+    // fecha certo pelo vínculo explícito. Foi o bug de 24/08. Quem lança de
+    // dentro da atividade já sabe de quem é a ficha; o papel não precisa contar.
+    const clienteId        = formData.get('cliente_id')       as string | null
+    const clienteNome      = formData.get('cliente_nome')     as string | null
+    const clienteTelefone  = formData.get('cliente_telefone') as string | null
+    // Loja do card. Ausente, vale a do perfil de quem tirou a foto, como sempre.
+    const unidadeIdCard    = formData.get('unidade_id')       as string | null
 
     if (!userId)                                        return json({ error: 'unauthorized' }, 401)
     if (!imageFile)                                     return json({ error: 'image_required' }, 400)
@@ -420,13 +457,20 @@ Deno.serve(async (req) => {
         .eq('id', userId)
         .single()
 
+      const unidadeDoCard = unidadeIdCard ? Number(unidadeIdCard) : NaN
+
       const { data: ficha, error } = await supabase
         .from('fichas')
         .insert({
           vendedor_id: userId,
           status: 'pendente',
-          unidade_id: profile?.unidade_id,
+          unidade_id: Number.isFinite(unidadeDoCard) ? unidadeDoCard : profile?.unidade_id,
           oportunidade_id: oportunidadeId,
+          // A ficha nasce com dono. O OCR preenche o resto por cima; estes três
+          // ele não encosta — ver a guarda da etapa 6 em processarBackground().
+          cliente_id: clienteId,
+          nome_cliente: clienteNome,
+          telefone_cliente: clienteTelefone,
         })
         .select('id')
         .single()

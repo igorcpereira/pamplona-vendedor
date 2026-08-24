@@ -30,6 +30,16 @@ if (!window.ResizeObserver) {
   };
 }
 
+// Prévia de imagem: o jsdom não implementa a Object URL API. Quem testa upload
+// de foto (lançamento de ficha) precisa dos dois lados — o componente revoga o
+// que cria, e revoke inexistente quebraria o cleanup do efeito.
+if (!URL.createObjectURL) {
+  URL.createObjectURL = () => "blob:teste";
+}
+if (!URL.revokeObjectURL) {
+  URL.revokeObjectURL = () => {};
+}
+
 Element.prototype.scrollIntoView = Element.prototype.scrollIntoView || (() => {});
 if (!Element.prototype.hasPointerCapture) {
   Element.prototype.hasPointerCapture = () => false;
