@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 import AtividadeCard from "./AtividadeCard";
+import { hojeISO } from "@/lib/atividades";
 import type { Atividade } from "@/hooks/useAtividades";
 
 vi.mock("@/hooks/useHistoricoCliente", () => ({
@@ -83,6 +84,101 @@ describe("AtividadeCard — oportunidade", () => {
     expect(screen.getByPlaceholderText("O que aconteceu? (opcional)")).toBeInTheDocument();
     expect(screen.queryByText("Próxima atividade")).not.toBeInTheDocument();
   });
+
+  /**
+   * O caso do `agendou_atendimento` no seed do funil: pede `data_atendimento` e
+   * NÃO tem `atalhos_data`. Era o pior campo do modal — obrigatório e só
+   * preenchível digitando. Se alguém trocar o calendário de volta por um
+   * `<input type="date">`, o vendedor volta a digitar data no celular com o
+   * cliente na frente.
+   */
+  const comAgendamento = () => makeAtividade({
+    oportunidade_id: "op-1",
+    oportunidade_tipo: "noivo",
+    oportunidade_etapa: 1,
+    desfechos: [{
+      slug: "agendou_atendimento", rotulo: "Cliente agendou um atendimento",
+      destino: { tipo: "etapa", etapa: 2 }, campos: ["data_atendimento"],
+    }],
+  } as Partial<Atividade>);
+
+  const abrirAgendamento = async () => {
+    await userEvent.click(screen.getByRole("button", { name: "Concluir" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cliente agendou um atendimento" }),
+    );
+  };
+
+  /**
+   * A hora do atendimento começa vazia neste caminho — é o único lugar onde dá
+   * para ver o minuto travado, que é a regra: minuto sem hora não é horário.
+   */
+  it("os minutos só destravam depois da hora, e a hora já entra com :00", async () => {
+    renderCard(
+      <AtividadeCard
+        atividade={makeAtividade({
+          oportunidade_id: "op-1",
+          oportunidade_etapa: 1,
+          desfechos: [{
+            slug: "agendou_atendimento", rotulo: "Cliente agendou um atendimento",
+            destino: { tipo: "etapa", etapa: 2 },
+            campos: ["data_atendimento", "hora_atendimento"],
+          }],
+        } as Partial<Atividade>)}
+        onConcluir={vi.fn()}
+        onAdiar={vi.fn()}
+      />,
+    );
+    await abrirAgendamento();
+
+    expect(screen.getByLabelText("Minutos")).toBeDisabled();
+
+    await userEvent.click(screen.getByLabelText("Hora"));
+    await userEvent.click(screen.getByRole("option", { name: "16" }));
+
+    const minutos = screen.getByLabelText("Minutos");
+    expect(minutos).not.toBeDisabled();
+    // Meia escolha não pode virar campo vazio: 16 sozinho já é 16:00.
+    expect(minutos).toHaveTextContent("00");
+  });
+
+  it("a data do atendimento é um calendário, não um campo de digitar", async () => {
+    renderCard(<AtividadeCard atividade={comAgendamento()} onConcluir={vi.fn()} onAdiar={vi.fn()} />);
+    await abrirAgendamento();
+
+    expect(screen.getByRole("grid")).toBeInTheDocument();
+    // O input digitável não pode sobrar em lugar nenhum deste campo.
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+  });
+
+  it("o dia clicado vira YYYY-MM-DD no payload, e nunca no passado", async () => {
+    const onConcluir = vi.fn();
+    renderCard(<AtividadeCard atividade={comAgendamento()} onConcluir={onConcluir} onAdiar={vi.fn()} />);
+    await abrirAgendamento();
+
+    // Sem data escolhida não há o que concluir.
+    expect(screen.getAllByRole("button", { name: "Concluir" }).at(-1)!).toBeDisabled();
+
+    // Primeiro dia clicável do mês corrente: os anteriores a hoje estão
+    // desabilitados pelo `disabled={{ before }}`. Escolher pelo estado, e não
+    // por um número fixo, é o que impede o teste de quebrar na virada do mês.
+    const dias = screen.getAllByRole("gridcell").filter(
+      (c): c is HTMLButtonElement => c.tagName === "BUTTON" && !(c as HTMLButtonElement).disabled,
+    );
+    expect(dias.length).toBeGreaterThan(0);
+    await userEvent.click(dias[0]);
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Concluir" }).at(-1)!);
+
+    expect(onConcluir).toHaveBeenCalledWith(
+      null,
+      "agendou_atendimento",
+      expect.objectContaining({ data_atendimento: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }),
+    );
+    const { data_atendimento } = onConcluir.mock.calls[0][2];
+    // Comparação de string ISO é lexicográfica e equivale à cronológica.
+    expect(data_atendimento >= hojeISO()).toBe(true);
+  });
 });
 
 describe("AtividadeCard — ações", () => {
@@ -135,17 +231,27 @@ describe("AtividadeCard — ações", () => {
     await userEvent.click(screen.getByRole("button", { name: "Adiar" }));
 
     // Vem pré-preenchida com a hora atual: trocar só o dia não obriga a escolher.
+    // São dois campos agora — o `id` (e portanto o label) fica no da hora.
     const hora = screen.getByLabelText("Nova hora");
-    expect(hora).toHaveTextContent("14:30");
+    const minutos = screen.getByLabelText("Minutos");
+    expect(hora).toHaveTextContent("14");
+    expect(minutos).toHaveTextContent("30");
 
-    // Grade de 15 minutos: 16:45 existe, 16:47 não.
     await userEvent.click(hora);
-    expect(screen.queryByRole("option", { name: "16:47" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("option", { name: "16:45" }));
+    await userEvent.click(screen.getByRole("option", { name: "16" }));
+    // Trocar só a hora preserva o minuto: 14:30 → 16:30, sem passar por 16:00.
+    expect(onAdiar).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Minutos")).toHaveTextContent("30");
+
+    // Grade de 15 minutos: 45 existe, 47 não.
+    await userEvent.click(screen.getByLabelText("Minutos"));
+    expect(screen.queryByRole("option", { name: "47" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("option", { name: "45" }));
 
     await userEvent.click(screen.getAllByRole("button", { name: "Adiar" }).at(-1)!);
     expect(onAdiar).toHaveBeenCalledWith("2030-01-10", "16:45");
   });
+
 
   it("NÃO existe botão de cancelar (cancelar é só pelo CRM)", () => {
     renderCard(<AtividadeCard atividade={makeAtividade()} onConcluir={vi.fn()} onAdiar={vi.fn()} />);

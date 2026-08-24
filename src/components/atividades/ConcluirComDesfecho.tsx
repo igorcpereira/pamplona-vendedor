@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -224,12 +227,57 @@ const ConcluirComDesfecho = ({
                 </div>
               )}
               {(atalhos[campo] === "definir" || !escolhido.atalhos_data?.length) && (
-                <Input
-                  type="date"
-                  value={datas[campo] ?? ""}
-                  min={hojeISO()}
-                  onChange={(e) => setDatas((s) => ({ ...s, [campo]: e.target.value }))}
-                />
+                campo === "data_atendimento" ? (
+                  /**
+                   * Calendário, não campo de digitar: o vendedor marca o
+                   * atendimento com o cliente na frente, no celular. E o
+                   * desfecho "Cliente agendou um atendimento" não tem
+                   * `atalhos_data` nenhum, então este era o único jeito de
+                   * preencher um campo obrigatório — digitando.
+                   *
+                   * Só o atendimento ganha isso. A data da festa continua no
+                   * input: ela costuma cair a meses daqui, e chegar lá clicando
+                   * de mês em mês é pior que digitar.
+                   *
+                   * A data segue trafegando como string `YYYY-MM-DD`; o objeto
+                   * `Date` nasce e morre aqui dentro. É a regra do cabeçalho de
+                   * `lib/atividades.ts` — converter para `Date` reintroduz o
+                   * fuso do navegador, que foi o bug da coluna "Hoje" às 21h.
+                   */
+                  <>
+                    <div className="flex justify-center border border-border rounded-md">
+                      <Calendar
+                        mode="single"
+                        selected={datas[campo] ? parseISO(datas[campo]) : undefined}
+                        onSelect={(d) => {
+                          if (!d) return;
+                          setDatas((s) => ({ ...s, [campo]: format(d, "yyyy-MM-dd") }));
+                        }}
+                        // Substitui o `min` do input, e vale mais: `min` só
+                        // marcava o campo como inválido, isto impede o clique.
+                        disabled={{ before: parseISO(hojeISO()) }}
+                        // O day-picker abre em `defaultMonth ?? hoje` — ele NÃO
+                        // segue o `selected`. Sem isto, data já escolhida em
+                        // outro mês reabriria o calendário no mês errado.
+                        defaultMonth={datas[campo] ? parseISO(datas[campo]) : undefined}
+                        initialFocus
+                        locale={ptBR}
+                      />
+                    </div>
+                    {datas[campo] && (
+                      <p className="text-sm text-muted-foreground">
+                        {format(parseISO(datas[campo]), "PPP", { locale: ptBR })}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <Input
+                    type="date"
+                    value={datas[campo] ?? ""}
+                    min={hojeISO()}
+                    onChange={(e) => setDatas((s) => ({ ...s, [campo]: e.target.value }))}
+                  />
+                )
               )}
               {/* A hora anda junto da data a que pertence — atendimento é o
                   único compromisso do funil marcado em horário. */}
