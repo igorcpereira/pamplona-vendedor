@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Camera, Upload, Edit, X, Check, RefreshCw, Clock, AlertTriangle, ShoppingBag, Ruler } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,13 @@ interface FichaErro {
 
 const NewRegistration = () => {
   const navigate = useNavigate();
+  /**
+   * Quando o lançamento vem de uma atividade do funil, o card viaja no state e é
+   * gravado na ficha. Sem isso o vínculo dependeria do telefone digitado casar
+   * com o cliente da oportunidade — que é justamente onde ele falhava.
+   */
+  const { state } = useLocation() as { state?: { oportunidadeId?: string } };
+  const oportunidadeId = state?.oportunidadeId ?? null;
   const { profile } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [isCreatingManual, setIsCreatingManual] = useState(false);
@@ -77,6 +84,7 @@ const NewRegistration = () => {
       const formData = new FormData();
       formData.append('image', file);
       formData.append('user_id', user?.id || '');
+      if (oportunidadeId) formData.append('oportunidade_id', oportunidadeId);
 
       const { data, error } = await supabase.functions.invoke('processar-ficha-v3', {
         body: formData,
@@ -169,6 +177,7 @@ const NewRegistration = () => {
           vendedor_id: user.id,
           unidade_id: profile?.unidade_id ?? null,
           status: 'pendente',
+          oportunidade_id: oportunidadeId,
         })
         .select('id')
         .single();

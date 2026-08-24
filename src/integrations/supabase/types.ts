@@ -378,6 +378,7 @@ export type Database = {
           lanificio_id: string | null
           nome_cliente: string | null
           ocr_tentativa: number | null
+          oportunidade_id: string | null
           pago: boolean
           paleto: string | null
           paleto_categoria: string | null
@@ -433,6 +434,7 @@ export type Database = {
           lanificio_id?: string | null
           nome_cliente?: string | null
           ocr_tentativa?: number | null
+          oportunidade_id?: string | null
           pago?: boolean
           paleto?: string | null
           paleto_categoria?: string | null
@@ -488,6 +490,7 @@ export type Database = {
           lanificio_id?: string | null
           nome_cliente?: string | null
           ocr_tentativa?: number | null
+          oportunidade_id?: string | null
           pago?: boolean
           paleto?: string | null
           paleto_categoria?: string | null

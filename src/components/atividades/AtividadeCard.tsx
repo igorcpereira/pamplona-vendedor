@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Check, Phone, User, Clock, Loader2, MessageCircle, History } from "lucide-react";
 import { parseISO } from "date-fns";
 import { Card } from "@/components/ui/card";
@@ -16,6 +15,7 @@ import { dataCurta, horaCurta } from "@/lib/atividades";
 import type { Atividade } from "@/hooks/useAtividades";
 import HistoricoCliente from "@/components/atividades/HistoricoCliente";
 import ConcluirComDesfecho, { type Desfecho } from "@/components/atividades/ConcluirComDesfecho";
+import LancarFichaDialog, { type ContextoDaFicha } from "@/components/atividades/LancarFichaDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -68,7 +68,8 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
   const [novaData, setNovaData] = useState<Date | undefined>();
   const [novaHora, setNovaHora] = useState("");
   const [historicoOpen, setHistoricoOpen] = useState(false);
-  const navigate = useNavigate();
+  /** Contexto do card para o lançamento de ficha; nulo = modal fechado. */
+  const [fichaCtx, setFichaCtx] = useState<ContextoDaFicha | null>(null);
   const [concluirOpen, setConcluirOpen] = useState(false);
   const [obsConcluir, setObsConcluir] = useState("");
 
@@ -248,7 +249,18 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
               }}
               onLancarFicha={() => {
                 setConcluirOpen(false);
-                navigate("/novo");
+                // O cliente vem do CARD, não do que for digitado depois: é isso
+                // que garante a ficha cair na oportunidade certa.
+                if (!atividade.oportunidade_id || !atividade.cliente_id) return;
+                setFichaCtx({
+                  oportunidadeId: atividade.oportunidade_id,
+                  clienteId: atividade.cliente_id,
+                  clienteNome: atividade.cliente_nome,
+                  clienteTelefone: atividade.cliente_telefone,
+                  unidadeId: atividade.unidade_id,
+                  tipoNegociacao: atividade.oportunidade_tipo,
+                  dataEvento: atividade.data_evento,
+                });
               }}
               onCancelar={() => setConcluirOpen(false)}
             />
@@ -283,6 +295,16 @@ const AtividadeCard = ({ atividade, onConcluir, onAdiar, isUpdating }: Props) =>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Montado só quando abre: os hooks dele (auth, query client, supabase)
+          não têm por que rodar em card fechado. */}
+      {fichaCtx && (
+        <LancarFichaDialog
+          open
+          contexto={fichaCtx}
+          onClose={() => setFichaCtx(null)}
+        />
+      )}
 
       {/* Mini-modal para reagendar */}
       <Dialog open={adiarOpen} onOpenChange={setAdiarOpen}>

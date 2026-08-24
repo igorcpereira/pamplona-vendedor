@@ -376,6 +376,9 @@ Deno.serve(async (req) => {
     const imageFile        = formData.get('image')    as File   | null
     const userId           = formData.get('user_id')  as string | null
     const fichaIdReprocess = formData.get('ficha_id') as string | null
+    // Card do funil, quando a foto foi tirada de dentro de uma atividade: a
+    // ficha nasce ligada à oportunidade e o gatilho fecha o card ao promovê-la.
+    const oportunidadeId   = formData.get('oportunidade_id') as string | null
 
     if (!userId)                                        return json({ error: 'unauthorized' }, 401)
     if (!imageFile)                                     return json({ error: 'image_required' }, 400)
@@ -419,7 +422,12 @@ Deno.serve(async (req) => {
 
       const { data: ficha, error } = await supabase
         .from('fichas')
-        .insert({ vendedor_id: userId, status: 'pendente', unidade_id: profile?.unidade_id })
+        .insert({
+          vendedor_id: userId,
+          status: 'pendente',
+          unidade_id: profile?.unidade_id,
+          oportunidade_id: oportunidadeId,
+        })
         .select('id')
         .single()
 
