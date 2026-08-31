@@ -290,12 +290,36 @@ async function processarBackground(
     const fichaExistente = fichasExistentes?.[0] ?? null
 
     if (fichaExistente) {
-      // Ficha duplicada — sinaliza para o frontend redirecionar à original
+      // Ficha duplicada. Ela NÃO vai para 'erro' nem é apagada pelo front.
+      //
+      // 'inativa' é o estado de quem precisa existir sem ser vista. Duas razões:
+      //   1. o front apagava esta linha, e o `oportunidade_id` dela ia junto —
+      //      o card do funil ficava aberto para sempre, e sem rastro, porque o
+      //      delete não passa por `excluir_ficha` e a FK de `fichas_ocr_log` é
+      //      ON DELETE CASCADE (IGO-182);
+      //   2. 'erro' é a caixa de entrada de problemas do vendedor (painel
+      //      "Erros recentes"). Duplicata não pede ação dele: ele é levado para
+      //      a ficha original e segue o atendimento.
+      //
+      // 'inativa' fica fora de tudo que importa por allowlist: faturamento,
+      // vw_atendimentos, o gatilho de auto-ganha e o índice de código único. Ou
+      // seja, o vínculo com a oportunidade sobrevive sem que a ficha duplicada
+      // possa fechar o card.
+      //
+      // `codigo_ficha` vai a null de propósito, e não é a restrição que exige
+      // isso (o índice único é parcial em ativa/pendente). É o reprocessamento:
+      // ele devolve ficha para 'pendente', e aí o código colidiria com a
+      // original. `ficha_original_id` guarda o caminho de volta, e a original
+      // tem o código, então nada se perde.
+      //
+      // Limite conhecido: ficha 'inativa' não pode ser reprocessada (a etapa 2
+      // só aceita 'erro'). Se o OCR inventou a duplicata lendo o código errado,
+      // a recuperação é manual, pela gestão. Antes era pior: a linha sumia.
       await supabase.from('fichas').update({
-        status: 'erro',
+        status: 'inativa',
         erro_etapa: 'ficha_duplicada',
         ficha_original_id: fichaExistente.id,
-        codigo_ficha: numeroFicha,
+        codigo_ficha: null,
       }).eq('id', fichaId)
       return // não continua para o parse
     }

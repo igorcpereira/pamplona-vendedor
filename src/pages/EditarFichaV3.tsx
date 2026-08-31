@@ -182,13 +182,25 @@ export default function EditarFichaV3() {
           return;
         }
 
+        /**
+         * Duplicata de código: a ficha nova NÃO é mais apagada.
+         *
+         * O delete levava junto o `oportunidade_id` dela, e o card do funil
+         * ficava aberto para sempre. Sem rastro, ainda: o delete não passa por
+         * `excluir_ficha` e a FK de `fichas_ocr_log` é ON DELETE CASCADE, então
+         * até o log do OCR ia embora. Agora a edge deixa a ficha em 'inativa',
+         * que não aparece em lista nenhuma, não conta faturamento e não dispara
+         * o gatilho de auto-ganha, mas guarda o vínculo (IGO-182).
+         *
+         * O status ficou FORA da condição de propósito: `erro_etapa` é o que
+         * identifica o caso, e assim as linhas antigas, que ficaram em 'erro'
+         * antes desta mudança, continuam sendo tratadas do mesmo jeito.
+         */
         if (
-          fichaData.status === 'erro' &&
           fichaData.erro_etapa === 'ficha_duplicada' &&
           fichaData.ficha_original_id &&
           isNewFicha
         ) {
-          await supabase.from('fichas').delete().eq('id', fichaData.id);
           navigate(`/editar-ficha-v3/${fichaData.ficha_original_id}`, {
             state: {
               isNewFicha: false,
@@ -291,13 +303,12 @@ export default function EditarFichaV3() {
           }
 
           if (
-            fichaAtualizada.status === 'erro' &&
             fichaAtualizada.erro_etapa === 'ficha_duplicada' &&
             fichaAtualizada.ficha_original_id &&
             isNewFicha
           ) {
             setIsProcessing(false);
-            supabase.from('fichas').delete().eq('id', fichaAtualizada.id).then(() => {});
+            // Não apaga mais. Mesmo motivo do bloco de carregamento acima.
             navigate(`/editar-ficha-v3/${fichaAtualizada.ficha_original_id}`, {
               state: {
                 isNewFicha: false,
@@ -855,7 +866,13 @@ export default function EditarFichaV3() {
               <div className="flex-1">
                 <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">Esta ficha já existe no sistema</p>
                 <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                  {duplicateCodigo ? `A ficha #${duplicateCodigo} já estava cadastrada. ` : ''}
+                  {/* A ficha inativada perde o código de propósito, então o
+                      state pode chegar sem ele. Quem tem o código é esta ficha
+                      aqui, a original, que é justamente a que já estava
+                      cadastrada. */}
+                  {(duplicateCodigo ?? ficha?.codigo_ficha)
+                    ? `A ficha #${duplicateCodigo ?? ficha?.codigo_ficha} já estava cadastrada. `
+                    : ''}
                   Você foi redirecionado para a ficha original.
                 </p>
               </div>

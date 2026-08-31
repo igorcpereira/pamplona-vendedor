@@ -3119,6 +3119,7 @@ export type Database = {
         | "baixa"
         | "aguardando_prova"
         | "avulso"
+        | "inativa"
       tipo_de_atendimento: "Aluguel" | "Venda" | "Ajuste"
       user_role: "Gestor" | "Franqueado" | "Vendedor"
     }
@@ -3274,6 +3275,7 @@ export const Constants = {
         "baixa",
         "aguardando_prova",
         "avulso",
+        "inativa",
       ],
       tipo_de_atendimento: ["Aluguel", "Venda", "Ajuste"],
       user_role: ["Gestor", "Franqueado", "Vendedor"],

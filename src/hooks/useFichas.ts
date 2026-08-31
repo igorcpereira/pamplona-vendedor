@@ -15,7 +15,12 @@ export const useFichas = (limit?: number) => {
         .from('fichas')
         .select('*')
         .eq('vendedor_id', user.id)
-        .neq('status', 'avulso')
+        // Denylist, e não allowlist, porque a lista do vendedor mostra tudo que
+        // ele lançou: ativa, pendente e erro. O preço é que status novo entra
+        // aqui sozinho, e foi por isso que 'inativa' precisou ser listada. A
+        // ficha inativa é a de código duplicado, que existe só para preservar o
+        // vínculo com a oportunidade e não deve aparecer para ninguém (IGO-182).
+        .not('status', 'in', '(avulso,inativa)')
         .order('created_at', { ascending: false });
 
       if (limit) {
