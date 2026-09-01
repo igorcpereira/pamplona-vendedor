@@ -20,16 +20,20 @@ export function normalizarBusca(texto: string): string {
   return texto.toLowerCase().normalize("NFD").replace(SEM_DIACRITICOS, "");
 }
 
-// Regra de negócio (espelha a RLS): o perfil "vendedor" só pode editar/excluir
-// fichas onde vendedor_id === o próprio usuário. Os demais perfis
-// (administrativo, gestor, franqueado, admin, master) podem editar/excluir
-// qualquer ficha da unidade. Retorna true quando a ação é permitida.
+// Regra de negócio, espelhando a RLS `fichas_update`: edita quem LANÇOU a
+// ficha, qualquer que seja o papel, mais gestor e master.
+//
+// Virou ALLOWLIST em 01/09/2026 (IGO-153). Era `role !== "vendedor"`, uma
+// denylist de um item, e isso tinha dois problemas: o `administrativo` passava
+// (e por decisão do Igor ele não edita ficha), e qualquer papel novo passaria
+// por omissão. Com a policy do banco apertada, deixar esta função permissiva
+// faria o app oferecer um botão que a RLS recusa em silêncio.
 export function podeEditarFicha(
   role: string | null | undefined,
   userId: string | null | undefined,
   fichaVendedorId: string | null | undefined
 ): boolean {
-  if (role !== "vendedor") return true;
+  if (role === "gestor" || role === "master") return true;
   return !!userId && userId === fichaVendedorId;
 }
 

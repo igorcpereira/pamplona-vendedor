@@ -377,7 +377,7 @@ function ResumoPessoalView() {
 const ResumoMes = () => {
   const { activeUnidade } = useAuth();
   // Cargos globais veem o totalizador da unidade (com seletor); demais, o resumo pessoal
-  const ehGlobal = ['gestor', 'admin', 'master'].includes(activeUnidade?.role ?? '');
+  const ehGlobal = ['gestor', 'master'].includes(activeUnidade?.role ?? '');
   return ehGlobal ? <ResumoUnidadeView /> : <ResumoPessoalView />;
 };
 

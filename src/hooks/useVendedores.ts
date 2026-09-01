@@ -19,12 +19,15 @@ export const useVendedores = () => {
     queryFn: async () => {
       if (!user?.id || !activeUnidade) return [];
 
-      const isGlobal = ['master', 'admin'].includes(activeUnidade.role);
+      // `admin` saiu da lista em 01/09/2026 (IGO-153). O escopo NÃO muda para
+      // ninguém real: o único admin era conta de teste. `gestor` continua fora
+      // de propósito, porque ele escolhe a unidade ativa no painel.
+      const isGlobal = ['master'].includes(activeUnidade.role);
 
       let vinculosQuery = supabase
         .from('usuario_unidade_role')
         .select('user_id, role, unidade_id, unidades(nome)')
-        .in('role', ['vendedor', 'franqueado', 'gestor']);
+        .in('role', ['vendedor', 'gestor']);
 
       if (!isGlobal) {
         vinculosQuery = vinculosQuery.eq('unidade_id', activeUnidade.unidade.id);

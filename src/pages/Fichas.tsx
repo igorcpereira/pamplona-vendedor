@@ -248,7 +248,7 @@ const Fichas = () => {
     [activeUnidade?.role, user?.id]
   );
 
-  const ehGlobal = ["gestor", "admin", "master"].includes(activeUnidade?.role ?? "");
+  const ehGlobal = ["gestor", "master"].includes(activeUnidade?.role ?? "");
 
   // Filtros persistentes (localStorage), compartilhados entre as abas
   const { filtros, setFiltros } = useFiltrosFichas();

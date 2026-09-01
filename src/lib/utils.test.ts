@@ -13,10 +13,26 @@ describe("podeEditarFicha (requisito a)", () => {
     expect(podeEditarFicha("vendedor", A, B)).toBe(false);
   });
 
-  it("perfis elevados editam qualquer ficha", () => {
-    expect(podeEditarFicha("administrativo", A, B)).toBe(true);
+  it("gestor e master editam qualquer ficha", () => {
     expect(podeEditarFicha("gestor", A, B)).toBe(true);
-    expect(podeEditarFicha("admin", A, B)).toBe(true);
+    expect(podeEditarFicha("master", A, B)).toBe(true);
+  });
+
+  // Decisão do Igor em 01/09/2026: administrativo não edita ficha. Antes ele
+  // passava, porque a regra era denylist de "vendedor" (IGO-153).
+  it("administrativo NÃO edita a ficha de outro", () => {
+    expect(podeEditarFicha("administrativo", A, B)).toBe(false);
+  });
+
+  it("administrativo edita a ficha que ele mesmo lançou", () => {
+    expect(podeEditarFicha("administrativo", A, A)).toBe(true);
+  });
+
+  // Papel que não existe mais não ganha passe livre: a allowlist recusa por
+  // omissão, ao contrário da denylist antiga.
+  it("papel desconhecido não edita ficha de outro", () => {
+    expect(podeEditarFicha("admin", A, B)).toBe(false);
+    expect(podeEditarFicha("franqueado", A, B)).toBe(false);
   });
 
   it("sem usuário logado, vendedor não edita", () => {

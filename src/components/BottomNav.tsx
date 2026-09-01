@@ -17,7 +17,7 @@ const BottomNav = () => {
   // sendo trabalho de hoje). Para cargo global, soma a UNIDADE em que o usuário
   // está alocado (profiles.unidade_id); sem unidade real alocada, cai no escopo
   // pessoal para não contar a rede inteira. A agenda em si segue pessoal.
-  const ehGlobal = ['gestor', 'admin', 'master'].includes(activeUnidade?.role ?? '');
+  const ehGlobal = ['gestor', 'master'].includes(activeUnidade?.role ?? '');
   const unidadeAlocada = profile?.unidade_id && profile.unidade_id !== 3 ? profile.unidade_id : null;
   const { data: atividadesAbertas = [] } = useAtividades({
     status: "a_fazer",
