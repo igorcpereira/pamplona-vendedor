@@ -15,6 +15,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn, parseDataSemFuso, formatarDataParaBanco, normalizarTelefone, formatarTelefoneInput, normalizarBusca, podeEditarFicha, rotuloBotaoFicha } from "@/lib/utils";
+import { papelDaRefoto, diferencasDaRefoto } from "@/lib/refoto";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useTravaSubmit } from "@/hooks/useTravaSubmit";
@@ -60,6 +61,7 @@ const seccoesComDados = (f: {
 };
 
 
+
 export default function EditarFichaV3() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -68,7 +70,7 @@ export default function EditarFichaV3() {
   const queryClient = useQueryClient();
   const isAdmin = activeUnidade?.role === 'administrativo';
   const travarSubmit = useTravaSubmit();
-  const { imageFile, isNewFicha, isReprocessing, cliente_id, duplicateAlert, duplicateCodigo, isManual } = location.state || {};
+  const { imageFile, isNewFicha, isReprocessing, cliente_id, duplicateAlert, duplicateCodigo, duplicatePapel, isManual } = location.state || {};
 
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
@@ -206,6 +208,10 @@ export default function EditarFichaV3() {
               isNewFicha: false,
               duplicateAlert: true,
               duplicateCodigo: fichaData.codigo_ficha,
+              // O que o OCR leu no papel novo. A linha inativa guarda isso
+              // desde 01/09, e é o que permite dizer ao vendedor O QUE mudou
+              // em vez de só "esta ficha já existe" (IGO-182).
+              duplicatePapel: papelDaRefoto(fichaData),
             },
             replace: true,
           });
@@ -314,6 +320,9 @@ export default function EditarFichaV3() {
                 isNewFicha: false,
                 duplicateAlert: true,
                 duplicateCodigo: fichaAtualizada.codigo_ficha,
+                // O payload do realtime traz a linha inteira, então o que o OCR
+                // leu no papel vem de graça, sem consulta extra.
+                duplicatePapel: papelDaRefoto(fichaAtualizada),
               },
               replace: true,
             });
@@ -875,6 +884,31 @@ export default function EditarFichaV3() {
                     : ''}
                   Você foi redirecionado para a ficha original.
                 </p>
+
+                {/* O que mudou entre o papel que ele acabou de fotografar e a
+                    ficha gravada. Ele não pode corrigir aqui (ficha lançada é da
+                    gestão), então isto existe para ele sair sabendo o que
+                    reportar, em vez de sair sem saber que havia diferença. */}
+                {diferencasDaRefoto(duplicatePapel, ficha).length > 0 && (
+                  <div className="mt-2 rounded border border-yellow-300 dark:border-yellow-700 bg-yellow-100/60 dark:bg-yellow-900/40 p-2">
+                    <p className="text-xs font-medium text-yellow-900 dark:text-yellow-100">
+                      A foto que você tirou está diferente desta ficha:
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {diferencasDaRefoto(duplicatePapel, ficha).map(d => (
+                        <li key={d.rotulo} className="text-xs text-yellow-800 dark:text-yellow-200 tabular-nums">
+                          <span className="font-medium">{d.rotulo}:</span> no papel{' '}
+                          <span className="font-semibold">{d.noPapel}</span>, nesta ficha{' '}
+                          <span className="font-semibold">{d.naFicha}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-1.5 text-xs text-yellow-700 dark:text-yellow-300">
+                      Ficha já lançada só a gestão altera. Avise a gestão com o número
+                      da ficha para corrigir.
+                    </p>
+                  </div>
+                )}
               </div>
               <button
                 type="button"

@@ -202,7 +202,7 @@ async function processarBackground(
   // duplicata (etapa 5.5), que antes buscava a unidade por conta própria.
   const { data: fichaAtual } = await supabase
     .from('fichas')
-    .select('unidade_id, cliente_id, nome_cliente, telefone_cliente')
+    .select('unidade_id, cliente_id, nome_cliente, telefone_cliente, oportunidade_id')
     .eq('id', fichaId)
     .single()
 
@@ -278,8 +278,11 @@ async function processarBackground(
     const unidadeAtual = fichaAtual?.unidade_id ?? null
 
     let dupSel = supabase
+      // `cliente_id` e `oportunidade_id` da ORIGINAL servem à transferência de
+      // card mais abaixo: só transfere para original do mesmo cliente e que
+      // ainda não tem card.
       .from('fichas')
-      .select('id')
+      .select('id, cliente_id, oportunidade_id')
       .eq('codigo_ficha', numeroFicha)
       .neq('id', fichaId)
       .in('status', ['ativa', 'pendente'])
@@ -290,37 +293,108 @@ async function processarBackground(
     const fichaExistente = fichasExistentes?.[0] ?? null
 
     if (fichaExistente) {
-      // Ficha duplicada. Ela NÃO vai para 'erro' nem é apagada pelo front.
+      // Ficha duplicada. Ela NÃO vai para 'erro' e NÃO é apagada pelo front.
       //
-      // 'inativa' é o estado de quem precisa existir sem ser vista. Duas razões:
-      //   1. o front apagava esta linha, e o `oportunidade_id` dela ia junto —
-      //      o card do funil ficava aberto para sempre, e sem rastro, porque o
-      //      delete não passa por `excluir_ficha` e a FK de `fichas_ocr_log` é
-      //      ON DELETE CASCADE (IGO-182);
-      //   2. 'erro' é a caixa de entrada de problemas do vendedor (painel
-      //      "Erros recentes"). Duplicata não pede ação dele: ele é levado para
-      //      a ficha original e segue o atendimento.
+      // Investigação de 01/09/2026 (IGO-182): a duplicata é a MESMA ficha de
+      // papel fotografada de novo, e a refoto costuma ser tentativa de
+      // atualizar. No caso real de 31/08, o valor no papel tinha subido de 300
+      // para 800. Isso define o que esta linha precisa ser: um registro do que o
+      // papel dizia, e não lixo a descartar.
       //
-      // 'inativa' fica fora de tudo que importa por allowlist: faturamento,
-      // vw_atendimentos, o gatilho de auto-ganha e o índice de código único. Ou
-      // seja, o vínculo com a oportunidade sobrevive sem que a ficha duplicada
-      // possa fechar o card.
+      // POR QUE 'inativa', e não 'erro':
+      //   · o front apagava esta linha, e o `oportunidade_id` dela ia junto, o
+      //     que deixava o card do funil aberto para sempre e sem rastro (o
+      //     delete não passa por `excluir_ficha` e a FK de `fichas_ocr_log` é
+      //     ON DELETE CASCADE, então o log do OCR ia embora também);
+      //   · 'erro' é a caixa de entrada de problemas do vendedor (painel "Erros
+      //     recentes"). Duplicata não pede ação dele: ele é levado à ficha
+      //     original e segue o atendimento.
       //
-      // `codigo_ficha` vai a null de propósito, e não é a restrição que exige
-      // isso (o índice único é parcial em ativa/pendente). É o reprocessamento:
-      // ele devolve ficha para 'pendente', e aí o código colidiria com a
-      // original. `ficha_original_id` guarda o caminho de volta, e a original
-      // tem o código, então nada se perde.
+      // 'inativa' fica fora de tudo que importa porque todo mundo relevante usa
+      // allowlist: faturamento, vw_atendimentos, o gatilho de auto-ganha e o
+      // índice de código único. Ou seja, o vínculo com a oportunidade sobrevive
+      // sem que a ficha duplicada possa fechar o card.
       //
-      // Limite conhecido: ficha 'inativa' não pode ser reprocessada (a etapa 2
-      // só aceita 'erro'). Se o OCR inventou a duplicata lendo o código errado,
-      // a recuperação é manual, pela gestão. Antes era pior: a linha sumia.
+      // O QUE É GRAVADO: tudo que o OCR leu, MENOS o `codigo_ficha`.
+      //   · os campos do papel são o que permite dizer ao vendedor e à gestão O
+      //     QUE mudou. Sem eles a linha fica muda, porque a leitura vive só em
+      //     `fichas_ocr_log`, que nenhum front lê;
+      //   · aqui NÃO vale a guarda "o card manda sobre o OCR" da etapa 6: o
+      //     propósito desta linha é registrar o papel, então o papel manda.
+      //     `cliente_id` não é tocado, e é ele que decide a transferência de card
+      //     mais abaixo;
+      //   · `codigo_ficha` vai a null, e não é a restrição que exige isso (o
+      //     índice único é parcial em ativa/pendente). É o reprocessamento: ele
+      //     devolve a ficha para 'pendente', e aí o código colidiria com a
+      //     original. `ficha_original_id` guarda o caminho de volta, e a original
+      //     tem o código, então nada se perde.
+      //
+      // Limite conhecido: ficha 'inativa' não pode ser reprocessada (a etapa 2 só
+      // aceita 'erro'). Se o OCR inventou a duplicata lendo o código errado, a
+      // recuperação é manual, pela gestão. Antes era pior: a linha sumia.
+      let doPapel: Partial<ReturnType<typeof parseOcrToDbFields>> = {}
+      try {
+        doPapel = parseOcrToDbFields(ocrResult)
+      } catch {
+        // Parse quebrado não impede a marcação: a linha e a foto ainda valem.
+        doPapel = {}
+      }
+
       await supabase.from('fichas').update({
+        ...doPapel,
+        codigo_ficha: null,
         status: 'inativa',
         erro_etapa: 'ficha_duplicada',
         ficha_original_id: fichaExistente.id,
-        codigo_ficha: null,
       }).eq('id', fichaId)
+
+      // ── A ficha ORIGINAL assume o card ────────────────────────────────
+      // Quando a refoto veio de dentro de uma atividade do funil, o card ficaria
+      // aberto para sempre: a duplicata é 'inativa' e o gatilho de ganho só
+      // dispara em ativa/avulso. Mas a venda EXISTE, e está na original.
+      //
+      // Duas guardas, e são o que torna isto seguro:
+      //   · mesmo cliente. Original de outro cliente significa ficha errada ou
+      //     código que colide entre clientes, e aí o card fica aberto de
+      //     propósito, para olho humano;
+      //   · original ainda sem card. `uq_oportunidade_ficha` garante uma ficha
+      //     por card, então transferir para uma original já vinculada falharia.
+      //     Card aberto também é a resposta certa aqui: dois cards para o mesmo
+      //     cliente é situação estranha que merece inspeção.
+      //
+      // Comissão não entra nesta conta: ela sai de `fichas.vendedor_id` e foi
+      // decidida quando a original foi lançada. Ganhar card é métrica de funil,
+      // não evento de dinheiro (apurado em 01/09; nenhuma função cruza
+      // `responsavel_id` com valor).
+      //
+      // O jeito de fechar é gravar `oportunidade_id` na ORIGINAL e deixar o
+      // `trg_ficha_fecha_oportunidade` fazer o trabalho: ele ganha o card,
+      // conclui a atividade que esperava a ficha, cancela as irmãs e loga.
+      // Reimplementar esses efeitos aqui seria duplicar mecanismo testado, e
+      // meia implementação (ganhar o card sem concluir a atividade) é pior que
+      // nenhuma. Os outros 5 triggers de `fichas` foram conferidos: o de troca
+      // de telefone passa porque o telefone não muda.
+      const cardDaRefoto = fichaAtual?.oportunidade_id as string | null | undefined
+      const mesmoCliente =
+        !!fichaAtual?.cliente_id &&
+        fichaAtual.cliente_id === fichaExistente.cliente_id
+      const originalSemCard = !fichaExistente.oportunidade_id
+
+      if (cardDaRefoto && mesmoCliente && originalSemCard) {
+        const { error: errTransfer } = await supabase
+          .from('fichas')
+          .update({ oportunidade_id: cardDaRefoto })
+          .eq('id', fichaExistente.id)
+          // Corrida: se alguém vinculou a original nesse meio tempo, não passa.
+          .is('oportunidade_id', null)
+
+        if (errTransfer) {
+          // Nunca derruba o processamento: a ficha inativa já está marcada e o
+          // card continua aberto, que é o pior caso aceitável.
+          console.error('Falha ao transferir o card para a ficha original:', errTransfer)
+        }
+      }
+
       return // não continua para o parse
     }
   }
