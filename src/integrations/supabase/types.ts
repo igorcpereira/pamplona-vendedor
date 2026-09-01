@@ -196,7 +196,6 @@ export type Database = {
           nome: string
           telefone: string | null
           tipo_atendimento: string | null
-          unidade_id: number | null
           updated_at: string
           vendedor_id: string | null
         }
@@ -207,7 +206,6 @@ export type Database = {
           nome: string
           telefone?: string | null
           tipo_atendimento?: string | null
-          unidade_id?: number | null
           updated_at?: string
           vendedor_id?: string | null
         }
@@ -218,19 +216,10 @@ export type Database = {
           nome?: string
           telefone?: string | null
           tipo_atendimento?: string | null
-          unidade_id?: number | null
           updated_at?: string
           vendedor_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "clientes_unidade_id_fkey"
-            columns: ["unidade_id"]
-            isOneToOne: false
-            referencedRelation: "unidades"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       clientes_antigos: {
         Row: {
@@ -2373,8 +2362,6 @@ export type Database = {
           tipo_atendimento: string
           total_count: number
           ultima_venda: string
-          unidade_id: number
-          unidade_nome: string
           updated_at: string
           vendedor_id: string
         }[]
