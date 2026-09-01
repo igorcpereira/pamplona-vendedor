@@ -1,6 +1,23 @@
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0'
 
-const REMETENTE = 'Pamplona Alfaiataria <naoresponda@agenciakadin.com.br>'
+// Remetente dos dois e-mails de autenticação deste app.
+//
+// O domínio saiu de `agenciakadin.com.br` em 01/09/2026 (IGO-153 é outra; esta é
+// a IGO-225, transição de marca da IGO-224). Um domínio do próprio cliente seria
+// melhor, mas não temos acesso a endereço no pamplona.com.br, então é Revultra.
+//
+// O NOME DE EXIBIÇÃO CONTINUA "Pamplona Alfaiataria", e isso não é detalhe: quem
+// recebe é funcionário da Pamplona redefinindo a própria senha ou aceitando
+// convite para o sistema dela. Assinar como Revultra faria a pessoa receber um
+// convite de uma empresa que ela não conhece, que é como convite legítimo vai
+// para o lixo. Só o domínio do endereço mudou.
+//
+// `revultra.com.br` já é remetente Resend em outro projeto
+// (kadin-tech-prov, financeiro@revultra.com.br), então SPF e DKIM existem. Mas
+// domínio verificado no Resend vale POR CONTA: se este envio começar a falhar
+// com "domain is not verified", é porque a RESEND_API_KEY deste projeto é de
+// outra conta, e o domínio precisa ser adicionado nela.
+const REMETENTE = 'Pamplona Alfaiataria <naoresponda@revultra.com.br>'
 
 // --------------------------------------------------------
 // Templates de email por tipo de ação
@@ -10,7 +27,7 @@ function templateRecuperacaoSenha(token: string, redirectTo: string): { subject:
   const link = `${redirectTo}?token_hash=${token}&type=recovery`
 
   return {
-    subject: 'Redefinição de senha — Pamplona Alfaiataria',
+    subject: 'Redefinição de senha da Pamplona Alfaiataria',
     html: `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -43,7 +60,7 @@ function templateRecuperacaoSenha(token: string, redirectTo: string): { subject:
                 Recebemos uma solicitação para redefinir a senha da sua conta. Clique no botão abaixo para criar uma nova senha.
               </p>
               <p style="margin:0 0 32px;font-size:14px;line-height:1.6;color:#4B5563;">
-                Se você não fez essa solicitação, ignore este email — sua senha permanece a mesma.
+                Se você não fez essa solicitação, ignore este email: sua senha permanece a mesma.
               </p>
 
               <!-- Botão -->
@@ -89,7 +106,7 @@ function templateConvite(token: string, redirectTo: string): { subject: string; 
   const link = `${redirectTo}?token_hash=${token}&type=invite`
 
   return {
-    subject: 'Você foi convidado — Pamplona Alfaiataria',
+    subject: 'Você foi convidado para o sistema da Pamplona Alfaiataria',
     html: `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -186,7 +203,7 @@ Deno.serve(async (req) => {
   } else if (email_action_type === 'invite') {
     template = templateConvite(token_hash, redirect_to)
   } else {
-    // Ação não tratada — deixa o Supabase usar o comportamento padrão
+    // Ação não tratada: deixa o Supabase usar o comportamento padrão
     console.log(`Ação de email não tratada: ${email_action_type}`)
     return new Response(JSON.stringify({}), { status: 200 })
   }
@@ -213,7 +230,10 @@ Deno.serve(async (req) => {
 
   if (!res.ok) {
     const erro = await res.text()
-    console.error('Erro Resend:', erro)
+    // O remetente entra no log de propósito: a falha mais provável aqui é
+    // "domain is not verified", e saber qual domínio foi tentado é o que
+    // distingue conta de Resend errada de qualquer outro problema.
+    console.error(`Erro Resend (from: ${REMETENTE}):`, erro)
     return new Response(JSON.stringify({ error: 'falha ao enviar email' }), { status: 500 })
   }
 
