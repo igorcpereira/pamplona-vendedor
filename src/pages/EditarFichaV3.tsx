@@ -70,7 +70,7 @@ export default function EditarFichaV3() {
   const queryClient = useQueryClient();
   const isAdmin = activeUnidade?.role === 'administrativo';
   const travarSubmit = useTravaSubmit();
-  const { imageFile, isNewFicha, isReprocessing, cliente_id, duplicateAlert, duplicateCodigo, duplicatePapel, isManual } = location.state || {};
+  const { imageFile, isNewFicha, cliente_id, duplicateAlert, duplicateCodigo, duplicatePapel, isManual } = location.state || {};
 
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);

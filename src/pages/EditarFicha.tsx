@@ -30,7 +30,7 @@ export default function EditarFicha() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, profile } = useAuth();
-  const { imageFile, isNewFicha, isReprocessing, cliente_id } = location.state || {};
+  const { imageFile, isNewFicha, cliente_id } = location.state || {};
   const [loading, setLoading] = useState(false);
   const [isLoadingFicha, setIsLoadingFicha] = useState(true);
   const [showImageModal, setShowImageModal] = useState(false);

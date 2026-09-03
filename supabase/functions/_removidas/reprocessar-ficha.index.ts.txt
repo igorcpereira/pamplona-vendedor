@@ -1,0 +1,195 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// ARQUIVO MORTO, GUARDADO DE PROPÓSITO. NÃO É DEPLOYADO.
+//
+// Fonte da edge function `reprocessar-ficha` do projeto pukcbqfjzswqmjkhwzfk,
+// baixada da versão 21 (a que estava no ar) em 03/09/2026, antes de ela ser
+// removida. Ver IGO-254 e a Fase 3 de
+// pamplona-crm/docs/PLANO-REMOVER-REPROCESSAMENTO.md.
+//
+// POR QUE ESTE ARQUIVO EXISTE: a função estava ACTIVE em produção e o código
+// dela não existia em lugar nenhum do repositório. Sem esta cópia, apagá-la
+// seria irreversível. A pasta começa com `_` porque o CLI do Supabase ignora
+// diretórios assim, então nada aqui volta ao ar por acidente. A extensão é
+// `.txt` pelo mesmo motivo.
+//
+// POR QUE ELA SAIU, em uma frase: `verify_jwt: false` mais service role mais
+// nenhuma checagem de autorização, o que dava a qualquer um que soubesse um
+// UUID de ficha o poder de exfiltrar a foto dela para o n8n e de derrubar a
+// ficha para `status = 'erro'`. Era resto da arquitetura em que o OCR passava
+// por n8n; a `processar-ficha-v3` fala direto com a OpenAI e não usa nada disto.
+// Nenhum front chamava.
+//
+// SE UM DIA PRECISAR VOLTAR: não volte assim. O mínimo seria `verify_jwt: true`,
+// checagem de que quem chama é dono da ficha ou gestão da unidade, e o webhook
+// do n8n substituído pela chamada direta ao OCR.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.79.0'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+function capitalizarNome(nome?: string): string {
+  if (!nome) return "";
+  return nome.toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    const { ficha_id } = await req.json()
+
+    if (!ficha_id) {
+      throw new Error('ficha_id é obrigatório')
+    }
+
+    console.log('Reprocessando ficha:', ficha_id)
+
+    // Buscar a ficha para pegar url_bucket
+    const { data: ficha, error: fichaError } = await supabaseClient
+      .from('fichas')
+      .select('url_bucket')
+      .eq('id', ficha_id)
+      .single()
+
+    if (fichaError || !ficha?.url_bucket) {
+      throw new Error('Ficha não encontrada ou sem imagem')
+    }
+
+    // Baixar imagem - se url_bucket for URL completa, fazer fetch direto
+    let fileData: Blob
+    const urlBucket = ficha.url_bucket
+
+    if (urlBucket.startsWith('http')) {
+      console.log('Baixando imagem via URL pública:', urlBucket)
+      const response = await fetch(urlBucket)
+      if (!response.ok) {
+        console.error('Erro ao baixar via fetch:', response.status, response.statusText)
+        throw new Error('Erro ao baixar imagem do storage')
+      }
+      fileData = await response.blob()
+    } else {
+      console.log('Baixando imagem do storage path:', urlBucket)
+      const { data, error: downloadError } = await supabaseClient.storage
+        .from('fichas')
+        .download(urlBucket)
+      if (downloadError || !data) {
+        console.error('Erro ao baixar:', downloadError)
+        throw new Error('Erro ao baixar imagem do storage')
+      }
+      fileData = data
+    }
+
+    // Buscar webhook
+    const { data: webhooks, error: webhookError } = await supabaseClient
+      .from('webhooks')
+      .select('webhook')
+      .eq('nome', 'nova-ficha')
+      .single()
+
+    if (webhookError || !webhooks) {
+      console.error('Erro ao buscar webhook:', webhookError)
+      await supabaseClient.from('fichas').update({ status: 'erro' }).eq('id', ficha_id)
+      throw new Error('Webhook não encontrado')
+    }
+
+    // Retorna imediatamente e processa em background
+    const backgroundProcess = async () => {
+      try {
+        const webhookFormData = new FormData()
+        const fileName = urlBucket.startsWith('http') ? urlBucket.split('/').pop()! : urlBucket
+        const file = new File([fileData], fileName, { type: 'image/jpeg' })
+        webhookFormData.append('image', file)
+        webhookFormData.append('ficha_id', ficha_id)
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 120000)
+
+        const webhookResponse = await fetch(webhooks.webhook, {
+          method: 'POST',
+          body: webhookFormData,
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!webhookResponse.ok) {
+          throw new Error(`Webhook retornou status ${webhookResponse.status}`)
+        }
+
+        const webhookData = await webhookResponse.json()
+        const resultado = Array.isArray(webhookData) ? webhookData[0] : webhookData
+
+        if (resultado.sucesso === true) {
+          const updateData: any = { updated_at: new Date().toISOString() }
+
+          if (resultado.numero_ficha) updateData.codigo_ficha = resultado.numero_ficha
+          if (resultado.cliente_nome) updateData.nome_cliente = capitalizarNome(resultado.cliente_nome)
+          if (resultado.cliente_telefone) updateData.telefone_cliente = resultado.cliente_telefone
+          if (resultado.tipo) {
+            const t = resultado.tipo.toLowerCase()
+            updateData.tipo = t.charAt(0).toUpperCase() + t.slice(1)
+          }
+          if (resultado.data_retirada) updateData.data_retirada = resultado.data_retirada
+          if (resultado.data_devolucao) updateData.data_devolucao = resultado.data_devolucao
+          if (resultado.data_evento) updateData.data_festa = resultado.data_evento
+          if (resultado.paleto?.descricao) updateData.paleto = capitalizarNome(resultado.paleto.descricao)
+          if (resultado.calca?.descricao) updateData.calca = capitalizarNome(resultado.calca.descricao)
+          if (resultado.camisa?.descricao) updateData.camisa = capitalizarNome(resultado.camisa.descricao)
+          if (resultado.rodape?.sapato) updateData.sapato = resultado.rodape.sapato
+          if (resultado.rodape?.valor) {
+            const v = parseFloat(resultado.rodape.valor)
+            if (!isNaN(v)) updateData.valor = v
+          }
+          if (resultado.rodape?.garantia) {
+            const g = parseFloat(resultado.rodape.garantia)
+            if (!isNaN(g)) updateData.garantia = g
+          }
+          if (resultado.pago !== null && resultado.pago !== undefined) updateData.pago = resultado.pago === true
+          if (resultado.paleto?.valor) { const v = parseFloat(resultado.paleto.valor); if (!isNaN(v)) updateData.valor_paleto = v }
+          if (resultado.calca?.valor) { const v = parseFloat(resultado.calca.valor); if (!isNaN(v)) updateData.valor_calca = v }
+          if (resultado.camisa?.valor) { const v = parseFloat(resultado.camisa.valor); if (!isNaN(v)) updateData.valor_camisa = v }
+
+          const temDadosEssenciais = updateData.codigo_ficha || updateData.nome_cliente
+          if (!temDadosEssenciais) {
+            await supabaseClient.from('fichas').update({ status: 'erro' }).eq('id', ficha_id)
+            return
+          }
+
+          updateData.status = 'pendente'
+          await supabaseClient.from('fichas').update(updateData).eq('id', ficha_id)
+          console.log('Ficha reprocessada com sucesso:', ficha_id)
+        } else {
+          await supabaseClient.from('fichas').update({ status: 'erro' }).eq('id', ficha_id)
+        }
+      } catch (err) {
+        console.error('Erro no reprocessamento background:', err)
+        await supabaseClient.from('fichas').update({ status: 'erro' }).eq('id', ficha_id)
+      }
+    }
+
+    backgroundProcess().catch(err => console.error('Erro background:', err))
+
+    return new Response(
+      JSON.stringify({ success: true, message: 'Reprocessamento iniciado' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+    )
+
+  } catch (error) {
+    console.error('Erro:', error)
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
+  }
+})

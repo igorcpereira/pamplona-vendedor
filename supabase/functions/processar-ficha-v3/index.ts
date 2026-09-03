@@ -57,7 +57,7 @@ Retorne JSON com exatamente este schema:
 }`
 
 // ============================================================
-// HELPERS — Normalização
+// HELPERS: normalização
 // ============================================================
 
 function normalizeTelefone(raw: unknown): string | null {
@@ -142,7 +142,7 @@ function imageToBase64(bytes: Uint8Array): string {
 }
 
 // ============================================================
-// OCR — Chat Completions com timeout
+// OCR: Chat Completions com timeout
 // ============================================================
 
 async function callOpenAI(base64: string, mimeType: string): Promise<Record<string, unknown>> {
@@ -182,7 +182,7 @@ async function callOpenAI(base64: string, mimeType: string): Promise<Record<stri
 }
 
 // ============================================================
-// BACKGROUND — Etapas 3 a 6
+// BACKGROUND: etapas 3 a 6
 // ============================================================
 
 async function processarBackground(
@@ -197,7 +197,7 @@ async function processarBackground(
 
   // Cadastro que a ficha já tinha ao nascer. Quando ela veio de uma atividade
   // do funil, `cliente_id`, `nome_cliente` e `telefone_cliente` são do cliente
-  // do card — escolhidos por quem está atendendo, não lidos do papel. É a
+  // do card, escolhidos por quem está atendendo, não lidos do papel. É a
   // leitura que sustenta a guarda da etapa 6. Serve também a checagem de
   // duplicata (etapa 5.5), que antes buscava a unidade por conta própria.
   const { data: fichaAtual } = await supabase
@@ -206,16 +206,16 @@ async function processarBackground(
     .eq('id', fichaId)
     .single()
 
-  // Etapas 3 + 4 — Upload e base64 em paralelo
+  // Etapas 3 + 4: upload e base64 em paralelo
   const [uploadResult, base64Result] = await Promise.allSettled([
-    // Etapa 3 — Upload no Storage
+    // Etapa 3: upload no Storage
     (async () => {
       const { error } = await supabase.storage
         .from('fichas')
         .upload(`${fichaId}.jpg`, imageBytes, { contentType: mimeType, upsert: true })
       if (error) throw error
     })(),
-    // Etapa 4 — Conversão base64
+    // Etapa 4: conversão base64
     Promise.resolve(imageToBase64(imageBytes)),
   ])
 
@@ -234,7 +234,7 @@ async function processarBackground(
 
   base64 = base64Result.value
 
-  // Etapa 5 — OCR com retry
+  // Etapa 5: OCR com retry
   let ocrResult: Record<string, unknown> | null = null
 
   for (let tentativa = 1; tentativa <= 2; tentativa++) {
@@ -242,7 +242,7 @@ async function processarBackground(
 
     try {
       ocrResult = await callOpenAI(base64, mimeType)
-      // Debug — guarda o JSON bruto exatamente como o OCR devolveu, antes de
+      // Debug: guarda o JSON bruto exatamente como o OCR devolveu, antes de
       // qualquer parse/normalização e antes dos ajustes do vendedor. Falha
       // aqui nunca deve interromper o processamento da ficha.
       try {
@@ -271,10 +271,10 @@ async function processarBackground(
 
   if (!ocrResult) return
 
-  // Etapa 5.5 — Verificar numero_ficha duplicado (único POR UNIDADE, não global)
+  // Etapa 5.5: verificar numero_ficha duplicado (único POR UNIDADE, não global)
   const numeroFicha = String(ocrResult.numero_ficha ?? '').trim() || null
   if (numeroFicha) {
-    // Unidade da ficha atual — a checagem de duplicata é restrita a ela.
+    // Unidade da ficha atual. A checagem de duplicata é restrita a ela.
     const unidadeAtual = fichaAtual?.unidade_id ?? null
 
     let dupSel = supabase
@@ -323,15 +323,17 @@ async function processarBackground(
       //     propósito desta linha é registrar o papel, então o papel manda.
       //     `cliente_id` não é tocado, e é ele que decide a transferência de card
       //     mais abaixo;
-      //   · `codigo_ficha` vai a null, e não é a restrição que exige isso (o
-      //     índice único é parcial em ativa/pendente). É o reprocessamento: ele
-      //     devolve a ficha para 'pendente', e aí o código colidiria com a
-      //     original. `ficha_original_id` guarda o caminho de volta, e a original
-      //     tem o código, então nada se perde.
-      //
-      // Limite conhecido: ficha 'inativa' não pode ser reprocessada (a etapa 2 só
-      // aceita 'erro'). Se o OCR inventou a duplicata lendo o código errado, a
-      // recuperação é manual, pela gestão. Antes era pior: a linha sumia.
+      //   · `codigo_ficha` vai a null, e quem exige isso NÃO é o índice único: ele
+      //     é parcial em ativa/pendente, então linha 'inativa' com código não
+      //     colide. Quem exige é a busca de ficha por código do `ProvaAvulsaModal`,
+      //     que filtra por DENYLIST (`.neq('status','avulso')` mais `.limit(1)`):
+      //     uma 'inativa' que guardasse o código entraria nessa busca e poderia
+      //     ser devolvida em lugar da original, sem determinismo. As outras duas
+      //     buscas por código usam allowlist e não têm o problema.
+      //     `ficha_original_id` guarda o caminho de volta, e a original tem o
+      //     código, então nada se perde.
+      //     (Justificativa trocada em 03/09/2026, IGO-247: antes o motivo citado
+      //     era o reprocessamento, que deixou de existir.)
       let doPapel: Partial<ReturnType<typeof parseOcrToDbFields>> = {}
       try {
         doPapel = parseOcrToDbFields(ocrResult)
@@ -399,7 +401,7 @@ async function processarBackground(
     }
   }
 
-  // Etapa 6 — Parse
+  // Etapa 6: parse
   let dbFields: ReturnType<typeof parseOcrToDbFields>
   try {
     dbFields = parseOcrToDbFields(ocrResult)
@@ -411,11 +413,11 @@ async function processarBackground(
     return
   }
 
-  // Etapa 6 — Ficha nascida de um card não deixa o OCR mexer no cadastro.
+  // Etapa 6: ficha nascida de um card não deixa o OCR mexer no cadastro.
   // Nome e telefone vieram do cliente da oportunidade; a letra da ficha de
   // papel é a fonte MENOS confiável que existe para telefone. Deixar o OCR
   // sobrescrever custaria caro nos dois sentidos: lendo null, apagaria o
-  // telefone — e o save seguinte devolveria `cliente_id` a null, deixando o
+  // telefone, e o save seguinte devolveria `cliente_id` a null, deixando o
   // card aberto para sempre; lendo um dígito errado, o `criar-cliente` da tela
   // de edição atualizaria o cliente REAL do card com o número errado, porque
   // para ficha já vinculada ele faz update por id. O vendedor continua podendo
@@ -428,9 +430,9 @@ async function processarBackground(
       (fichaAtual.telefone_cliente as string | null) ?? dbFields.telefone_cliente
   }
 
-  // Etapa 6 — Busca cliente por telefone.
+  // Etapa 6: busca cliente por telefone.
   // Só faz sentido para ficha órfã: se ela já nasceu com dono (veio de um
-  // card), sugerir outro cliente lido do papel é convite ao duplicado — que é
+  // card), sugerir outro cliente lido do papel é convite ao duplicado, que é
   // exatamente o que o vínculo com a oportunidade veio resolver.
   let clienteEncontrado = false
   let clienteSugeridoId: string | null = null
@@ -460,11 +462,11 @@ async function processarBackground(
 
   const tempoProcessamento = Math.round((Date.now() - startTime) / 1000)
 
-  // Etapa 6 — Atualiza ficha com todos os dados OCR.
+  // Etapa 6: atualiza ficha com todos os dados OCR.
   // Se o upload da imagem falhou (ex.: erro de Storage), sinaliza erro_etapa='upload'
-  // MANTENDO status='pendente' — o OCR funcionou e os dados são válidos; a ficha
+  // MANTENDO status='pendente': o OCR funcionou e os dados são válidos; a ficha
   // não é bloqueada, apenas avisada no cabeçalho (front). Em caso de sucesso,
-  // limpa erro_etapa (importante no reprocessamento).
+  // limpa erro_etapa.
   await supabase.from('fichas').update({
     ...dbFields,
     ...(uploadOk
@@ -495,17 +497,16 @@ Deno.serve(async (req) => {
   const startTime = Date.now()
 
   try {
-    // Etapa 1 — Validação
+    // Etapa 1: validação
     const formData = await req.formData()
     const imageFile        = formData.get('image')    as File   | null
     const userId           = formData.get('user_id')  as string | null
-    const fichaIdReprocess = formData.get('ficha_id') as string | null
     // Card do funil, quando a foto foi tirada de dentro de uma atividade: a
     // ficha nasce ligada à oportunidade e o gatilho fecha o card ao promovê-la.
     const oportunidadeId   = formData.get('oportunidade_id') as string | null
     // ...e ligada ao CLIENTE do card, que era o pedaço que faltava. Sem isto o
     // dono da ficha só aparecia no fim, resolvido pelo telefone que o OCR
-    // conseguisse ler do papel — e telefone que não casa faz o `criar-cliente`
+    // conseguisse ler do papel, e telefone que não casa faz o `criar-cliente`
     // abrir um cliente novo, deixando a ficha do cliente errado enquanto o card
     // fecha certo pelo vínculo explícito. Foi o bug de 24/08. Quem lança de
     // dentro da atividade já sabe de quem é a ficha; o papel não precisa contar.
@@ -525,58 +526,42 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    let fichaId: string
+    // Etapa 2: criação da ficha.
+    //
+    // Houve aqui um ramo de reprocessamento, acionado por um campo `ficha_id`
+    // neste FormData. Removido em 03/09/2026 (IGO-247): nenhum front mandava
+    // esse campo desde o revert `d75c815`, de 08/04/2026, então era código
+    // inalcançável, e o botão "Reenviar Imagem" que deveria acioná-lo não
+    // fazia nada. Falha de OCR nunca aconteceu em produção (zero fichas com
+    // `erro_etapa` de ocr/parse/upload na história do banco), e o caminho para
+    // ela é tirar outra foto, que gera ficha nova.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('unidade_id')
+      .eq('id', userId)
+      .single()
 
-    // Etapa 2 — Criação ou atualização da ficha
-    if (fichaIdReprocess) {
-      const { data: ficha, error } = await supabase
-        .from('fichas')
-        .select('id, status')
-        .eq('id', fichaIdReprocess)
-        .single()
+    const unidadeDoCard = unidadeIdCard ? Number(unidadeIdCard) : NaN
 
-      if (error || !ficha) return json({ error: 'ficha não encontrada' }, 400)
-      if (ficha.status !== 'erro') return json({ error: 'invalid_status_for_reprocess' }, 400)
-
-      await supabase.from('fichas').update({
+    const { data: ficha, error } = await supabase
+      .from('fichas')
+      .insert({
+        vendedor_id: userId,
         status: 'pendente',
-        ocr_tentativa: null,
-        cliente_encontrado: null,
-        cliente_sugerido_id: null,
-        cliente_sugerido_nome: null,
-      }).eq('id', fichaIdReprocess)
+        unidade_id: Number.isFinite(unidadeDoCard) ? unidadeDoCard : profile?.unidade_id,
+        oportunidade_id: oportunidadeId,
+        // A ficha nasce com dono. O OCR preenche o resto por cima; estes três
+        // ele não encosta. Ver a guarda da etapa 6 em processarBackground().
+        cliente_id: clienteId,
+        nome_cliente: clienteNome,
+        telefone_cliente: clienteTelefone,
+      })
+      .select('id')
+      .single()
 
-      fichaId = fichaIdReprocess
+    if (error || !ficha) return json({ error: 'Falha ao criar ficha' }, 500)
 
-    } else {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('unidade_id')
-        .eq('id', userId)
-        .single()
-
-      const unidadeDoCard = unidadeIdCard ? Number(unidadeIdCard) : NaN
-
-      const { data: ficha, error } = await supabase
-        .from('fichas')
-        .insert({
-          vendedor_id: userId,
-          status: 'pendente',
-          unidade_id: Number.isFinite(unidadeDoCard) ? unidadeDoCard : profile?.unidade_id,
-          oportunidade_id: oportunidadeId,
-          // A ficha nasce com dono. O OCR preenche o resto por cima; estes três
-          // ele não encosta — ver a guarda da etapa 6 em processarBackground().
-          cliente_id: clienteId,
-          nome_cliente: clienteNome,
-          telefone_cliente: clienteTelefone,
-        })
-        .select('id')
-        .single()
-
-      if (error || !ficha) return json({ error: 'Falha ao criar ficha' }, 500)
-
-      fichaId = ficha.id
-    }
+    const fichaId = ficha.id
 
     // Lê bytes antes do retorno (File não pode ser lido após a resposta)
     const imageBytes = new Uint8Array(await imageFile.arrayBuffer())

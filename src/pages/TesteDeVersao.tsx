@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera, Upload, Edit, X, Check, RefreshCw, Clock, AlertTriangle } from "lucide-react";
+import { Camera, Upload, Edit, X, Check, Clock, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
@@ -34,7 +34,6 @@ const TesteDeVersao = () => {
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [currentFichaId, setCurrentFichaId] = useState<string | null>(null);
   const [ultimasFichas, setUltimasFichas] = useState<FichaStats[]>([]);
   const [errosRecentes, setErrosRecentes] = useState<FichaErro[]>([]);
 
@@ -94,17 +93,8 @@ const TesteDeVersao = () => {
     }
   };
 
-  const reenviarImagem = async () => {
-    if (!currentFichaId) return;
-    setShowErrorDialog(false);
-    toast.info("Reenviando imagem...");
-    navigate(`/editar-ficha/${currentFichaId}`, { state: { isReprocessing: true } });
-  };
-
   const handleNovaFoto = () => {
-    if (currentFichaId) supabase.from('fichas').delete().eq('id', currentFichaId);
     setShowErrorDialog(false);
-    setCurrentFichaId(null);
     setSelectedFile(null);
     cameraInputRef.current?.click();
   };
@@ -129,12 +119,8 @@ const TesteDeVersao = () => {
     }
   };
 
-  const handleCancelSend = async () => {
+  const handleCancelSend = () => {
     setShowConfirmDialog(false);
-    if (currentFichaId) {
-      await supabase.from('fichas').delete().eq('id', currentFichaId);
-      setCurrentFichaId(null);
-    }
     setSelectedFile(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
@@ -327,9 +313,6 @@ const TesteDeVersao = () => {
             <AlertDialogDescription>Não foi possível extrair os dados da ficha. Tente novamente.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="outline" onClick={reenviarImagem} className="w-full sm:w-auto">
-              <RefreshCw className="w-4 h-4 mr-2" />Reenviar Imagem
-            </Button>
             <Button onClick={handleNovaFoto} className="w-full sm:w-auto">
               <Camera className="w-4 h-4 mr-2" />Tirar Nova Foto
             </Button>
