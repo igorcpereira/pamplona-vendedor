@@ -196,14 +196,17 @@ describe("LancarFichaDialog", () => {
       );
     });
 
-    it("avisa o cliente pelo WhatsApp, como a tela completa faz", async () => {
+    // Disparos de WhatsApp pausados em 11/09/2026 (PLANO-PAUSAR-WHATSAPP.md).
+    // Este teste é o que protege a pausa: se alguém religar a chamada por
+    // engano, ele quebra.
+    it("não avisa pelo WhatsApp: os disparos estão pausados", async () => {
       abrir();
       await irParaManual();
       await userEvent.type(screen.getByLabelText("Código da ficha *"), "999");
       await userEvent.click(screen.getByRole("button", { name: "Lançar ficha" }));
-      expect(invokeMock).toHaveBeenCalledWith(
+      expect(invokeMock).not.toHaveBeenCalledWith(
         "notificar-ficha-whatsapp",
-        expect.objectContaining({ body: { ficha_id: "ficha-nova" } }),
+        expect.anything(),
       );
     });
 

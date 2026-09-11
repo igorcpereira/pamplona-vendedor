@@ -267,11 +267,9 @@ const LancarFichaDialog = ({ open, contexto, onClose }: Props) => {
       if (error) throw error;
       if (!ficha?.id) throw new Error("A ficha não retornou id.");
 
-      // Mesmo aviso que a tela completa dispara ao salvar: sem isso a ficha
-      // lançada pelo funil não avisa o cliente. Fire-and-forget de propósito.
-      void supabase.functions
-        .invoke("notificar-ficha-whatsapp", { body: { ficha_id: ficha.id } })
-        .catch((err) => console.error("Erro ao notificar WhatsApp:", err));
+      // Notificação da ficha no WhatsApp pausada em 11/09/2026: a chamada à edge
+      // `notificar-ficha-whatsapp` saiu daqui. A edge continua deployada. Para
+      // religar e o porquê, ver pamplona-crm/docs/PLANO-PAUSAR-WHATSAPP.md.
 
       // A atividade foi concluída e o card ganho pelo gatilho da ficha — as duas
       // listas precisam recarregar para o vendedor ver isso.
