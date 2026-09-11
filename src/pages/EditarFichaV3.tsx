@@ -679,14 +679,9 @@ export default function EditarFichaV3() {
 
       if (error) throw error;
 
-      const isProva = ficha?.prova1_data || ficha?.prova2_data || ficha?.prova3_data;
-      if (!isProva) {
-        supabase.functions.invoke('notificar-ficha-whatsapp', {
-          body: { ficha_id: id }
-        }).catch(err => {
-          console.error('Erro ao enviar notificação WhatsApp:', err);
-        });
-      }
+      // Notificação da ficha no WhatsApp pausada em 11/09/2026: a chamada à edge
+      // `notificar-ficha-whatsapp` saiu daqui. A edge continua deployada. Para
+      // religar e o porquê, ver pamplona-crm/docs/PLANO-PAUSAR-WHATSAPP.md.
 
       // Sincroniza tags do cliente por id — só relações; tag nova não nasce
       // mais aqui (a seleção vem de tags existentes e a RLS de `tags` bloqueia
