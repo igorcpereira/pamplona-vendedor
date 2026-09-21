@@ -21,19 +21,32 @@ export function normalizarBusca(texto: string): string {
 }
 
 // Regra de negócio, espelhando a RLS `fichas_update`: edita quem LANÇOU a
-// ficha, qualquer que seja o papel, mais gestor e master.
+// ficha, qualquer que seja o papel, mais gestor e master — e o administrativo
+// enquanto a ficha ainda NÃO foi lançada.
 //
 // Virou ALLOWLIST em 01/09/2026 (IGO-153). Era `role !== "vendedor"`, uma
-// denylist de um item, e isso tinha dois problemas: o `administrativo` passava
-// (e por decisão do Igor ele não edita ficha), e qualquer papel novo passaria
-// por omissão. Com a policy do banco apertada, deixar esta função permissiva
-// faria o app oferecer um botão que a RLS recusa em silêncio.
+// denylist de um item, e isso tinha dois problemas: qualquer papel novo passaria
+// por omissão, e o `administrativo` passava para QUALQUER ficha, inclusive já
+// lançada.
+//
+// Mas a allowlist tirou o administrativo por completo, e isso foi longe demais:
+// ele lança ficha em nome de outro vendedor da unidade, e isso é um UPDATE onde
+// `userId !== fichaVendedorId` por construção. O recurso ficou 20 dias quebrado
+// em produção — o banco recusava, e o front ainda no ar (com a denylist antiga)
+// oferecia o botão assim mesmo, então o erro chegava ao usuário como
+// "Não foi possível salvar a ficha".
+//
+// Daí o 4º parâmetro. `jaLancada` tem default `true`, que é o conservador: sem
+// a informação, o administrativo NÃO edita. Quem conhece o status passa o valor.
+// Espelha o USING da policy `fichas_update` (migration 20260921120000).
 export function podeEditarFicha(
   role: string | null | undefined,
   userId: string | null | undefined,
-  fichaVendedorId: string | null | undefined
+  fichaVendedorId: string | null | undefined,
+  jaLancada: boolean = true
 ): boolean {
   if (role === "gestor" || role === "master") return true;
+  if (role === "administrativo" && !jaLancada) return true;
   return !!userId && userId === fichaVendedorId;
 }
 

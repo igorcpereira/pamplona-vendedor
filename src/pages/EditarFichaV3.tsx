@@ -118,9 +118,11 @@ export default function EditarFichaV3() {
   // Ownership: um 'vendedor' só edita o núcleo da própria ficha. Ao abrir a ficha
   // de outro vendedor, a tela fica em modo somente-leitura do núcleo — mas ele ainda
   // pode lançar provas/pedidos avulsos (marcados em seu nome) e marcar como pago.
-  // Perfis elevados (administrativo/gestor/etc.) editam qualquer ficha (podeEditarFicha
-  // retorna true), então soLeituraDono = false para eles. Espelha a RLS fichas_update.
-  const soLeituraDono = !podeEditarFicha(activeUnidade?.role, user?.id, fichaVendedorId);
+  // Gestor e master editam qualquer ficha. O administrativo edita enquanto a ficha
+  // não foi lançada — é o que permite a ele atribuir a venda a outro vendedor no
+  // seletor abaixo, já que nesse caso fichaVendedorId deixa de ser o id dele.
+  // Espelha o USING da RLS fichas_update (migration 20260921120000).
+  const soLeituraDono = !podeEditarFicha(activeUnidade?.role, user?.id, fichaVendedorId, jaLancada);
 
   // Núcleo (cadastro/peças/valores) fica read-only por status OU por não ser o dono.
   const nucleoReadOnly = nucleoBloqueado || soLeituraDono;
