@@ -1,3 +1,12 @@
+// Notifica o grupo de WhatsApp da loja com a foto da ficha recém-salva.
+//
+// PAUSA (desde 11/09/2026): o secret WHATSAPP_PAUSADO='true' faz a função
+// responder sem enviar nem gravar nada. A decisão de enviar mora aqui, no
+// servidor, e não no front: em 24/09 uma vendedora ainda rodava o app de antes
+// da pausa num iPhone que nunca recarregou, e as fotos continuaram saindo só
+// pelo aparelho dela. Tirar a chamada do cliente não basta.
+// Religar: `supabase secrets unset WHATSAPP_PAUSADO` (ou set 'false').
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -117,6 +126,12 @@ Deno.serve(async (req) => {
   try {
     const { ficha_id } = await req.json()
     if (!ficha_id) return json({ error: 'ficha_id é obrigatório' }, 400)
+
+    // Pausa mandada pelo servidor (ver cabeçalho). Responde 200 com os campos
+    // que o front antigo lê, para ele não mostrar erro à vendedora.
+    if (Deno.env.get('WHATSAPP_PAUSADO') === 'true') {
+      return json({ ficha_id, skipped: 'pausado', enviada_whatsapp_geral: false, enviada_whatsapp_venda: false })
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,

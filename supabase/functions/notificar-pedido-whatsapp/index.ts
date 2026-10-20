@@ -61,6 +61,14 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'pedido_id é obrigatório' }), { status: 400 })
     }
 
+    // Pausa mandada pelo servidor: mesma chave WHATSAPP_PAUSADO da
+    // notificar-ficha-whatsapp. O trigger que chama esta função está
+    // desabilitado desde 11/09/2026, mas ela tem verify_jwt = false e a chave
+    // única deixa a regra da pausa num lugar só.
+    if (Deno.env.get('WHATSAPP_PAUSADO') === 'true') {
+      return new Response(JSON.stringify({ ok: true, skipped: 'pausado' }), { status: 200 })
+    }
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
