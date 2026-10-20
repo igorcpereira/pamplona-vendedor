@@ -74,15 +74,35 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
+    // --- Etapa 1a: de que mundo é este vendedor ---
+    // Esta função roda com SERVICE ROLE, e sob service role `auth.uid()` é NULL.
+    // Por isso o trigger do banco não consegue derivar o mundo aqui, e quem deriva
+    // é esta função, lendo o perfil do vendedor NO SERVIDOR. O `is_demo` nunca vem
+    // do corpo da requisição: se viesse, a tela poderia escolher em que mundo
+    // escrever.
+    //
+    // Vendedor sem perfil cai no mundo real, que é o comportamento de antes desta
+    // mudança e o único seguro: na dúvida, o dado é de verdade.
+    const { data: perfilVendedor } = await supabase
+      .from('profiles')
+      .select('is_demo')
+      .eq('id', vendedor_id)
+      .maybeSingle()
+    const mundoDemo = perfilVendedor?.is_demo === true
+
     // --- Etapa 1b: Cliente já vinculado → UPDATE por id (não duplica) ---
     // Quando a ficha já aponta para um cliente, atualizamos ESSE registro em vez
     // de re-resolver por telefone. Assim, corrigir o telefone de uma ficha
     // vinculada altera o cliente existente, sem criar duplicata.
     if (typeof cliente_id === 'string' && cliente_id.trim() !== '') {
+      // O `.eq('is_demo', mundoDemo)` impede que um id de outro mundo, chegando
+      // pelo corpo, faça esta função renomear cliente REAL a partir da conta de
+      // demonstração (ou o contrário). Sem ele, bastaria conhecer um uuid.
       const { data: updated, error: updateError } = await supabase
         .from('clientes')
         .update({ nome: nome.trim(), telefone: telefoneNormalizado })
         .eq('id', cliente_id)
+        .eq('is_demo', mundoDemo)
         .select('id')
         .single()
 
@@ -106,6 +126,7 @@ Deno.serve(async (req) => {
       nome: nome.trim(),
       telefone: telefoneNormalizado,
       vendedor_id,
+      is_demo: mundoDemo,
     }
     // Cliente é entidade do negócio: não carrega mais unidade_id (a unidade vive na ficha).
 
@@ -121,11 +142,17 @@ Deno.serve(async (req) => {
     }
 
     // Conflito de telefone (23505) → busca o existente
+    //
+    // O `.eq('is_demo', mundoDemo)` aqui é o conserto do vazamento mais silencioso
+    // do sistema. Sem ele, um telefone digitado na apresentação que já exista na
+    // produção faz esta busca devolver o id do cliente REAL, e a ficha fictícia
+    // passa a apontar para uma pessoa de verdade, sem erro nenhum na tela.
     if (insertError?.code === '23505') {
       const { data: existing, error: selectError } = await supabase
         .from('clientes')
         .select('id')
         .eq('telefone', telefoneNormalizado)
+        .eq('is_demo', mundoDemo)
         .single()
 
       if (selectError || !existing) {

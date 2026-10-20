@@ -25,3 +25,7 @@ dist-ssr
 
 # Arquivos de apoio (contêm código e chaves sensíveis)
 apoio/
+
+# Estado local do Supabase CLI e worktrees do Claude Code: nunca versionar
+supabase/.temp/
+.claude/worktrees/

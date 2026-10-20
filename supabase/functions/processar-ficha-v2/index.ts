@@ -264,10 +264,34 @@ async function processarBackground(
   let clienteSugeridoNome: string | null = null
 
   if (dbFields.telefone_cliente) {
+    // Mundo da ficha, derivado da unidade e no servidor. Esta função roda com
+    // service role, onde `auth.uid()` é NULL, então o banco não decide por ela.
+    //
+    // Sem este escopo, a sugestão de cliente cruza os mundos: ficha real poderia
+    // sugerir cliente fictício e vice-versa. E, como o único de telefone passou a
+    // ser dois índices parciais (um por mundo), o mesmo número pode existir dos
+    // dois lados, o que faria este `maybeSingle()` receber duas linhas.
+    const { data: fichaDaVez } = await supabase
+      .from('fichas')
+      .select('unidade_id')
+      .eq('id', fichaId)
+      .maybeSingle()
+
+    let mundoDemo = false
+    if (fichaDaVez?.unidade_id != null) {
+      const { data: unidadeDaFicha } = await supabase
+        .from('unidades')
+        .select('is_demo')
+        .eq('id', fichaDaVez.unidade_id)
+        .maybeSingle()
+      mundoDemo = unidadeDaFicha?.is_demo === true
+    }
+
     const { data: cliente } = await supabase
       .from('clientes')
       .select('id, nome')
       .eq('telefone', dbFields.telefone_cliente)
+      .eq('is_demo', mundoDemo)
       .maybeSingle()
 
     if (cliente) {
