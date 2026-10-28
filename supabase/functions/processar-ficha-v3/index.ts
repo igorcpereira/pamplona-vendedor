@@ -185,6 +185,103 @@ async function callOpenAI(base64: string, mimeType: string): Promise<Record<stri
 // BACKGROUND: etapas 3 a 6
 // ============================================================
 
+// ============================================================
+// MODO DEMONSTRAÇÃO
+// ============================================================
+// Ficha em unidade de demonstração não chama a OpenAI. Três motivos, em ordem de
+// importância:
+//
+//   1. a apresentação não pode depender de serviço externo, nem de crédito;
+//   2. o resultado precisa ser o MESMO no ensaio e na hora, porque o roteiro é
+//      escrito contra ele. Daí ser sorteado por hash do id da ficha, e não por
+//      random();
+//   3. a foto é do papel que o apresentador tiver em mãos, e pode não ser uma
+//      ficha de verdade.
+//
+// O que NÃO muda: a foto sobe para o bucket do mesmo jeito, no mesmo caminho. O
+// apresentador tira a foto e quer vê-la de volta na tela, e isso é metade do
+// efeito.
+//
+// O atraso é deliberado. Medido na produção, `tempo_processamento` tem p10 de 6s,
+// p50 de 7s e p90 de 8s, uma distribuição bem apertada. Uma ficha "lida" em
+// 200 ms não parece IA, parece truque.
+
+const DEMO_CLIENTES: Array<[string, string]> = [
+  ['Ricardo Menezes Albuquerque', '5544900000101'],
+  ['Eduardo Tavares Pimentel',    '5544900000102'],
+  ['Marcelo Siqueira Andrade',    '5544900000103'],
+  ['Henrique Vasconcelos Lima',   '5544900000104'],
+  ['Gustavo Rabelo Monteiro',     '5544900000105'],
+  ['Leonardo Braga Figueiredo',   '5544900000106'],
+]
+
+const DEMO_PECAS: Array<{
+  tipo: 'aluguel' | 'venda' | 'ajuste'
+  paleto: [string, string] | null
+  calca: [string, string] | null
+  camisa: [string, string] | null
+  sapato: [string, string] | null
+}> = [
+  // A proporção espelha a produção: aluguel domina, venda e ajuste aparecem.
+  { tipo: 'aluguel', paleto: ['Paletó slim preto',        '420.00'], calca: ['Calça alfaiataria preta', '160.00'], camisa: ['Camisa branca 140 fios', '90.00'],  sapato: ['Social preto 41', '0.00'] },
+  { tipo: 'aluguel', paleto: ['Paletó azul marinho',      '380.00'], calca: ['Calça azul marinho',     '150.00'], camisa: ['Camisa branca 120 fios', '80.00'],  sapato: null },
+  { tipo: 'aluguel', paleto: ['Paletó cinza chumbo',      '400.00'], calca: ['Calça cinza',            '150.00'], camisa: null,                                  sapato: ['Social marrom 42', '0.00'] },
+  { tipo: 'aluguel', paleto: ['Paletó preto slim',        '440.00'], calca: ['Calça preta',            '170.00'], camisa: ['Camisa off white 140 fios', '95.00'], sapato: null },
+  { tipo: 'venda',   paleto: ['Paletó sob medida Reda',  '3200.00'], calca: ['Calça sob medida',       '890.00'], camisa: ['Camisa sob medida',      '420.00'],  sapato: null },
+  { tipo: 'ajuste',  paleto: ['Ajuste de manga',          '120.00'], calca: ['Ajuste de barra',         '80.00'], camisa: null,                                  sapato: null },
+]
+
+/** Hash estável e pequeno, só para sortear de forma reprodutível. */
+function hashDemo(texto: string): number {
+  let h = 0
+  for (let i = 0; i < texto.length; i++) {
+    h = (h * 31 + texto.charCodeAt(i)) >>> 0
+  }
+  return h
+}
+
+function diaDemo(offset: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+
+function ocrDemonstracao(fichaId: string): Record<string, unknown> {
+  const h = hashDemo(fichaId)
+  const [nome, telefone] = DEMO_CLIENTES[h % DEMO_CLIENTES.length]
+  const pecas = DEMO_PECAS[(h >>> 3) % DEMO_PECAS.length]
+
+  const secao = (v: [string, string] | null) =>
+    v ? { descricao: v[0], valor: v[1] } : null
+
+  const total = [pecas.paleto, pecas.calca, pecas.camisa, pecas.sapato]
+    .reduce((acc, p) => acc + (p ? parseFloat(p[1]) : 0), 0)
+
+  return {
+    // Derivado do id da ficha para nunca colidir com o índice único de
+    // (unidade_id, codigo_ficha), que trataria a repetição como refoto.
+    numero_ficha: 'D' + fichaId.replace(/-/g, '').slice(0, 6).toUpperCase(),
+    cliente_nome: nome,
+    cliente_telefone: telefone,
+    tipo: pecas.tipo,
+    data_retirada: diaDemo(7),
+    data_devolucao: diaDemo(23),
+    data_festa: diaDemo(21),
+    paleto: secao(pecas.paleto),
+    calca: secao(pecas.calca),
+    camisa: secao(pecas.camisa),
+    sapato: secao(pecas.sapato),
+    valor_total: total.toFixed(2),
+    garantia: null,
+    pago: false,
+  }
+}
+
+/** 6 a 8 segundos, determinístico por ficha, como a produção mede. */
+function atrasoDemonstracao(fichaId: string): number {
+  return 6000 + (hashDemo(fichaId) % 2500)
+}
+
 async function processarBackground(
   supabase: ReturnType<typeof createClient>,
   fichaId: string,
@@ -205,6 +302,19 @@ async function processarBackground(
     .select('unidade_id, cliente_id, nome_cliente, telefone_cliente, oportunidade_id')
     .eq('id', fichaId)
     .single()
+
+  // Mundo da ficha, derivado da UNIDADE dela e no servidor. Esta função roda com
+  // service role, então `auth.uid()` é NULL e o banco não tem como decidir por
+  // ela. Nada disso vem do corpo da requisição, de propósito.
+  let mundoDemo = false
+  if (fichaAtual?.unidade_id != null) {
+    const { data: unidadeDaFicha } = await supabase
+      .from('unidades')
+      .select('is_demo')
+      .eq('id', fichaAtual.unidade_id)
+      .maybeSingle()
+    mundoDemo = unidadeDaFicha?.is_demo === true
+  }
 
   // Etapas 3 + 4: upload e base64 em paralelo
   const [uploadResult, base64Result] = await Promise.allSettled([
@@ -237,7 +347,15 @@ async function processarBackground(
   // Etapa 5: OCR com retry
   let ocrResult: Record<string, unknown> | null = null
 
-  for (let tentativa = 1; tentativa <= 2; tentativa++) {
+  // Unidade de demonstração: resultado enlatado, sem OpenAI. O laço abaixo não
+  // roda, porque a condição dele exige `!ocrResult`.
+  if (mundoDemo) {
+    await new Promise(r => setTimeout(r, atrasoDemonstracao(fichaId)))
+    ocrResult = ocrDemonstracao(fichaId)
+    await supabase.from('fichas').update({ ocr_tentativa: 1 }).eq('id', fichaId)
+  }
+
+  for (let tentativa = 1; tentativa <= 2 && !ocrResult; tentativa++) {
     await supabase.from('fichas').update({ ocr_tentativa: tentativa }).eq('id', fichaId)
 
     try {
@@ -439,10 +557,15 @@ async function processarBackground(
   let clienteSugeridoNome: string | null = null
 
   if (!fichaAtual?.cliente_id && dbFields.telefone_cliente) {
+    // O `.eq('is_demo', mundoDemo)` impede que um telefone lido do papel case com
+    // cliente do outro mundo. Sem ele, a ficha da apresentação poderia sugerir (e
+    // depois vincular) uma pessoa de verdade, e a ficha real poderia sugerir um
+    // cliente fictício.
     const { data: cliente } = await supabase
       .from('clientes')
       .select('id, nome')
       .eq('telefone', dbFields.telefone_cliente)
+      .eq('is_demo', mundoDemo)
       .maybeSingle()
 
     if (cliente) {
