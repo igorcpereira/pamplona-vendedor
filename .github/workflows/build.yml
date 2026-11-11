@@ -1,0 +1,43 @@
+# Build em todo PR (11/11/2026).
+#
+# Por que existe: a Vercel deixou de fazer prévia da `desenvolvimento` e das
+# branches de PR para cortar custo (só a `main` publica, ver
+# `git.deploymentEnabled` no vercel.json). Sem prévia, um erro de build só
+# apareceria na publicação de produção; aqui ele aparece no PR.
+#
+# Economia de minutos: a cota grátis do GitHub Actions é de 2.000 minutos por mês
+# para todos os repositórios do Igor juntos, e outubro estourou. Por isso:
+#   - roda só no PR, e não no push (tudo chega na `desenvolvimento` e na `main`
+#     por PR, e o push repetiria o que o PR acabou de rodar);
+#   - commit só de documentação não roda;
+#   - push novo no mesmo PR cancela a execução anterior.
+#
+# O que deliberadamente não faz: não roda lint nem testes. Este repositório não
+# tinha CI nenhum, e entrar só com o build mantém o gasto mínimo. Acrescentar job
+# aqui é combinar antes com o Igor.
+name: build
+
+on:
+  pull_request:
+    paths-ignore: ["docs/**", "**/*.md"]
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # `npm ci` porque o repositório tem package-lock.json. Instalação exata.
+      - run: npm ci
+      - run: npm run build
